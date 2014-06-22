@@ -3,15 +3,16 @@
 namespace ph {
 #ifdef PH_DEBUG
 struct AllocRecord {
-    void*  ptr;
+    void* ptr;
     size_t size;
 };
 
 static size_t g_total_memory = 0;
 
 // TODO: change to stretchy buffer.
-static AllocRecord g_alloc_records[1024];
-static int g_alloc_i = 0;
+extern Slice<AllocRecord> g_alloc_records;
+Slice<AllocRecord> g_alloc_records;
+static bool g_init = false;
 #endif
 
 lua_State* new_lua() {
@@ -40,37 +41,36 @@ lua_State* run_script(const char* path) {
     return L;
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-static void register_bytes(size_t alloc) {
-#ifdef PH_DEBUG
-    g_total_memory += alloc;
-#endif
-}
-#pragma clang diagnostic pop
-
 void* typeless_alloc(size_t n_bytes) {
     void* ptr = malloc(n_bytes);
     if (!ptr) {
         ph::phatal_error("Allocation failed");
     }
 #ifdef PH_DEBUG
-    g_alloc_records[g_alloc_i] = {ptr, n_bytes};
-    g_alloc_i++;
-    register_bytes(n_bytes);
+    if (!g_init) {
+        g_init = true;
+        g_alloc_records.n_capacity = 1024;
+        g_alloc_records.n_elems = 0;
+        size_t sz = sizeof(AllocRecord) * 1024;
+        g_alloc_records.ptr = (AllocRecord*)malloc(sz);
+    }
+    AllocRecord r = {ptr, n_bytes};
+    append(&g_alloc_records, r);
+    g_total_memory += n_bytes;
 #endif
     return ptr;
 }
 
 void typeless_free(void* mem) {
 #ifdef PH_DEBUG
-    for (int i = 0; i < 1024; ++i) {
-        if (g_alloc_records[i].ptr == mem) {
-            g_total_memory -= g_alloc_records[i].size;
-            return;
+    for (size_t i = 0; i < g_alloc_records.n_elems; ++i) {
+        AllocRecord r = g_alloc_records[i];
+        if (r.ptr == mem) {
+            g_total_memory -= r.size;
+            goto end;
         }
     }
+    end:
 #endif
     free(mem);
 }
@@ -84,9 +84,11 @@ size_t bytes_allocated() {
 }
 
 void quit(int code) {
+#ifdef PH_DEBUG
+    free(g_alloc_records.ptr);
+#endif
     exit(code);
 }
 
-
-}
+}  // ns ph
 

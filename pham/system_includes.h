@@ -8,4 +8,5 @@ extern "C" {
 #include <lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 }

@@ -16,3 +16,10 @@ cmake_install.cmake
 
 # Third party
 third_party/*
+
+# Eclipse crap
+.project
+.cproject
+.settings
+
+**/Makefile
