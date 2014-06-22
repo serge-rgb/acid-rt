@@ -1,0 +1,18 @@
+# use glob syntax
+syntax: glob
+
+# Build
+*.so
+Makefile
+
+# CMake crap
+CMakeFiles/*
+CMakeCache.txt
+CPack*
+cmake_install.cmake
+
+# Vim crap
+*.taghl
+
+# Third party
+third_party/*
