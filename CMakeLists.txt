@@ -38,5 +38,5 @@ set(nuwen_runtime liblua gc ph)
 # Projects
 #===============================================================================
 
-# ---- Budget manager
-# add_subdirectory(budget)
+# ---- ph_test
+add_subdirectory(ph_test)
