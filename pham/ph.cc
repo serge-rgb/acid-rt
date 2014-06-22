@@ -65,7 +65,7 @@ void* typeless_alloc(size_t n_bytes) {
 
 void typeless_free(void* mem) {
 #ifdef PH_DEBUG
-    for (size_t i = 0; i < g_alloc_records.n_elems; ++i) {
+    for (int64 i = 0; i < (int64)g_alloc_records.n_elems; ++i) {
         AllocRecord r = g_alloc_records[i];
         if (r.ptr == mem) {
             g_total_memory -= r.size;

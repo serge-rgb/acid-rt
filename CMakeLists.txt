@@ -40,3 +40,5 @@ set(nuwen_runtime liblua gc ph)
 
 # ---- ph_test
 add_subdirectory(ph_test)
+# ---- budget app (top secret)
+# add_subdirectory(budget)

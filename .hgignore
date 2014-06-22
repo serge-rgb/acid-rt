@@ -5,12 +5,12 @@ syntax: glob
 *.so
 ph_test/ph_test
 
-
 # CMake crap
 CMakeFiles/*
 CMakeCache.txt
 CPack*
 cmake_install.cmake
+**/cmake_install.cmake
 Makefile
 **/Makefile
 

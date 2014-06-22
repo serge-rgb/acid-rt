@@ -18,8 +18,8 @@ int main() {
             append(&s, i);
         }
         ph_assert(count(&s) == 100000);
-        for (int i = 0; (size_t)i < count(&s); ++i) {
-            ph_assert(s[(size_t)i] == i);
+        for (int i = 0; i < count(&s); ++i) {
+            ph_assert(s[i] == i);
         }
         release(&s);
     }

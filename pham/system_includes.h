@@ -3,6 +3,7 @@
 #pragma clang system_header
 extern "C" {
 #include <gc.h>
+#include <inttypes.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>

@@ -16,6 +16,11 @@
 #define phree(mem) ph::memory::typeless_free((void*)mem); mem = NULL
 
 namespace ph {
+//////////////////////////
+// Types
+//////////////////////////
+typedef int64_t int64;
+typedef int32_t int32;
 
 //////////////////////////
 // Memory
@@ -65,8 +70,9 @@ struct Slice {
     T* ptr;
     size_t n_elems;
     size_t n_capacity;
-    const T& operator[](const size_t i) {
-        ph_assert(i < n_elems);
+    const T& operator[](const int64 i) {
+        ph_assert(i >= 0);
+        ph_assert((size_t)i < n_elems);
         return ptr[i];
     }
 };
@@ -103,8 +109,8 @@ void append(Slice<T>* slice, T elem) {
 }
 
 template<typename T>
-size_t count(Slice<T>* slice) {
-    return slice->n_elems;
+int64 count(Slice<T>* slice) {
+    return (int64)slice->n_elems;
 }
 
 }  // ns memory
