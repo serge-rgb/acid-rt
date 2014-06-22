@@ -1,15 +1,17 @@
+// OVERRRIDES
+//#define PH_SLICES_ARE_MANUAL
 #include <ph.h>
-
 
 using namespace ph;
 
 ////////////////////////////////////////
-// === Use with valgrind.
 // Used to check that core constructs
 // work as intended.
 ////////////////////////////////////////
 
 int main() {
+    GC_enable_incremental();
+    printf("Boehm GC version is %d.%d.%d\n", GC_VERSION_MAJOR, GC_VERSION_MINOR, GC_VERSION_MICRO);
     printf("Bytes used at start: %zu\n", memory::bytes_allocated());
     // Test slices
     {
@@ -21,6 +23,9 @@ int main() {
         for (int i = 0; i < count(&s); ++i) {
             ph_assert(s[i] == i);
         }
+        // Slices are by default GC'd
+        // so there is no need for this, unless the test
+        // uncomments the define on PH_SLICES_ARE_MANUAL
         release(&s);
     }
     // Test memory tracking

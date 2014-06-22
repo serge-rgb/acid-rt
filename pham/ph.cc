@@ -43,6 +43,15 @@ lua_State* run_script(const char* path) {
 }
 
 namespace memory {
+
+void* typeless_managed(size_t n_bytes) {
+    return GC_malloc(n_bytes);
+}
+
+void* typeless_managed_realloc(void* old, size_t n_bytes) {
+    return GC_realloc(old, n_bytes);
+}
+
 void* typeless_alloc(size_t n_bytes) {
     void* ptr = malloc(n_bytes);
     if (!ptr) {
@@ -77,9 +86,9 @@ void typeless_free(void* mem) {
     free(mem);
 }  // ns memory
 
-size_t bytes_allocated() {
+int64 bytes_allocated() {
 #ifdef PH_DEBUG
-    return g_total_memory;
+    return (int64)g_total_memory;
 #else
     return 0;
 #endif

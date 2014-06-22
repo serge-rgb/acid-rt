@@ -27,9 +27,9 @@ include_directories(
     "./third_party/bdwgc/include/"
     )
 
-add_library(gc STATIC IMPORTED)
+add_library(gc SHARED IMPORTED)
 set_property(TARGET gc PROPERTY IMPORTED_LOCATION
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/libgc.a")
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/libgc.so")
 
 add_library(ph pham/ph.cc)
 set(nuwen_runtime liblua gc ph)
