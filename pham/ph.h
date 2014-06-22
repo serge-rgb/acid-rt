@@ -11,18 +11,25 @@
 
 #define phanage   GC_malloc
 
-#define phalloc(type, num) (type*)ph::typeless_alloc(sizeof(type) * num)
+#define phalloc(type, num) (type*)ph::memory::typeless_alloc(sizeof(type) * num)
 
-#define phree(mem) ph::typeless_free((void*)mem); mem = NULL
+#define phree(mem) ph::memory::typeless_free((void*)mem); mem = NULL
 
 namespace ph {
 
 //////////////////////////
 // Memory
 //////////////////////////
-void* typeless_alloc(size_t n_bytes);
-void typeless_free(void* mem);
+namespace memory {
+// In debug mode, query dynamic memory allocated.
 size_t bytes_allocated();
+
+// malloc equivalent. Use phalloc macro
+void* typeless_alloc(size_t n_bytes);
+
+// free equivalent. Use phree macro
+void typeless_free(void* mem);
+}  // ns memory
 
 /////////////////////////
 // Lua
@@ -36,11 +43,23 @@ void phatal_error(const char* message);
 
 void quit(int code);
 
-// ====== Inline template hell:
+
+
+
+///////////////////////////////////
+// ==== Inline templated constructs
+///////////////////////////////////
+
+
+
 
 //////////////////////////////
 // Slices
 //////////////////////////////
+
+// === Slice
+// Conforms:   release, append, count
+// Operators:  []
 template<typename T>
 struct Slice {
     T* ptr;
@@ -52,8 +71,9 @@ struct Slice {
     }
 };
 
+// Create a Slice
 template<typename T>
-Slice<T> InitSlice(size_t n_capacity) {
+Slice<T> MakeSlice(size_t n_capacity) {
     Slice<T> slice;
     slice.n_capacity = n_capacity;
     slice.n_elems = 0;
@@ -68,6 +88,7 @@ void release(Slice<T>* s) {
     }
 }
 
+// Add an element to the end.
 template<typename T>
 void append(Slice<T>* slice, T elem) {
     if (slice->n_elems > 0 && slice->n_capacity == slice->n_elems) {
@@ -81,5 +102,10 @@ void append(Slice<T>* slice, T elem) {
     slice->n_elems++;
 }
 
+template<typename T>
+size_t count(Slice<T>* slice) {
+    return slice->n_elems;
 }
+
+}  // ns memory
 

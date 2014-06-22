@@ -1,5 +1,6 @@
 #include <ph.h>
 
+
 namespace ph {
 #ifdef PH_DEBUG
 struct AllocRecord {
@@ -41,6 +42,7 @@ lua_State* run_script(const char* path) {
     return L;
 }
 
+namespace memory {
 void* typeless_alloc(size_t n_bytes) {
     void* ptr = malloc(n_bytes);
     if (!ptr) {
@@ -73,7 +75,7 @@ void typeless_free(void* mem) {
     end:
 #endif
     free(mem);
-}
+}  // ns memory
 
 size_t bytes_allocated() {
 #ifdef PH_DEBUG
@@ -82,6 +84,7 @@ size_t bytes_allocated() {
     return 0;
 #endif
 }
+}  // ns memory
 
 void quit(int code) {
 #ifdef PH_DEBUG
@@ -91,4 +94,3 @@ void quit(int code) {
 }
 
 }  // ns ph
-
