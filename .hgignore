@@ -3,13 +3,16 @@ syntax: glob
 
 # Build
 *.so
-Makefile
+ph_test/ph_test
+
 
 # CMake crap
 CMakeFiles/*
 CMakeCache.txt
 CPack*
 cmake_install.cmake
+Makefile
+**/Makefile
 
 # Vim crap
 *.taghl
@@ -22,4 +25,3 @@ third_party/*
 .cproject
 .settings
 
-**/Makefile
