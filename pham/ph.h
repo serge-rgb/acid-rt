@@ -8,7 +8,7 @@
 
 // Slices are GC'd unless PH_SLICES_ARE_MANUAL is def'd
 #ifndef PH_SLICES_ARE_MANUAL
-#define PH_SLICES_ARE_GCD 1;
+#define PH_SLICES_ARE_GCD
 #endif
 
 ////////////////////////////////////////

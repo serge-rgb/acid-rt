@@ -10,7 +10,7 @@ using namespace ph;
 ////////////////////////////////////////
 
 int main() {
-    GC_enable_incremental();
+//    GC_enable_incremental();
     printf("Boehm GC version is %d.%d.%d\n", GC_VERSION_MAJOR, GC_VERSION_MINOR, GC_VERSION_MICRO);
     printf("Bytes used at start: %zu\n", memory::bytes_allocated());
     // Test slices
