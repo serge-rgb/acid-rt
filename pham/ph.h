@@ -6,10 +6,10 @@
 //  ==== Settings ====
 ////////////////////////////////////////
 
-// Slices are GC'd unless PH_SLICES_ARE_MANUAL is def'd
-#ifndef PH_SLICES_ARE_MANUAL
-#define PH_SLICES_ARE_GCD
-#endif
+// Define the following overrides before including ph.h.
+//
+// Slices are GC'd unless:
+// #define PH_SLICES_ARE_MANUAL
 
 ////////////////////////////////////////
 // Allocator macros
@@ -34,6 +34,8 @@
         ph::memory::typeless_free((void*)mem); mem = NULL
 
 namespace ph {
+
+void init();
 
 //////////////////////////
 // Int Types
@@ -71,77 +73,10 @@ void phatal_error(const char* message);
 
 void quit(int code);
 
-///////////////////////////////////
-// ==== Inline templated constructs
-///////////////////////////////////
+}  // ns ph
 
 //////////////////////////////
-// Slices
+// ==== Slices
 //////////////////////////////
-
-// === Slice
-// Conforms:   release, append, count
-// Operators:  []
-template<typename T>
-struct Slice {
-    T* ptr;
-    size_t n_elems;
-    size_t n_capacity;
-    const T& operator[](const int64 i) {
-        ph_assert(i >= 0);
-        ph_assert((size_t )i < n_elems);
-        return ptr[i];
-    }
-};
-
-// Create a Slice
-template<typename T>
-Slice<T> MakeSlice(size_t n_capacity) {
-    Slice<T> slice;
-    slice.n_capacity = n_capacity;
-    slice.n_elems = 0;
-#if !defined(PH_SLICES_ARE_GCD)
-    slice.ptr = phalloc(T, n_capacity);
-#else
-    slice.ptr = phanaged(T, n_capacity);
-#endif
-    return slice;
-}
-
-template<typename T>
-#if !defined(PH_SLICES_ARE_GCD)
-void release(Slice<T>* s) {
-    if (s->ptr) {
-        phree(s->ptr);
-    }
-#else
-void release(Slice<T>*) {
-#endif
-}
-
-// Add an element to the end.
-template<typename T>
-void append(Slice<T>* slice, T elem) {
-    if (slice->n_elems > 0 && slice->n_capacity == slice->n_elems) {
-        slice->n_capacity *= 2;
-#if !defined(PH_SLICES_ARE_GCD)
-        T* new_mem = phalloc(T, slice->n_capacity);
-        memcpy(new_mem, slice->ptr, sizeof(T) * slice->n_elems);
-        phree(slice->ptr);
-        slice->ptr = new_mem;
-#else
-        slice->ptr = phanaged_realloc(T, slice->ptr,
-                sizeof(T) * slice->n_elems);
-#endif
-    }
-    slice->ptr[slice->n_elems] = elem;
-    slice->n_elems++;
-}
-
-template<typename T>
-int64 count(Slice<T>* slice) {
-    return (int64)slice->n_elems;
-}
-
-}  // ns memory
+#include "slice_inl.h"
 

@@ -1,4 +1,4 @@
-# Install script for directory: /home/sglez/work/nuwen/ph_test
+# Install script for directory: /home/sglez/work/nuwen/test
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)

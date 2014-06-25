@@ -1,5 +1,3 @@
-// OVERRRIDES
-//#define PH_SLICES_ARE_MANUAL
 #include <ph.h>
 
 using namespace ph;
@@ -10,7 +8,8 @@ using namespace ph;
 ////////////////////////////////////////
 
 int main() {
-//    GC_enable_incremental();
+	ph::init();
+
     printf("Boehm GC version is %d.%d.%d\n", GC_VERSION_MAJOR, GC_VERSION_MINOR, GC_VERSION_MICRO);
     printf("Bytes used at start: %zu\n", memory::bytes_allocated());
     // Test slices
@@ -26,7 +25,9 @@ int main() {
         // Slices are by default GC'd
         // so there is no need for this, unless the test
         // uncomments the define on PH_SLICES_ARE_MANUAL
+#ifdef PH_SLICES_ARE_MANUAL
         release(&s);
+#endif
     }
     // Test memory tracking
     {
@@ -43,3 +44,4 @@ int main() {
     printf("Bytes used at end: %zu\n", memory::bytes_allocated());
     ph::quit(EXIT_SUCCESS);
 }
+

@@ -1,7 +1,13 @@
 #include <ph.h>
 
-
 namespace ph {
+
+void init() {
+#ifndef PH_SLICES_ARE_MANUAL
+    GC_enable_incremental();
+#endif
+}
+
 #ifdef PH_DEBUG
 struct AllocRecord {
     void* ptr;
@@ -10,7 +16,6 @@ struct AllocRecord {
 
 static size_t g_total_memory = 0;
 
-// TODO: change to stretchy buffer.
 extern Slice<AllocRecord> g_alloc_records;
 Slice<AllocRecord> g_alloc_records;
 static bool g_init = false;
@@ -98,8 +103,10 @@ int64 bytes_allocated() {
 void quit(int code) {
 #ifdef PH_DEBUG
     free(g_alloc_records.ptr);
+    GC_gcollect();
 #endif
     exit(code);
 }
 
 }  // ns ph
+

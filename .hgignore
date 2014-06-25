@@ -3,7 +3,7 @@ syntax: glob
 
 # Build
 *.so
-ph_test/ph_test
+test/ph_test
 
 # CMake crap
 CMakeFiles/*
@@ -25,3 +25,9 @@ third_party/*
 .cproject
 .settings
 
+# Python crap
+*.pyc
+**/.pyc
+
+# Tags crap
+tags
