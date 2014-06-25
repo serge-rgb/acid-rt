@@ -4,6 +4,7 @@ syntax: glob
 # Build
 *.so
 test/ph_test
+test/compute
 
 # CMake crap
 CMakeFiles/*

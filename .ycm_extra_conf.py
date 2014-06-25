@@ -10,6 +10,7 @@ flags = [
 "-I./third_party/lua/",
 "-I./third_party/lua/src/",
 "-I./third_party/include/",
+"./third_party/glfw/include/",
 "--std=c++11",
 "-Weverything",
 "-Werror",

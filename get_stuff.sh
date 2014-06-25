@@ -13,10 +13,11 @@ if [ ! -d third_party ]; then
     mkdir third_party
 fi
 
+cd third_party
+
 echo "========================================================================="
 echo "==== Boehm GC"
 echo "========================================================================="
-cd third_party
 if [ ! -d bdwgc ]; then
     git clone https://github.com/ivmai/bdwgc
     cd bdwgc
@@ -31,6 +32,13 @@ make install
 cd ..
 
 echo "========================================================================="
+echo "==== GLFW3"
+echo "========================================================================="
+if [ ! -d third_party ]; then
+    git clone https://github.com/glfw/glfw.git glfw
+fi
+
+echo "========================================================================="
 echo "==== Lua"
 echo "========================================================================="
 if [ ! -d lua ]; then
@@ -38,7 +46,7 @@ if [ ! -d lua ]; then
 else
     echo "Done."
 fi
-cd ..
+cd ..  # root
 
 
 
