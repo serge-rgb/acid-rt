@@ -50,11 +50,7 @@ void init() {
         path[frag] = "glsl/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
         shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
-        auto s = ph::MakeSlice<GLuint>(2);
-        for(int i = 0; i < 2; i++) {
-            ph::append(&s, shaders[i]);
-        }
-        ph::gl::link_program(s);
+        ph::gl::link_program(shaders, 2);
     }
     // TODO:
     // Create a quad.

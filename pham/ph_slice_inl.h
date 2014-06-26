@@ -70,6 +70,16 @@ void append(Slice<T>* slice, T elem) {
     slice->ptr[slice->n_elems] = elem;
     slice->n_elems++;
 }
+/*
+ * NOT IN USE
+ * TODO: Remove?
+template<typename T>
+void append_array(Slice<T>* slice, T* elems, int64 n_elems) {
+    for(int64 i = 0; i < n_elems; ++i) {
+        append(slice, elems[i]);
+    }
+}
+*/
 
 template<typename T>
 int64 count(Slice<T> slice) {

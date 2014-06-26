@@ -30,9 +30,9 @@ GLuint compile_shader(const char* path, GLuint type) {
 #endif
     return obj;
 }
-GLuint link_program(Slice<GLuint> shaders) {
+GLuint link_program(GLuint shaders[], int64 num_shaders) {
     GLuint obj = glCreateProgram();
-    for (int i = 0; i < ph::count(shaders); ++i) {
+    for (int i = 0; i < num_shaders; ++i) {
         GLCHK ( glAttachShader(obj, shaders[i]) );
     }
     GLCHK ( glLinkProgram(obj) );
