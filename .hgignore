@@ -11,7 +11,7 @@ CMakeFiles/*
 CMakeCache.txt
 CPack*
 cmake_install.cmake
-**/cmake_install.cmake
+*/cmake_install.cmake
 Makefile
 **/Makefile
 
@@ -31,7 +31,7 @@ trace
 
 # Python crap
 *.pyc
-**/.pyc
+*/*.pyc
 
 # Tags crap
 tags
