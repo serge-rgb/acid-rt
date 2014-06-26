@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ph_gl.h"
 #include "system_includes.h"
 
 ////////////////////////////////////////
@@ -15,11 +16,15 @@
 // Allocator macros
 ////////////////////////////////////////
 
+#ifdef PH_DEBUG
 #define ph_assert(expr) \
     if (!(expr)) {\
         fprintf(stderr, "Failed assertion at %s, %d\n", __FILE__, __LINE__);\
         ph::quit(-1);\
     }
+#else
+#define ph_assert(expr)
+#endif
 
 #define phanaged(type, num) \
         (type*)ph::memory::typeless_managed(sizeof(type) * num)

@@ -20,6 +20,7 @@ flags = [
 "-fno-exceptions",
 "-Wno-old-style-cast",
 "-Wno-missing-noreturn",
+"-Wno-c++98-compat-pedantic",
 ]
 
 # Set this to the absolute path to the folder (NOT the file!) containing the

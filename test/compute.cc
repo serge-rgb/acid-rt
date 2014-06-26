@@ -11,8 +11,20 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
     }
 }
 
+namespace test {
+void init() {
+    // Create texture
+    // fill it
+}
+
+void draw() {
+    // Draw texture
+}
+}
+
 int main() {
     ph::init();
+
     if (!glfwInit()) {
         ph::quit(EXIT_FAILURE);
     }
@@ -23,7 +35,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 
     GLFWmonitor* monitor = NULL;
-    GLFWwindow* window = glfwCreateWindow(640, 480, "rrt", monitor, NULL);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "Checkers", monitor, NULL);
 
     if (!window) {
         ph::quit(EXIT_FAILURE);
@@ -42,14 +54,29 @@ int main() {
 
     glfwMakeContextCurrent(window);
 
+    test::init();
+
     //=========================================
     // Main loop.
     //=========================================
     while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
+        struct timespec tp;
+        clock_gettime(CLOCK_REALTIME, &tp);
+        long start_ns = tp.tv_nsec;
+
+        // FRAME
+        pglClear(234213);
         glfwPollEvents();
+        pglFinish();
         glfwSwapBuffers(window);
-        usleep(16000);
+        clock_gettime(CLOCK_REALTIME, &tp);
+
+        long diff = tp.tv_nsec - start_ns;
+        printf("ms: %f\n", double(diff) / double(1000000));
+        printf("diff: %ld\n", diff);
+        uint32_t sleep_ns = uint32_t((16 * 1000000) - diff);
+        printf("sleep: %ud\n", sleep_ns);
+        usleep(sleep_ns / 1000);
     }
 
     glfwDestroyWindow(window);
