@@ -13,10 +13,21 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 
 namespace test {
 static GLuint m_texture;
+static int m_size = 512;
 void init() {
+    // Is this necessary?
+    GLCHK ( glActiveTexture(GL_TEXTURE0) );
     // Create texture
     GLCHK ( glGenTextures(1, &m_texture) );
+    GLCHK ( glBindTexture(GL_TEXTURE_2D, m_texture) );
+
     // fill it
+    float* data = phalloc(float, (size_t)(m_size * m_size * 4));
+    for (int i = 0; i < m_size * m_size * 4; ++i) {
+        data[i] = (i % 4 == 3) ? 1.0 : 0.5;
+    }
+    GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size, m_size, 0, GL_RGBA, GL_FLOAT, (GLvoid*) data) );
+    phree(data);
 }
 
 void draw() {
@@ -24,9 +35,7 @@ void draw() {
 }
 }
 
-#define foo(bar) bar
 int main() {
-    foo(puts("wtf"));
     ph::init();
 
     if (!glfwInit()) {
@@ -39,7 +48,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 
     GLFWmonitor* monitor = NULL;
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Checkers", monitor, NULL);
+    GLFWwindow* window = glfwCreateWindow(test::m_size, test::m_size, "Checkers", monitor, NULL);
 
     if (!window) {
         ph::quit(EXIT_FAILURE);
@@ -85,5 +94,5 @@ int main() {
 
     glfwDestroyWindow(window);
 
-    return 0;
+    ph::quit(EXIT_SUCCESS);
 }

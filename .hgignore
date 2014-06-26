@@ -21,6 +21,9 @@ Makefile
 # Third party
 third_party/*
 
+# Apitrace
+trace
+
 # Eclipse crap
 .project
 .cproject
@@ -32,3 +35,5 @@ third_party/*
 
 # Tags crap
 tags
+
+
