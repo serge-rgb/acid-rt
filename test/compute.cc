@@ -12,8 +12,10 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 namespace test {
+static GLuint m_texture;
 void init() {
     // Create texture
+    GLCHK ( glGenTextures(1, &m_texture) );
     // fill it
 }
 
@@ -22,7 +24,9 @@ void draw() {
 }
 }
 
+#define foo(bar) bar
 int main() {
+    foo(puts("wtf"));
     ph::init();
 
     if (!glfwInit()) {
@@ -65,9 +69,9 @@ int main() {
         long start_ns = tp.tv_nsec;
 
         // FRAME
-        pglClear(234213);
+        GLCHK ( glClear(GL_COLOR_BUFFER_BIT) );
         glfwPollEvents();
-        pglFinish();
+        GLCHK ( glFinish() );
         glfwSwapBuffers(window);
         clock_gettime(CLOCK_REALTIME, &tp);
 

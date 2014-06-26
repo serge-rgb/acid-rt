@@ -5,21 +5,20 @@
 #include <system_includes.h>
 
 namespace ph {
-void query_gl_error(const char* file, int line);
-
-#ifdef PH_DEBUG
-#define QUERY_ERROR ph::query_gl_error(__FILE__, __LINE__)
-#else
-#define QUERY_ERROR
-#endif
+void query_gl_error(const char* expr, const char* file, int line);
 
 ////////////////////////////////////////
 // Wrap gl functions
 ////////////////////////////////////////
-#define pglClear(...) glClear(__VA_ARGS__); QUERY_ERROR
-#define pglFinish(...) glFinish(__VA_ARGS__); QUERY_ERROR
 
-inline void query_gl_error(const char* file, int line) {
+#ifdef PH_DEBUG
+#define GLCHK(stmt) \
+    stmt; ph::query_gl_error(#stmt, __FILE__, __LINE__)
+#else
+#define GLCHK(stmt) stmt
+#endif
+
+inline void query_gl_error(const char* expr, const char* file, int line) {
     GLenum err = glGetError();
     const char* str = "";
     if (err != GL_NO_ERROR) {
@@ -39,8 +38,17 @@ inline void query_gl_error(const char* file, int line) {
         case GL_OUT_OF_MEMORY:
             str = "GL_OUT_OF_MEMORY";
             break;
+        case GL_STACK_OVERFLOW:
+            str = "GL_STACK_OVERFLOW";
+            break;
+        case GL_STACK_UNDERFLOW:
+            str = "GL_STACK_UNDERFLOW";
+            break;
+        default:
+            str = "SOME GL ERROR";
         }
         printf("%s in: %s:%d\n", str, file, line);
+        printf("   ---- Expression: %s\n", expr);
     }
 }
 }  // ns ph
