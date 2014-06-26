@@ -1,6 +1,9 @@
 // Test for GLSL compute shaders.
 #include <ph.h>
 
+
+using namespace ph;
+
 static void error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW error %d: %s\n", error, description);
 }
@@ -12,6 +15,8 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 namespace test {
+
+
 static GLuint m_texture;
 static int m_size = 512;
 
@@ -49,8 +54,9 @@ void init() {
         for(int i = 0; i < 2; i++) {
             ph::append(&s, shaders[i]);
         }
-        ph::gl::compile_program(s);
+        ph::gl::link_program(s);
     }
+    // TODO:
     // Create a quad.
     {
         /* const GLfloat u = 1.0f; */
@@ -110,6 +116,9 @@ int main() {
     //=========================================
     // Main loop.
     //=========================================
+    int64 total_time_ms = 0;
+    int64 num_frames = 0;
+    int ms_per_frame = 16;
     while (!glfwWindowShouldClose(window)) {
         struct timespec tp;
         clock_gettime(CLOCK_REALTIME, &tp);
@@ -122,13 +131,19 @@ int main() {
         glfwSwapBuffers(window);
         clock_gettime(CLOCK_REALTIME, &tp);
 
+        num_frames++;
         long diff = tp.tv_nsec - start_ns;
-        printf("ms: %f\n", double(diff) / double(1000000));
-        printf("diff: %ld\n", diff);
-        uint32_t sleep_ns = uint32_t((16 * 1000000) - diff);
-        printf("sleep: %ud\n", sleep_ns);
-        usleep(sleep_ns / 1000);
+        uint32_t sleep_ns = uint32_t((ms_per_frame * 1000000) - diff);
+        auto sleep_us = sleep_ns/1000;
+        if (sleep_us <= (uint)ms_per_frame * 1000) {
+            usleep(sleep_us);
+            total_time_ms += sleep_us / 1000;
+        } else {
+            printf("WARNING: Frame %ld overshot (in ms): %f\n", num_frames, (sleep_us/1000) - double(ms_per_frame));
+        }
     }
+
+    printf("Average frame time in ms: %f\n", ms_per_frame - float(total_time_ms) / float(num_frames));
 
     glfwDestroyWindow(window);
 

@@ -103,7 +103,8 @@ int64 bytes_allocated() {
 void quit(int code) {
 #ifdef PH_DEBUG
     free(g_alloc_records.ptr);
-    GC_gcollect();
+    // TODO: boehm bug? uncomment later
+    // GC_gcollect();
 #endif
     exit(code);
 }

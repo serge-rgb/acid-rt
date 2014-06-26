@@ -20,7 +20,7 @@ namespace ph {
 namespace gl {
 
 GLuint compile_shader(const char* path, GLuint type);
-GLuint compile_program(ph::Slice<GLuint> shaders);
+GLuint link_program(ph::Slice<GLuint> shaders);
 
 void query_error(const char* expr, const char* file, int line);
 
