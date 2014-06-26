@@ -45,6 +45,25 @@ void init() {
         path[frag] = "glsl/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
         shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
+        auto s = ph::MakeSlice<GLuint>(2);
+        for(int i = 0; i < 2; i++) {
+            ph::append(&s, shaders[i]);
+        }
+        ph::gl::compile_program(s);
+    }
+    // Create a quad.
+    {
+        /* const GLfloat u = 1.0f; */
+        /* GLfloat vert_data[] = { */
+        /*     // First */
+        /*     -u, u, */
+        /*     -u, -u, */
+        /*     u, -u, */
+        /*     // Second */
+        /*     -u, u, */
+        /*     u, -u, */
+        /*     u, u, */
+        /* }; */
 
     }
 }

@@ -1,5 +1,6 @@
-#include <ph.h>
 #include "ph_gl.h"
+
+#include <ph.h>
 
 namespace ph {
 namespace gl {
@@ -8,12 +9,12 @@ GLuint compile_shader(const char* path, GLuint type) {
     GLuint obj = glCreateShader(type);
     GLCHK();
     const char* src = ph::io::slurp(path);
-    glShaderSource(obj, 1, &src, NULL);
-    glCompileShader(obj);
-    // Print debug message
+    GLCHK ( glShaderSource(obj, 1, &src, NULL) );
+    GLCHK ( glCompileShader(obj) );
+    // ERROR CHECKING
 #ifdef PH_DEBUG
     int res = 0;
-    glGetShaderiv(obj, GL_COMPILE_STATUS, &res);
+    GLCHK ( glGetShaderiv(obj, GL_COMPILE_STATUS, &res) );
     if (!res) {
         printf("%s\n", src);
         GLint length;
@@ -25,6 +26,25 @@ GLuint compile_shader(const char* path, GLuint type) {
         ph_assert(false);
     } else {
         printf("INFO: Compiled shader: %s\n", path);
+    }
+#endif
+    return obj;
+}
+GLuint compile_program(Slice<GLuint> shaders) {
+    GLuint obj = glCreateProgram();
+    for (int i = 0; i < ph::count(shaders); ++i) {
+        GLCHK ( glAttachShader(obj, shaders[i]) );
+    }
+    GLCHK ( glLinkProgram(obj) );
+
+    // ERROR CHECKING
+#ifdef PH_DEBUG
+    int res = 0;
+    GLCHK ( glGetProgramiv(obj, GL_LINK_STATUS, &res) );
+    if (!res) {
+        fprintf(stderr, "ERROR: program did not link.\n");
+    } else {
+        printf("INFO: Linked program %u\n", obj);
     }
 #endif
     return obj;

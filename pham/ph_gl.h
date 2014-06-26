@@ -3,7 +3,7 @@
 #pragma once
 
 #include <ph.h>
-#include <system_includes.h>
+#include "ph_slice_inl.h"
 
 ////////////////////////////////////////
 // Wrap gl functions
@@ -16,11 +16,11 @@
 #define GLCHK(stmt) stmt
 #endif
 
-
 namespace ph {
 namespace gl {
 
 GLuint compile_shader(const char* path, GLuint type);
+GLuint compile_program(ph::Slice<GLuint> shaders);
 
 void query_error(const char* expr, const char* file, int line);
 

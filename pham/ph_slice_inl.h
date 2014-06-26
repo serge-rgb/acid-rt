@@ -72,8 +72,8 @@ void append(Slice<T>* slice, T elem) {
 }
 
 template<typename T>
-int64 count(Slice<T>* slice) {
-    return (int64)slice->n_elems;
+int64 count(Slice<T> slice) {
+    return (int64)slice.n_elems;
 }
 
 }  // ns ph

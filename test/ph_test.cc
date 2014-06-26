@@ -18,8 +18,8 @@ int main() {
         for (int i = 0; i < 100000; ++i) {
             append(&s, i);
         }
-        ph_assert(count(&s) == 100000);
-        for (int i = 0; i < count(&s); ++i) {
+        ph_assert(count(s) == 100000);
+        for (int i = 0; i < count(s); ++i) {
             ph_assert(s[i] == i);
         }
         // Slices are by default GC'd
