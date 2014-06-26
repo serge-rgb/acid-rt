@@ -4,6 +4,7 @@
 extern "C" {
     // LOCAL
 #include <gc.h>
+#define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
 #include <lauxlib.h>
 #include <lualib.h>

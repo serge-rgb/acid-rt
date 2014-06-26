@@ -14,20 +14,37 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 namespace test {
 static GLuint m_texture;
 static int m_size = 512;
-void init() {
-    // Is this necessary?
-    GLCHK ( glActiveTexture(GL_TEXTURE0) );
-    // Create texture
-    GLCHK ( glGenTextures(1, &m_texture) );
-    GLCHK ( glBindTexture(GL_TEXTURE_2D, m_texture) );
 
-    // fill it
-    float* data = phalloc(float, (size_t)(m_size * m_size * 4));
-    for (int i = 0; i < m_size * m_size * 4; ++i) {
-        data[i] = (i % 4 == 3) ? 1.0 : 0.5;
+void init() {
+    // Create / fill texture
+    {
+        // Is this necessary?
+        GLCHK ( glActiveTexture(GL_TEXTURE0) );
+        // Create texture
+        GLCHK ( glGenTextures(1, &m_texture) );
+        GLCHK ( glBindTexture(GL_TEXTURE_2D, m_texture) );
+
+        // fill it
+        float* data = phalloc(float, (size_t)(m_size * m_size * 4));
+        for (int i = 0; i < m_size * m_size * 4; ++i) {
+            data[i] = (i % 4 == 3) ? 1.0 : 0.5;
+        }
+        GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size, m_size, 0,
+                    GL_RGBA, GL_FLOAT, (GLvoid*) data) );
+        phree(data);
     }
-    GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size, m_size, 0, GL_RGBA, GL_FLOAT, (GLvoid*) data) );
-    phree(data);
+    // Create / fill program
+    {
+        enum {
+            vert,
+            frag,
+        };
+        GLuint shaders[2];
+        char src[] = "goo";
+        shaders[vert] = ph::gl::compile_shader(src, GL_VERTEX_SHADER);
+        shaders[frag] = ph::gl::compile_shader("bar", 123);
+
+    }
 }
 
 void draw() {

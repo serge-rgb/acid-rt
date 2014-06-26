@@ -39,7 +39,9 @@ add_library(my_glfw SHARED IMPORTED)
 set_property(TARGET my_glfw PROPERTY IMPORTED_LOCATION
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glfw/src/libglfw.so.3.1)
 
-add_library(ph pham/ph.cc)
+add_library(ph
+    pham/ph.cc
+    pham/ph_gl.cc)
 set(nuwen_runtime liblua gc ph glfw ${OPENGL_LIBRARIES})
 
 #===============================================================================

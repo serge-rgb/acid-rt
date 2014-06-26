@@ -1,7 +1,8 @@
 #pragma once
 
-#include "ph_gl.h"
 #include "system_includes.h"
+
+#include "ph_gl.h"
 
 ////////////////////////////////////////
 //  ==== Settings ====
@@ -33,7 +34,7 @@
     (type*)ph::memory::typeless_managed_realloc(old, sizeof(type) * num)
 
 #define phalloc(type, num) \
-    (type*)ph::memory::typeless_alloc(sizeof(type) * num)
+    (type*)ph::memory::typeless_alloc(size_t(num) * sizeof(type))
 
 #define phree(mem)\
         ph::memory::typeless_free((void*)mem); mem = NULL
