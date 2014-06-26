@@ -4,9 +4,10 @@
 namespace ph {
 namespace gl {
 
-GLuint compile_shader(const char* src, GLuint type) {
+GLuint compile_shader(const char* path, GLuint type) {
     GLuint obj = glCreateShader(type);
     GLCHK();
+    const char* src = ph::io::slurp(path);
     glShaderSource(obj, 1, &src, NULL);
     glCompileShader(obj);
     // Print debug message
@@ -14,13 +15,16 @@ GLuint compile_shader(const char* src, GLuint type) {
     int res = 0;
     glGetShaderiv(obj, GL_COMPILE_STATUS, &res);
     if (!res) {
+        printf("%s\n", src);
         GLint length;
         GLCHK ( glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &length) );
         char* log = phalloc(char, length);
         GLsizei written_len;
         GLCHK ( glGetShaderInfoLog(obj, length, &written_len, log) );
         printf("Shader compilation failed. \n    ---- Info log:\n%s", log);
-        dv_assert(false);
+        ph_assert(false);
+    } else {
+        printf("INFO: Compiled shader: %s\n", path);
     }
 #endif
     return obj;

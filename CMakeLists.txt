@@ -41,6 +41,7 @@ set_property(TARGET my_glfw PROPERTY IMPORTED_LOCATION
 
 add_library(ph
     pham/ph.cc
+    pham/ph_io.cc
     pham/ph_gl.cc)
 set(nuwen_runtime liblua gc ph glfw ${OPENGL_LIBRARIES})
 

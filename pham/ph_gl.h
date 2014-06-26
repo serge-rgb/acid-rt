@@ -20,7 +20,7 @@
 namespace ph {
 namespace gl {
 
-GLuint compile_shader(const char* src, GLuint type);
+GLuint compile_shader(const char* path, GLuint type);
 
 void query_error(const char* expr, const char* file, int line);
 
