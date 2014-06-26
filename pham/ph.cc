@@ -34,12 +34,11 @@ void phatal_error(const char* message) {
 
 lua_State* run_script(const char* path) {
     lua_State* L = new_lua();
-    /* int err = luaL_loadfile(L, path); */
     int err = luaL_dofile(L, path);
     if (err) {
         if (L) {
-            phree(L);
-            fprintf(stderr, "Could not load file %s\n", lua_tostring(L, -1));
+            fprintf(stderr, "Could not load&run file %s\n", lua_tostring(L, -1));
+            lua_close(L);  // not needed. Leaving it here for documentation: There is a close func
             phatal_error("Lua fatal error.");
         }
         return NULL;
