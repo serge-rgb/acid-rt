@@ -15,15 +15,20 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 namespace test {
-
-
 static GLuint m_texture;
 static int m_size = 512;
 static GLuint m_program;
 static GLuint m_quad_vbo;
 static GLuint m_quad_vao;
 
+// static GLuint m_compute_program;
+
 void init() {
+    enum Location {
+        Location_pos,
+        Location_tex,
+    };
+
     // Create / fill texture
     {
         // Is this necessary?
@@ -31,6 +36,12 @@ void init() {
         // Create texture
         GLCHK ( glGenTextures(1, &m_texture) );
         GLCHK ( glBindTexture(GL_TEXTURE_2D, m_texture) );
+
+        // Note for the future: These are needed.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
         // fill it
         float* data = phalloc(float, (size_t)(m_size * m_size * 4));
@@ -57,13 +68,15 @@ void init() {
         m_program = glCreateProgram();
 
         // Bind locations before linking
-        GLCHK ( glBindAttribLocation(m_program, 0, "position") );
+        GLCHK ( glBindAttribLocation(m_program, Location_pos, "position") );
 
         ph::gl::link_program(m_program, shaders, 2); GLCHK();
 
-        ph_assert(0 == glGetAttribLocation(m_program, "position"));
+        ph_assert(Location_pos == glGetAttribLocation(m_program, "position"));
+        ph_assert(Location_tex == glGetUniformLocation(m_program, "tex"));
 
         GLCHK ( glUseProgram(m_program) );
+        glUniform1i(Location_tex, /*GL_TEXTURE_0*/0);
 
     }
     // Create a quad.
@@ -84,16 +97,15 @@ void init() {
         GLCHK (
                 glBufferData(
                     GL_ARRAY_BUFFER,
-                    sizeof(GLfloat) * 12,
+                    sizeof(vert_data),
                     vert_data, GL_STATIC_DRAW)
                 );
 
-        GLCHK ( glEnableVertexAttribArray(0) );
+        GLCHK ( glEnableVertexAttribArray(Location_pos) );
         GLCHK(
-            glVertexAttribPointer(/*attrib location*/0, /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE,
+            glVertexAttribPointer(/*attrib location*/Location_pos, /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE,
                 /*stride*/0, 0)
         );
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 }
 
@@ -104,7 +116,7 @@ void draw() {
     GLCHK ( glBindVertexArray(m_quad_vao) );
     GLCHK ( glDrawArrays(GL_TRIANGLE_FAN, 0, 4) );
 }
-}
+}  // ns test
 
 int main() {
     ph::init();

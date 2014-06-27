@@ -13,7 +13,7 @@ CPack*
 cmake_install.cmake
 */cmake_install.cmake
 Makefile
-**/Makefile
+*/Makefile
 
 # Vim crap
 *.taghl

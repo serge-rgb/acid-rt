@@ -11,7 +11,7 @@
 #define ph_expect(expr) \
     if (!(expr)) {\
         fprintf(stderr, "Failed expectation at %s, %d\n", __FILE__, __LINE__);\
-        fprintf(stderr, #expr "\n");\
+        fprintf(stderr, "    ---- " #expr "\n");\
     }
 #else
 #define ph_expect(expr)
@@ -21,7 +21,7 @@
 #define ph_assert(expr) \
     if (!(expr)) {\
         fprintf(stderr, "Failed assertion at %s, %d\n", __FILE__, __LINE__);\
-        fprintf(stderr, #expr "\n");\
+        fprintf(stderr, "    ---- " #expr "\n");\
         ph::quit(-1);\
     }
 #else

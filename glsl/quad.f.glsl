@@ -1,7 +1,11 @@
 #version 430
 
+layout(location=1)uniform sampler2D tex;
+
+in vec2 coord;
+
 out vec4 color;
 
 void main() {
-    color = vec4(0.0, 0.5, 0.0, 1.0);
+    color = texture(tex, coord);
 }
