@@ -15,11 +15,13 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 namespace test {
+
 static GLuint m_texture;
 static int m_size = 512;
 static GLuint m_program;
-static GLuint m_quad_vbo;
 static GLuint m_quad_vao;
+
+static GLuint m_compute_program;
 
 // static GLuint m_compute_program;
 
@@ -52,7 +54,7 @@ void init() {
                     GL_RGBA, GL_FLOAT, (GLvoid*) data) );
         phree(data);
     }
-    // Create / fill program
+    // Create main program
     {
         enum {
             vert,
@@ -92,8 +94,9 @@ void init() {
         glGenVertexArrays(1, &m_quad_vao);
         glBindVertexArray(m_quad_vao);
 
-        glGenBuffers(1, &m_quad_vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, m_quad_vbo);
+        GLuint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
         GLCHK (
                 glBufferData(
                     GL_ARRAY_BUFFER,
@@ -106,6 +109,12 @@ void init() {
             glVertexAttribPointer(/*attrib location*/Location_pos, /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE,
                 /*stride*/0, 0)
         );
+    }
+    // Create compute shader
+    {
+        GLuint shader = gl::compile_shader("test/compute.glsl", GL_COMPUTE_SHADER);
+        m_compute_program = glCreateProgram();
+        ph::gl::link_program(m_compute_program, &shader, 1);
     }
 }
 

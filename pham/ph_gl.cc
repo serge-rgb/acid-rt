@@ -44,6 +44,12 @@ void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
     GLCHK ( glGetProgramiv(obj, GL_LINK_STATUS, &res) );
     if (!res) {
         fprintf(stderr, "ERROR: program did not link.\n");
+        GLint len;
+        glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &len);
+        GLsizei written_len;
+        char* log = phalloc(char, len);
+        glGetProgramInfoLog(obj, (GLsizei)len, &written_len, log);
+        fprintf(stderr, "%s\n", log);
     } else {
         printf("INFO: Linked program %u\n", obj);
     }
