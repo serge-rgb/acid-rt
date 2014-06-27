@@ -19,6 +19,9 @@ namespace test {
 
 static GLuint m_texture;
 static int m_size = 512;
+static GLuint m_program;
+static GLuint m_quad_vbo;
+static GLuint m_quad_vao;
 
 void init() {
     // Create / fill texture
@@ -50,28 +53,56 @@ void init() {
         path[frag] = "glsl/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
         shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
-        ph::gl::link_program(shaders, 2);
+
+        m_program = glCreateProgram();
+
+        // Bind locations before linking
+        GLCHK ( glBindAttribLocation(m_program, 0, "position") );
+
+        ph::gl::link_program(m_program, shaders, 2); GLCHK();
+
+        ph_assert(0 == glGetAttribLocation(m_program, "position"));
+
+        GLCHK ( glUseProgram(m_program) );
+
     }
-    // TODO:
     // Create a quad.
     {
-        /* const GLfloat u = 1.0f; */
-        /* GLfloat vert_data[] = { */
-        /*     // First */
-        /*     -u, u, */
-        /*     -u, -u, */
-        /*     u, -u, */
-        /*     // Second */
-        /*     -u, u, */
-        /*     u, -u, */
-        /*     u, u, */
-        /* }; */
+        glPointSize(3);
+        const GLfloat u = 1.0f;
+        GLfloat vert_data[] = {
+            -u, u,
+            -u, -u,
+            u, -u,
+            u, u,
+        };
+        glGenVertexArrays(1, &m_quad_vao);
+        glBindVertexArray(m_quad_vao);
 
+        glGenBuffers(1, &m_quad_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, m_quad_vbo);
+        GLCHK (
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    sizeof(GLfloat) * 12,
+                    vert_data, GL_STATIC_DRAW)
+                );
+
+        GLCHK ( glEnableVertexAttribArray(0) );
+        GLCHK(
+            glVertexAttribPointer(/*attrib location*/0, /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE,
+                /*stride*/0, 0)
+        );
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 }
 
 void draw() {
+    glClearColor(0.5, 0.5, 0.5, 1.0);
+    GLCHK ( glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) );
     // Draw texture
+    GLCHK ( glBindVertexArray(m_quad_vao) );
+    GLCHK ( glDrawArrays(GL_TRIANGLE_FAN, 0, 4) );
 }
 }
 
@@ -120,9 +151,9 @@ int main() {
         clock_gettime(CLOCK_REALTIME, &tp);
         long start_ns = tp.tv_nsec;
 
-        // FRAME
-        GLCHK ( glClear(GL_COLOR_BUFFER_BIT) );
         glfwPollEvents();
+        // FRAME
+        test::draw();
         GLCHK ( glFinish() );
         glfwSwapBuffers(window);
         clock_gettime(CLOCK_REALTIME, &tp);
@@ -135,11 +166,13 @@ int main() {
             usleep(sleep_us);
             total_time_ms += sleep_us / 1000;
         } else {
-            printf("WARNING: Frame %ld overshot (in ms): %f\n", num_frames, (sleep_us/1000) - double(ms_per_frame));
+            printf("WARNING: Frame %ld overshot (in ms): %f\n",
+                    num_frames, (sleep_us/1000) - double(ms_per_frame));
         }
     }
 
-    printf("Average frame time in ms: %f\n", ms_per_frame - float(total_time_ms) / float(num_frames));
+    printf("Average frame time in ms: %f\n",
+            ms_per_frame - float(total_time_ms) / float(num_frames));
 
     glfwDestroyWindow(window);
 

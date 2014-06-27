@@ -30,9 +30,10 @@ GLuint compile_shader(const char* path, GLuint type) {
 #endif
     return obj;
 }
-GLuint link_program(GLuint shaders[], int64 num_shaders) {
-    GLuint obj = glCreateProgram();
+void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
+    ph_assert(glIsProgram(obj));
     for (int i = 0; i < num_shaders; ++i) {
+        ph_assert(glIsShader(shaders[i]));
         GLCHK ( glAttachShader(obj, shaders[i]) );
     }
     GLCHK ( glLinkProgram(obj) );
@@ -46,8 +47,8 @@ GLuint link_program(GLuint shaders[], int64 num_shaders) {
     } else {
         printf("INFO: Linked program %u\n", obj);
     }
+    GLCHK ( glValidateProgram(obj) );
 #endif
-    return obj;
 }
 
 inline void query_error(const char* expr, const char* file, int line) {
