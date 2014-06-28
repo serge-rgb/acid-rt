@@ -18,10 +18,10 @@ namespace cs {
 // Returns the compiled compute shader program.
 GLuint init(int width, int height, const char** shader_paths, int num_shaders);
 
-// You want to use the program from init(...) to set uniforms.
 // Usage:
-//     Dispatch, set your memory barriers, and then call cs::draw() to fill a scree quad.
-void draw();
+//     Dispatch, set your memory barriers, and then call cs::fill_screen()
+//     to fill the screen with the texture shared with the compute shader.
+void fill_screen();
 
 } // ns cs
 } // ns ph

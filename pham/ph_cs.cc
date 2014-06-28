@@ -113,7 +113,7 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
     return m_compute_program;
 }
 
-void draw() {
+void fill_screen() {
     // Draw screen quad
     {
         GLCHK (glUseProgram      (cs::m_quad_program) );

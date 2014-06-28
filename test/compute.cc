@@ -12,8 +12,9 @@ void draw() {
         GLCHK ( glDispatchCompute(512/8, 512/8, 1) );
         GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
     }
-    cs::draw();
+    cs::fill_screen();
 }
+
 int main() {
     ph::init();
     int size[] = {512, 512};

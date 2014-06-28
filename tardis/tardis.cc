@@ -34,7 +34,7 @@ void draw() {
     GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
 
     // Draw screen
-    cs::draw();
+    cs::fill_screen();
 }
 
 int main() {
