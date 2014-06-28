@@ -114,12 +114,6 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
 }
 
 void draw() {
-    // Dispatch ray tracing and fence.
-    {
-        GLCHK ( glUseProgram(vr::m_compute_program) );
-        GLCHK ( glDispatchCompute(m_size[0]/8, m_size[1]/8, 1) );
-        GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
-    }
     // Draw screen quad
     {
         GLCHK (glUseProgram      (vr::m_quad_program) );

@@ -60,8 +60,8 @@ void draw_loop(WindowProc func) {
     //=========================================
     // Main loop.
     //=========================================
-    int64 total_time_ms = 0;
-    int64 num_frames = 0;
+    double total_time_ms = 0;
+    int64 num_frames = 1;
     int ms_per_frame = 16;
     while (!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
@@ -94,8 +94,9 @@ void draw_loop(WindowProc func) {
         glfwSwapBuffers(m_window);
     }
 
-    printf("Average frame time in ms: %f\n",
-            float(total_time_ms) / float(num_frames));
+    double avg = total_time_ms / double(num_frames);
+    printf("Average frame time in ms: %f  %f%%\n",
+            avg,100 * (avg/13.333));
 }
 
 void deinit() {

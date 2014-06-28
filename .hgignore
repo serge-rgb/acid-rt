@@ -5,6 +5,7 @@ syntax: glob
 *.so
 test/ph_test
 test/compute
+tardis/tardis
 
 # CMake crap
 CMakeFiles/*

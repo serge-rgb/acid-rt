@@ -4,6 +4,16 @@
 
 using namespace ph;
 
+static GLuint g_program;
+
+void draw() {
+    {
+        GLCHK ( glUseProgram(g_program) );
+        GLCHK ( glDispatchCompute(512/8, 512/8, 1) );
+        GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
+    }
+    vr::draw();
+}
 int main() {
     ph::init();
     int size[] = {512, 512};
@@ -11,9 +21,9 @@ int main() {
 
     const char* path = "test/compute.glsl";
 
-    vr::init(size[0], size[1], &path, 1);
+    g_program = vr::init(size[0], size[1], &path, 1);
 
-    window::draw_loop(vr::draw);
+    window::draw_loop(draw);
 
     window::deinit();
 }

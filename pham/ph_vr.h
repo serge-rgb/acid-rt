@@ -15,11 +15,12 @@ namespace vr {
 // ... the rest of the shaders should be concerned about writing
 // interesting texels.
 //
-// Returns the compiled compute shader program so that you can set
-// uniforms.
+// Returns the compiled compute shader program.
 GLuint init(int width, int height, const char** shader_paths, int num_shaders);
 
-// Works with ph::window
+// You want to use the program from init(...) to set uniforms.
+// Usage:
+//     Dispatch, set your memory barriers, and then call vr::draw() to fill a scree quad.
 void draw();
 
 } // ns vr

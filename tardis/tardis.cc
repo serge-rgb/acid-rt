@@ -4,19 +4,34 @@
 
 using namespace ph;
 
+static GLuint g_program;
+static int g_size[] = {1920, 1080};
+static int g_warpsize[] = {8, 8};
+
+void draw() {
+    // Dispatch ray tracing and fence.
+    {
+        GLCHK ( glUseProgram(g_program) );
+        GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
+                    GLuint(g_size[1] / g_warpsize[1]), 1) );
+        GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
+    }
+    vr::draw();
+}
+
 
 int main() {
     ph::init();
-    int size[] = {1920, 1080};
-    window::init("Project TARDIS", size[0], size[1], window::InitFlag_default);
+
+    window::init("Project TARDIS", g_size[0], g_size[1], window::InitFlag_default);
 
     const char* paths[] = {
-        "test/compute.glsl",
+        "tardis/main.glsl",
     };
 
-    vr::init(size[0], size[1], paths, 1);
+    g_program = vr::init(g_size[0], g_size[1], paths, 1);
 
-    window::draw_loop(vr::draw);
+    window::draw_loop(draw);
 
     window::deinit();
 }
