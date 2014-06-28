@@ -51,8 +51,8 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
         };
         GLuint shaders[2];
         const char* path[2];
-        path[vert] = "glsl/quad.v.glsl";
-        path[frag] = "glsl/quad.f.glsl";
+        path[vert] = "pham/quad.v.glsl";
+        path[frag] = "pham/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
         shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
 

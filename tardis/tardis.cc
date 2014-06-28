@@ -9,6 +9,12 @@ static int g_size[] = {1920, 1080};
 // Note: perf is really sensitive about this. Runtime tweak?
 static int g_warpsize[] = {8, 8};
 
+void init(GLuint prog) {
+    // Eye-to-lens
+    glUseProgram(prog);
+    glUniform1f(3, 2.0f);  // eye to lens.
+}
+
 void draw() {
     GLCHK ( glUseProgram(g_program) );
     GLfloat viewport_size[2] = {
@@ -16,6 +22,12 @@ void draw() {
         GLfloat (g_size[1])
     };
     glUniform2fv(0, 1, viewport_size);
+
+    static GLfloat sphere_y = 0.0f;
+    static float step_var = 0.0;
+    sphere_y = sinf(step_var);
+    glUniform1f(4, sphere_y);
+    step_var += 0.05;
 
     // Dispatch left viewport
     {
@@ -47,6 +59,8 @@ int main() {
     };
 
     g_program = cs::init(g_size[0], g_size[1], paths, 1);
+
+    init(g_program);
 
     window::draw_loop(draw);
 
