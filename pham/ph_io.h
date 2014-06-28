@@ -7,3 +7,4 @@ namespace io
 const char* slurp(const char* path);
 }
 }
+

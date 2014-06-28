@@ -5,7 +5,7 @@
 #include "ph_gl.h"
 
 namespace ph {
-namespace vr {
+namespace cs {
 
 // Pass the width and height of the currently active GL context.
 // Shaders must be compute shaders representing your app
@@ -20,9 +20,9 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders);
 
 // You want to use the program from init(...) to set uniforms.
 // Usage:
-//     Dispatch, set your memory barriers, and then call vr::draw() to fill a scree quad.
+//     Dispatch, set your memory barriers, and then call cs::draw() to fill a scree quad.
 void draw();
 
-} // ns vr
+} // ns cs
 } // ns ph
 

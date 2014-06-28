@@ -1,10 +1,10 @@
 // 2014 Sergio Gonzalez
 
-#include "ph_vr.h"
+#include "ph_cs.h"
 #include "ph_gl.h"
 
 namespace ph {
-namespace vr {
+namespace cs {
 
 static GLuint m_quad_vao;
 static GLuint m_quad_program;
@@ -116,13 +116,13 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
 void draw() {
     // Draw screen quad
     {
-        GLCHK (glUseProgram      (vr::m_quad_program) );
-        GLCHK (glBindVertexArray (vr::m_quad_vao) );
+        GLCHK (glUseProgram      (cs::m_quad_program) );
+        GLCHK (glBindVertexArray (cs::m_quad_vao) );
         GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
     }
 }
 
 
-} // ns vr
+} // ns cs
 } // ns ph
 

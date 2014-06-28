@@ -6,6 +6,7 @@ using namespace ph;
 
 static GLuint g_program;
 static int g_size[] = {1920, 1080};
+// Note: perf is really sensitive about this. Runtime tweak?
 static int g_warpsize[] = {8, 8};
 
 void draw() {
@@ -33,7 +34,7 @@ void draw() {
     GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
 
     // Draw screen
-    vr::draw();
+    cs::draw();
 }
 
 int main() {
@@ -45,7 +46,7 @@ int main() {
         "tardis/main.glsl",
     };
 
-    g_program = vr::init(g_size[0], g_size[1], paths, 1);
+    g_program = cs::init(g_size[0], g_size[1], paths, 1);
 
     window::draw_loop(draw);
 

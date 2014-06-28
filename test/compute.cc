@@ -12,7 +12,7 @@ void draw() {
         GLCHK ( glDispatchCompute(512/8, 512/8, 1) );
         GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
     }
-    vr::draw();
+    cs::draw();
 }
 int main() {
     ph::init();
@@ -21,7 +21,7 @@ int main() {
 
     const char* path = "test/compute.glsl";
 
-    g_program = vr::init(size[0], size[1], &path, 1);
+    g_program = cs::init(size[0], size[1], &path, 1);
 
     window::draw_loop(draw);
 
