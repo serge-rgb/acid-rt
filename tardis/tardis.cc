@@ -9,16 +9,32 @@ static int g_size[] = {1920, 1080};
 static int g_warpsize[] = {8, 8};
 
 void draw() {
-    // Dispatch ray tracing and fence.
+    GLCHK ( glUseProgram(g_program) );
+    GLfloat viewport_size[2] = {
+        GLfloat (g_size[0]) / 2,
+        GLfloat (g_size[1])
+    };
+    glUniform2fv(0, 1, viewport_size);
+
+    // Dispatch left viewport
     {
-        GLCHK ( glUseProgram(g_program) );
+        glUniform1f(2, 0);  // x_offset
         GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
                     GLuint(g_size[1] / g_warpsize[1]), 1) );
-        GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
     }
+    // Dispatch right viewport
+    {
+        glUniform1f(2, 960.0);  // y_offset
+        GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
+                    GLuint(g_size[1] / g_warpsize[1]), 1) );
+    }
+
+    // Fence
+    GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
+
+    // Draw screen
     vr::draw();
 }
-
 
 int main() {
     ph::init();
