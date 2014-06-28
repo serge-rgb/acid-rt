@@ -1,8 +1,9 @@
 #include "ph_io.h"
 
-#include <ph.h>
+#include "ph_base.h"
 
-namespace ph {
+namespace ph
+{
 namespace io
 {
 
@@ -21,5 +22,6 @@ const char* slurp(const char* path) {
     return contents;
 }
 
-}
-}
+}  // ns io
+}  // ns ph
+

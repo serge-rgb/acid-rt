@@ -4,16 +4,6 @@
 
 using namespace ph;
 
-static void error_callback(int error, const char* description) {
-    fprintf(stderr, "GLFW error %d: %s\n", error, description);
-}
-
-static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-}
-
 namespace test {
 
 static GLuint m_texture;
@@ -139,77 +129,15 @@ void draw() {
 
 int main() {
     ph::init();
-
-    if (!glfwInit()) {
-        ph::quit(EXIT_FAILURE);
-    }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-
-    GLFWmonitor* monitor = NULL;
-    GLFWwindow* window = glfwCreateWindow(test::m_size[0], test::m_size[1], "Checkers", monitor, NULL);
-
-    if (!window) {
-        ph::quit(EXIT_FAILURE);
-    }
-
-    int gl_version[] = {
-        glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR),
-        glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR),
-    };
-    ph_assert(gl_version[0] == 4);
-    ph_assert(gl_version[1] >= 3);
-    printf("GL version is %d.%d\n", gl_version[0], gl_version[1]);
-
-    glfwSetErrorCallback(error_callback);
-    glfwSetKeyCallback(window, key_callback);
-
-    glfwMakeContextCurrent(window);
+    // This gets us a GL context, so we init it as soon as we can:
+    ph::window::init("Compute test", 1024, 768, ph::window::InitFlag_default);
 
     test::init();
 
-    //=========================================
-    // Main loop.
-    //=========================================
-    int64 total_time_ms = 0;
-    int64 num_frames = 0;
-    int ms_per_frame = 16;
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+    ph::window::draw_loop(test::draw);
 
-        // ---- Get start time
-        struct timespec tp;
-        clock_gettime(CLOCK_REALTIME, &tp);
-        long start_ns = tp.tv_nsec;
+    ph::window::deinit();
 
-        // ---- DRAW FRAME
-        {
-            test::draw();
-        }
-
-        // ---- Get end time. Measure
-        GLCHK ( glFinish() );  // Make GL finish.
-        clock_gettime(CLOCK_REALTIME, &tp);
-        long diff = tp.tv_nsec - start_ns;
-        long diff_ms = diff / (1000 * 1000);
-        if (diff_ms >= ms_per_frame) {
-            fprintf(stderr, "Overshot: %ldms\n", diff_ms);
-        }
-        total_time_ms += diff_ms;
-        num_frames++;
-
-        // ---- Swap
-        glfwSwapBuffers(window);
-
-    }
-
-    printf("Average frame time in ms: %f\n",
-            float(total_time_ms) / float(num_frames));
-
-    glfwDestroyWindow(window);
 
     ph::quit(EXIT_SUCCESS);
 }

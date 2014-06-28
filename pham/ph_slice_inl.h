@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "ph_base.h"
+
 namespace ph {
 
 // === Slice
