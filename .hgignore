@@ -37,4 +37,8 @@ trace
 # Tags crap
 tags
 
+# Mercurial crap
+*.orig
+*/*.orig
+
 
