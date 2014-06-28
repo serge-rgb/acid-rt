@@ -185,23 +185,20 @@ int main() {
         clock_gettime(CLOCK_REALTIME, &tp);
         long start_ns = tp.tv_nsec;
 
-        // ---- FRAME
+        // ---- DRAW FRAME
         {
             test::draw();
         }
-        GLCHK ( glFinish() );  // Make GL finish.
 
         // ---- Get end time. Measure
+        GLCHK ( glFinish() );  // Make GL finish.
         clock_gettime(CLOCK_REALTIME, &tp);
         long diff = tp.tv_nsec - start_ns;
-        uint32_t sleep_ns = uint32_t((ms_per_frame * 1000000) - diff);
-        auto sleep_us = sleep_ns/1000;
-        if (sleep_us/1000 <= (uint)ms_per_frame) {
-            total_time_ms += sleep_us / 1000;
-        } else {
-            printf("WARNING: Frame %ld overshot (in ms): %f\n",
-                    num_frames, (sleep_us/1000) - double(ms_per_frame));
+        long diff_ms = diff / (1000 * 1000);
+        if (diff_ms >= ms_per_frame) {
+            fprintf(stderr, "Overshot: %ldms\n", diff_ms);
         }
+        total_time_ms += diff_ms;
         num_frames++;
 
         // ---- Swap
