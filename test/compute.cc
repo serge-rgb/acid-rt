@@ -17,11 +17,13 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 namespace test {
 
 static GLuint m_texture;
-static int m_size = 512;
+static int m_size[2] = {1024, 768};
 static GLuint m_program;
 static GLuint m_quad_vao;
+static GLuint vbo;
 
 static GLuint m_compute_program;
+static const int kWarpSize[2] = {8, 4};  // <--- WARNING: compile time def in CS shader.
 
 // static GLuint m_compute_program;
 
@@ -33,26 +35,23 @@ void init() {
 
     // Create / fill texture
     {
-        // Is this necessary?
-        GLCHK ( glActiveTexture(GL_TEXTURE0) );
         // Create texture
-        GLCHK ( glGenTextures(1, &m_texture) );
-        GLCHK ( glBindTexture(GL_TEXTURE_2D, m_texture) );
+        GLCHK (glActiveTexture (GL_TEXTURE0) );
+        GLCHK (glGenTextures   (1, &m_texture) );
+        GLCHK (glBindTexture   (GL_TEXTURE_2D, m_texture) );
 
         // Note for the future: These are needed.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-        // fill it
-        float* data = phalloc(float, (size_t)(m_size * m_size * 4));
-        for (int i = 0; i < m_size * m_size * 4; ++i) {
-            data[i] = (i % 4 == 3) ? 1.0 : 0.5;
-        }
-        GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size, m_size, 0,
-                    GL_RGBA, GL_FLOAT, (GLvoid*) data) );
-        phree(data);
+        // Pass a null pointer, texture will be filled by compute shader
+        GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_size[0], m_size[1],
+                    0, GL_RGBA, GL_FLOAT, NULL) );
+
+        // Bind it to image unit
+        glBindImageTexture(0, m_texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     }
     // Create main program
     {
@@ -69,13 +68,10 @@ void init() {
 
         m_program = glCreateProgram();
 
-        // Bind locations before linking
-        GLCHK ( glBindAttribLocation(m_program, Location_pos, "position") );
-
         ph::gl::link_program(m_program, shaders, 2); GLCHK();
 
-        ph_assert(Location_pos == glGetAttribLocation(m_program, "position"));
-        ph_assert(Location_tex == glGetUniformLocation(m_program, "tex"));
+        ph_expect(Location_pos == glGetAttribLocation(m_program, "position"));
+        ph_expect(Location_tex == glGetUniformLocation(m_program, "tex"));
 
         GLCHK ( glUseProgram(m_program) );
         glUniform1i(Location_tex, /*GL_TEXTURE_0*/0);
@@ -94,36 +90,50 @@ void init() {
         glGenVertexArrays(1, &m_quad_vao);
         glBindVertexArray(m_quad_vao);
 
-        GLuint vbo;
         glGenBuffers(1, &vbo);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        GLCHK (
-                glBufferData(
-                    GL_ARRAY_BUFFER,
-                    sizeof(vert_data),
-                    vert_data, GL_STATIC_DRAW)
-                );
 
-        GLCHK ( glEnableVertexAttribArray(Location_pos) );
-        GLCHK(
-            glVertexAttribPointer(/*attrib location*/Location_pos, /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE,
-                /*stride*/0, 0)
-        );
+        GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof (vert_data), vert_data, GL_STATIC_DRAW));
+
+        GLCHK (glEnableVertexAttribArray (Location_pos) );
+        GLCHK (glVertexAttribPointer     (/*attrib location*/Location_pos,
+                    /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
     }
     // Create compute shader
     {
         GLuint shader = gl::compile_shader("test/compute.glsl", GL_COMPUTE_SHADER);
+
         m_compute_program = glCreateProgram();
         ph::gl::link_program(m_compute_program, &shader, 1);
+        ph_expect(Location_tex == glGetUniformLocation(m_compute_program, "tex"));
+        ph_expect(0 == glGetUniformLocation(m_compute_program, "screen_size"));
+        glUseProgram(m_compute_program);
+        GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 0, Texture Unit: 0
+        GLfloat size[2] = {(float)m_size[0], (float)m_size[1]};
+        glUniform2fv(0, 1, &size[0]);
     }
 }
 
 void draw() {
-    glClearColor(0.5, 0.5, 0.5, 1.0);
+    glClearColor(0.0, 0.5, 0.0, 1.0);
     GLCHK ( glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) );
-    // Draw texture
-    GLCHK ( glBindVertexArray(m_quad_vao) );
-    GLCHK ( glDrawArrays(GL_TRIANGLE_FAN, 0, 4) );
+
+    // Dispatch CS
+    {
+        const GLuint num_wgrps_x = GLuint(m_size[0] / kWarpSize[0]);
+        const GLuint num_wgrps_y = GLuint(m_size[1] / kWarpSize[1]);
+        GLCHK ( glUseProgram(m_compute_program) );
+        GLCHK ( glDispatchCompute(num_wgrps_x, num_wgrps_y, 1) );
+        // Fence
+        GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
+    }
+
+    // Draw screen quad
+    {
+        GLCHK (glUseProgram      (m_program) );
+        GLCHK (glBindVertexArray (m_quad_vao) );
+        GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
+    }
 }
 }  // ns test
 
@@ -140,7 +150,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 
     GLFWmonitor* monitor = NULL;
-    GLFWwindow* window = glfwCreateWindow(test::m_size, test::m_size, "Checkers", monitor, NULL);
+    GLFWwindow* window = glfwCreateWindow(test::m_size[0], test::m_size[1], "Checkers", monitor, NULL);
 
     if (!window) {
         ph::quit(EXIT_FAILURE);
@@ -168,34 +178,42 @@ int main() {
     int64 num_frames = 0;
     int ms_per_frame = 16;
     while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        // ---- Get start time
         struct timespec tp;
         clock_gettime(CLOCK_REALTIME, &tp);
         long start_ns = tp.tv_nsec;
 
-        glfwPollEvents();
-        // FRAME
-        test::draw();
-        GLCHK ( glFinish() );
-        glfwSwapBuffers(window);
-        clock_gettime(CLOCK_REALTIME, &tp);
+        // ---- FRAME
+        {
+            test::draw();
+        }
+        GLCHK ( glFinish() );  // Make GL finish.
 
-        num_frames++;
+        // ---- Get end time. Measure
+        clock_gettime(CLOCK_REALTIME, &tp);
         long diff = tp.tv_nsec - start_ns;
         uint32_t sleep_ns = uint32_t((ms_per_frame * 1000000) - diff);
         auto sleep_us = sleep_ns/1000;
-        if (sleep_us <= (uint)ms_per_frame * 1000) {
-            usleep(sleep_us);
+        if (sleep_us/1000 <= (uint)ms_per_frame) {
             total_time_ms += sleep_us / 1000;
         } else {
             printf("WARNING: Frame %ld overshot (in ms): %f\n",
                     num_frames, (sleep_us/1000) - double(ms_per_frame));
         }
+        num_frames++;
+
+        // ---- Swap
+        glfwSwapBuffers(window);
+
     }
 
     printf("Average frame time in ms: %f\n",
-            ms_per_frame - float(total_time_ms) / float(num_frames));
+            float(total_time_ms) / float(num_frames));
 
     glfwDestroyWindow(window);
 
     ph::quit(EXIT_SUCCESS);
 }
+

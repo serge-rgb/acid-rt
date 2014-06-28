@@ -1,6 +1,6 @@
 #version 430
 
-in vec2 position;
+layout(location = 0) in vec2 position;
 
 out vec2 coord;
 
