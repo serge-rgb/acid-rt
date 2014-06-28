@@ -80,13 +80,15 @@ void draw_loop(WindowProc func) {
         GLCHK ( glFinish() );  // Make GL finish.
         clock_gettime(CLOCK_REALTIME, &tp);
         long diff = tp.tv_nsec - start_ns;
-        long diff_ms = diff / (1000 * 1000);
+        double diff_ms = double(diff) / (1000.0 * 1000.0);
         if (diff_ms >= ms_per_frame) {
-            fprintf(stderr, "Overshot: %ldms\n", diff_ms);
+            fprintf(stderr, "Overshot: %fms\n", diff_ms);
         } else {
-            total_time_ms += diff_ms;
+            if (diff_ms > 0) {
+                total_time_ms += diff_ms;
+                num_frames++;
+            }
         }
-        num_frames++;
 
         // ---- Swap
         glfwSwapBuffers(m_window);

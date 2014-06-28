@@ -14,3 +14,5 @@
 #include "ph_gl.h"
 #include "ph_slice_inl.h"
 #include "ph_window.h"
+#include "ph_vr.h"
+

@@ -43,7 +43,9 @@ add_library(ph
     pham/ph.cc
     pham/ph_io.cc
     pham/ph_gl.cc
-    pham/ph_window.cc)
+    pham/ph_window.cc
+    pham/ph_vr.cc
+    )
 set(nuwen_runtime liblua gc ph glfw ${OPENGL_LIBRARIES})
 
 #===============================================================================
@@ -52,5 +54,7 @@ set(nuwen_runtime liblua gc ph glfw ${OPENGL_LIBRARIES})
 
 # ---- tests
 add_subdirectory(test)
+# --- project tardis
+add_subdirectory(tardis)
 # ---- budget app (top secret)
 # add_subdirectory(budget)
