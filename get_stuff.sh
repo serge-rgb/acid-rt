@@ -34,7 +34,7 @@ cd ..
 echo "========================================================================="
 echo "==== GLFW3"
 echo "========================================================================="
-if [ ! -d third_party ]; then
+if [ ! -d glfw ]; then
     git clone https://github.com/glfw/glfw.git glfw
 fi
 
@@ -43,11 +43,17 @@ echo "==== Lua"
 echo "========================================================================="
 if [ ! -d lua ]; then
     git clone https://github.com/LuaDist/lua.git
-else
-    echo "Done."
 fi
+
 cd ..  # root
 
+if [ -d OculusSDK ]; then
+echo "========================================================================="
+echo "==== OVR"
+echo "========================================================================="
+    cd OculusSDK/LibOVR
+    make -j
+    cd ../..
+fi
 
-
-
+echo "Done."

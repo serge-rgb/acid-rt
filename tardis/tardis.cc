@@ -4,6 +4,22 @@
 
 using namespace ph;
 
+namespace vr {
+
+void init() {
+#ifdef PH_OVR
+    OVR::System::Init();
+#endif
+}
+
+void deinit() {
+#ifdef PH_OVR
+    OVR::System::Destroy();
+#endif
+}
+
+}
+
 static GLuint g_program;
 /* static int g_size[] = {1920, 1080}; */
 static int g_size[] = {1280, 720};
@@ -17,6 +33,7 @@ void init(GLuint prog) {
 }
 
 void draw() {
+    vr::init();
     GLCHK ( glUseProgram(g_program) );
     GLfloat viewport_size[2] = {
         GLfloat (g_size[0]) / 2,
@@ -66,5 +83,7 @@ int main() {
     window::draw_loop(draw);
 
     window::deinit();
+
+    vr::deinit();
 }
 

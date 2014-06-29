@@ -1,6 +1,11 @@
 #pragma once
 
 #pragma clang system_header
+
+#ifdef PH_OVR
+#include <OVR.h>
+#endif
+
 extern "C" {
     // LOCAL
 #include <gc.h>
@@ -18,3 +23,4 @@ extern "C" {
 #include <time.h>
 #include <unistd.h>
 }
+

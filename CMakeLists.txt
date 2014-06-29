@@ -29,15 +29,17 @@ include_directories(
     "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
+    "./OculusSDK/LibOVR/Include"
     )
 
 add_library(gc SHARED IMPORTED)
 set_property(TARGET gc PROPERTY IMPORTED_LOCATION
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/libgc.so")
 
-add_library(my_glfw SHARED IMPORTED)
-set_property(TARGET my_glfw PROPERTY IMPORTED_LOCATION
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glfw/src/libglfw.so.3.1)
+# Note: Linux x86_64 only
+add_library(ovr STATIC IMPORTED)
+set_property(TARGET ovr PROPERTY IMPORTED_LOCATION
+    "${CMAKE_CURRENT_SOURCE_DIR}/OculusSDK/LibOVR/Lib/Linux/Release/x86_64/libovr.a")
 
 add_library(ph
     pham/ph.cc

@@ -59,9 +59,9 @@ void main() {
     // TODO: scale point to actual viewport size
 
     vec4 color;
-    if (distance(point.xy, vec2(0)) > 1.0) {    // Cull
+    if (distance(point.xy, vec2(0)) > 1.0) {    // <--- Cull
         color = vec4(0);
-    } else {                                    // Ray trace.
+    } else {                                    // <--- Ray trace.
         Sphere s;
         s.r = 0.4;
         s.center = vec3(0, sphere_y, -2.5);
