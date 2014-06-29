@@ -21,6 +21,7 @@ Makefile
 
 # Third party
 third_party/*
+OculusSDK
 
 # Apitrace
 trace

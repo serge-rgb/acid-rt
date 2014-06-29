@@ -5,7 +5,8 @@
 using namespace ph;
 
 static GLuint g_program;
-static int g_size[] = {1920, 1080};
+/* static int g_size[] = {1920, 1080}; */
+static int g_size[] = {1280, 720};
 // Note: perf is really sensitive about this. Runtime tweak?
 static int g_warpsize[] = {8, 8};
 
@@ -37,7 +38,7 @@ void draw() {
     }
     // Dispatch right viewport
     {
-        glUniform1f(2, 960.0);  // y_offset
+        glUniform1f(2, (GLfloat)g_size[0] / 2.0f);  // x_offset
         GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
                     GLuint(g_size[1] / g_warpsize[1]), 1) );
     }
@@ -52,7 +53,7 @@ void draw() {
 int main() {
     ph::init();
 
-    window::init("Project TARDIS", g_size[0], g_size[1], window::InitFlag_default);
+    window::init("Project TARDIS", g_size[0], g_size[1], window::InitFlag_no_decoration);
 
     const char* paths[] = {
         "tardis/main.glsl",

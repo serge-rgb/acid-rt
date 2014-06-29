@@ -4,11 +4,8 @@
 
 namespace ph {
 namespace window {
-static GLFWmonitor* m_monitor;
 static GLFWwindow*  m_window;
-
-
-
+static GLFWmonitor* m_rift_monitor;
 
 ////////////////////////////////////////
 // Default event & error handlers
@@ -24,7 +21,7 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 
-void init(const char* title, int width, int height, InitFlag /*flags*/) {
+void init(const char* title, int width, int height, InitFlag flags) {
     if (!glfwInit()) {
         ph::quit(EXIT_FAILURE);
     }
@@ -33,12 +30,42 @@ void init(const char* title, int width, int height, InitFlag /*flags*/) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
+    glfwWindowHint(GLFW_RESIZABLE, false);
+    if (flags & InitFlag_no_decoration) {
+        glfwWindowHint(GLFW_DECORATED, false);
+    }
 
-    m_monitor = NULL;
-    m_window = glfwCreateWindow(width, height, title, m_monitor, NULL);
+////////////////////////////////////////
+// Find rift
+////////////////////////////////////////
+    m_rift_monitor = NULL;
+    int num_monitors;
+    GLFWmonitor** monitors = glfwGetMonitors(&num_monitors);
+    for (int i = 0; i < num_monitors; ++i) {
+        GLFWmonitor* monitor = monitors[i];
+        int w;
+        int h;
+        glfwGetMonitorPhysicalSize(monitor, &w, &h);
+        if (w == 150 && h == 94) {  // Note: DK2 same size?
+            m_rift_monitor = monitor;  // We just share a screen here. Set the position.
+            break;
+        }
+    }
+
+
+    // if m_rift_monitor is NULL, it will just open a window.
+    // Else, it will try to be fullscreen.
+    m_window = glfwCreateWindow(width, height, title, /*m_rift_monitor*/NULL, NULL);
 
     if (!m_window) {
         ph::quit(EXIT_FAILURE);
+    }
+
+    if (m_rift_monitor) {
+        int x;
+        int y;
+        glfwGetMonitorPos(m_rift_monitor, &x, &y);
+        glfwSetWindowPos(m_window, x, y);
     }
 
     int gl_version[] = {

@@ -9,6 +9,7 @@ namespace window {
 
 enum InitFlag {
     InitFlag_default,
+    InitFlag_no_decoration = 1 << 0,
 };
 
 typedef void (*WindowProc)();

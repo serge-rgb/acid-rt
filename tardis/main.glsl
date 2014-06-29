@@ -20,8 +20,6 @@ struct Collision {
 };
 
 Collision sphere_collision(Sphere s, vec3 dir) {
-    vec3 sphere_center = vec3(0, sphere_y, -1.5000);
-    float sphere_radius = 0.4; // in meters
     Collision coll;
     coll.exists = false;
 
@@ -33,7 +31,7 @@ Collision sphere_collision(Sphere s, vec3 dir) {
         return coll;
     } else { // Hit!
         coll.exists = true;
-        coll.color = vec3(dir.r,0,dir.b);
+        coll.color = vec3(2*dir.r,0,dir.b);
     }
     return coll;
 }
@@ -66,7 +64,7 @@ void main() {
     } else {                                    // Ray trace.
         Sphere s;
         s.r = 0.4;
-        s.center = vec3(0, sphere_y, -1.5);
+        s.center = vec3(0, sphere_y, -2.5);
         vec3 dir = point - eye;
         Collision c = sphere_collision(s, dir);
         if (c.exists) {
@@ -78,3 +76,4 @@ void main() {
 
     imageStore(tex, coord, color);
 }
+
