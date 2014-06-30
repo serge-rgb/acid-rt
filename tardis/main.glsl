@@ -5,6 +5,9 @@ layout(location = 1) writeonly uniform image2D tex;
 layout(location = 2) uniform float x_offset;
 layout(location = 3) uniform float eye_to_lens_m;
 layout(location = 4) uniform float sphere_y;
+layout(location = 5) uniform vec2 screen_size_m;  // In meters.
+layout(location = 6) uniform vec2 lens_center_m;  // Lens center.
+
 
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
@@ -41,38 +44,49 @@ void main() {
     // global
     //////
     float z_eye = 0.0;
+    Sphere s;
+    s.r = 0.1;
+    s.center = vec3(0, sphere_y, -0.5);
 
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
-    //vec4 color = vec4(vec2(gl_GlobalInvocationID.xy)/vec2(screen_size.x, screen_size.y), 0, 1.0);
-
-    float ar = screen_size.y / screen_size.x;
+    //float ar = screen_size.y / screen_size.x;
     // The eye is a physically accurate position (in meters) of the ... ey
     vec3 eye = vec3(0, 0, eye_to_lens_m);
-    // This point represents the pixel in the viewport as a point in the frustrum near face
-    vec3 point = vec3(2 * (gl_GlobalInvocationID.x / screen_size.x) - 1,
-                      2 * (gl_GlobalInvocationID.y / screen_size.y) - 1,
-                      0);
-    point.y *= ar;
-    point.x += eye.x;  // Point is moved to eye position
-    // TODO: scale point to actual viewport size
 
-    vec4 color;
-    if (distance(point.xy, vec2(0)) > 1.0) {    // <--- Cull
+    // This point represents the pixel in the viewport as a point in the frustrum near face
+    vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
+                      (gl_GlobalInvocationID.y / screen_size.y),
+                      0);
+
+    // Point is in [0,1]x[0,1].
+    // We need to convert it to meters relative to the screen.
+    point.xy *= screen_size_m;
+
+    // Center the point at zero (lens center)
+    point.x -= lens_center_m.x;
+    point.y -= lens_center_m.y;
+
+    vec3 dir = normalize(point - eye);  // View direction
+
+    vec4 color;  // This ends up written to the image.
+
+    // Radius squared. Used for culling and distortion correction.
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
+
+    if (radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
-        Sphere s;
-        s.r = 0.4;
-        s.center = vec3(0, sphere_y, -2.5);
-        vec3 dir = point - eye;
         Collision c = sphere_collision(s, dir);
         if (c.exists) {
             color = vec4(c.color,1);
         } else {
-            color = vec4(abs(point.x), abs(point.y), 0, 1);
+            color = 10 * vec4(abs(point.x), abs(point.y), 0, 1);
         }
     }
+    //point *= 10;
+    //color = vec4(abs(point),1);
 
     imageStore(tex, coord, color);
 }
