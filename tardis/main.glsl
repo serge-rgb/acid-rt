@@ -12,10 +12,21 @@ layout(location = 6) uniform vec2 lens_center_m;  // Lens center.
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
 
+struct Plane {
+    vec3 normal;
+    vec3 point;
+};
+
+struct Rect {
+    Plane plane;
+    vec2 size;
+};
+
 struct Sphere {
     float r;
     vec3 center;
 };
+
 
 struct Collision {
     bool exists;
@@ -34,7 +45,7 @@ Collision sphere_collision(Sphere s, vec3 dir) {
         return coll;
     } else { // Hit!
         coll.exists = true;
-        coll.color = vec3(2*dir.r,0,dir.b);
+        coll.color = vec3(dir.r,0,3*dir.r);
     }
     return coll;
 }
@@ -75,7 +86,7 @@ void main() {
     // Radius squared. Used for culling and distortion correction.
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
-    if (radius_sq > 0.0016) {                      // <--- Cull
+    if (false && radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
         Collision c = sphere_collision(s, dir);

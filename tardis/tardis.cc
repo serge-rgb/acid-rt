@@ -15,10 +15,18 @@ static OVR::DistortionRenderDesc* m_renderdesc_l;
 static OVR::DistortionRenderDesc* m_renderdesc_r;
 
 void init() {
+    // Allocate crap
+    // Not deallocated. This should only be called once or the caller is dumb and ugly.
+    m_hmdinfo = new OVR::HMDInfo;
+    m_renderinfo = new OVR::HmdRenderInfo();
+    m_renderdesc_l = new OVR::DistortionRenderDesc();
+    m_renderdesc_r = new OVR::DistortionRenderDesc();
+    ///////////////
+
+
     OVR::System::Init();
     m_manager = OVR::DeviceManager::Create();
     m_device = m_manager->EnumerateDevices<OVR::HMDDevice>().CreateDevice();
-    m_hmdinfo = new OVR::HMDInfo;
     m_device->GetDeviceInfo(m_hmdinfo);
 
     float c_fromtop = m_hmdinfo->CenterFromTopInMeters;
@@ -28,11 +36,6 @@ void init() {
     printf("%d x %d\n", w, h);
     printf("OVR using: %s\n", m_hmdinfo->ProductName.ToCStr());
 
-    // Allocate crap
-    // Not deallocated. This should only be called once or the caller is dumb and ugly.
-    m_renderinfo = new OVR::HmdRenderInfo();
-    m_renderdesc_l = new OVR::DistortionRenderDesc();
-    m_renderdesc_r = new OVR::DistortionRenderDesc();
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
 
@@ -50,7 +53,6 @@ void init() {
 
 
 void deinit() {
-    delete m_hmdinfo;
     delete m_device;
     delete m_manager;
     OVR::System::Destroy();
@@ -70,10 +72,10 @@ void init(GLuint prog) {
     glUseProgram(prog);
     // Note... This hack is in LibOVR...
     // TODO: Check when Oculus does this without hacks...
-    float eye_to_lens =
-        0.02733f +  // Screen center to midplate
-        vr::m_renderinfo->GetEyeCenter().ReliefInMeters +
-        vr::m_renderinfo->LensSurfaceToMidplateInMeters;
+    float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter;
+        /* 0.02733f +  // Screen center to midplate */
+        /* vr::m_renderinfo->GetEyeCenter().ReliefInMeters + */
+        /* vr::m_renderinfo->LensSurfaceToMidplateInMeters; */
     glUniform1f(3, eye_to_lens);  // eye to lens.
 
     //screen_size.xy = vec2(0.149760, 0.93600);
