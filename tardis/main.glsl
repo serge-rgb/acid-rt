@@ -12,6 +12,11 @@ layout(location = 6) uniform vec2 lens_center_m;  // Lens center.
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
 
+struct Ray {
+    vec3 o;
+    vec3 dir;
+};
+
 struct Plane {
     vec3 normal;
     vec3 point;
@@ -25,8 +30,8 @@ struct Rect {
 struct Sphere {
     float r;
     vec3 center;
+// TODO: add inside factor
 };
-
 
 struct Collision {
     bool exists;
@@ -50,6 +55,17 @@ Collision sphere_collision(Sphere s, vec3 dir) {
     return coll;
 }
 
+Collision plane_collision(Plane p, Ray r) {
+    Collision coll;
+    float disc = dot(r.dir, p.normal);
+    if (disc > 0) {
+        return coll;
+    }
+    coll.exists = true;
+    coll.color = vec3(0, -r.dir.r, 0);
+    return coll;
+}
+
 void main() {
     //////
     // global
@@ -59,6 +75,9 @@ void main() {
     s.r = 0.1;
     s.center = vec3(0, sphere_y, -0.5);
 
+    Plane p;
+    p.normal = vec3(0, 1, 0);
+    p.point = vec3(0, 0, 0);
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
@@ -86,18 +105,24 @@ void main() {
     // Radius squared. Used for culling and distortion correction.
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
-    if (false && radius_sq > 0.0016) {                      // <--- Cull
+    if (radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
-        Collision c = sphere_collision(s, dir);
+        Ray ray;
+        ray.dir = dir;
+        ray.o = point;
+
+        Collision c = plane_collision(p, ray);
         if (c.exists) {
             color = vec4(c.color,1);
         } else {
             color = 10 * vec4(abs(point.x), abs(point.y), 0, 1);
         }
+        c = sphere_collision(s, dir);
+        if (c.exists) {
+            color = vec4(c.color,1);
+        }
     }
-    //point *= 10;
-    //color = vec4(abs(point),1);
 
     imageStore(tex, coord, color);
 }
