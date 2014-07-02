@@ -6,25 +6,16 @@ using namespace ph;
 
 namespace vr {
 
-/* static OVR::DeviceManager* m_manager; */
-/* static OVR::HMDDevice* m_device; */
 static const OVR::HMDInfo* m_hmdinfo;
 static OVR::HmdRenderInfo* m_renderinfo;
-static OVR::LensConfig m_lensconfig;
-/* static OVR::DistortionRenderDesc* m_renderdesc_l; */
-/* static OVR::DistortionRenderDesc* m_renderdesc_r; */
-static ovrDistortionMesh* m_distmeshes[2];
 static ovrHmd hmd;
 
 void init() {
 
+    ///////////////
     // Allocate crap
     // Not deallocated. This should only be called once or the caller is dumb and ugly.
-    /* m_hmdinfo = new OVR::HMDInfo; */
     m_renderinfo = new OVR::HmdRenderInfo();
-    /* m_renderdesc_l = new OVR::DistortionRenderDesc(); */
-    /* m_renderdesc_r = new OVR::DistortionRenderDesc(); */
-
     ///////////////
 
     if (!ovr_Initialize()) {
@@ -60,25 +51,6 @@ void init() {
     printf("eye z should be roughly %f\n", eye_z);
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
-    const auto dist_type = OVR::Distortion_RecipPoly4;
-    m_lensconfig = OVR::GenerateLensConfigFromEyeRelief(0.01f, *m_renderinfo, dist_type);
-
-    ovrHmd_CreateDistortionMesh(hmd, ovrEye_Left, fovPort_l, /*dist_caps? not used*/0, m_distmeshes[0]);
-
-    // Right eye adds an offset which we don't care about.
-    // ovrHmd_CreateDistortionMesh(hmd, ovrEye_Right, fovPort_r, /*dist_caps? not used*/0, m_distmeshes[1]);
-
-    // Fill a texture with UV coords.
-    //
-    /*
-    // Get stuff we need for ray tracing.
-    //
-    // Note: OVR says distortion in renderinfo is useless.
-    // Presumably 0.01 meters is a good relief for DK1
-    // Distortion is not deprecated but still simple to replicate in compute shader
-    *m_renderdesc_l = OVR::CalculateDistortionRenderDesc(OVR::StereoEye_Left, *m_renderinfo, &m_lensconfig);
-    *m_renderdesc_r = OVR::CalculateDistortionRenderDesc(OVR::StereoEye_Right, *m_renderinfo, &m_lensconfig);
-    */
 }
 
 

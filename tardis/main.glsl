@@ -70,7 +70,7 @@ Collision plane_collision(Plane p, Ray r) {
         return coll;
     }
     coll.exists = true;
-    coll.color = vec3(0, -r.dir.r, 0);
+    coll.color = vec3(0, 4*(-r.dir.r), 0);
     return coll;
 }
 
@@ -85,9 +85,9 @@ vec4 checkers(Ray r) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 300;
-    float k2 = 1000.0;
-    float k3 = 50.0;
+    float k1 = 220;
+    float k2 = 250.0;
+    float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
@@ -139,9 +139,9 @@ void main() {
 
 
 
-    if (false && radius_sq > 0.0016) {                      // <--- Cull
+    if (radius_sq > 0.0016) {           // <--- Cull
         color = vec4(0);
-    } else {                                    // <--- Ray trace.
+    } else {                                     // <--- Ray trace.
         Ray ray;
         ray.o = point * barrel(radius_sq);
         ray.dir = (ray.o - eye);
