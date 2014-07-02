@@ -45,7 +45,8 @@ struct Collision {
     vec3 color;
 };
 
-Collision sphere_collision(Sphere s, vec3 dir) {
+Collision sphere_collision(Sphere s, Ray r) {
+    vec3 dir = r.dir;
     Collision coll;
     coll.exists = false;
 
@@ -80,6 +81,14 @@ vec4 checkers(Ray r) {
         return vec4(vec3(0),1);
     }
     return vec4(1);
+}
+
+float barrel(float r) {
+    float k0 = 1.0;
+    float k1 = 300;
+    float k2 = 1000.0;
+    float k3 = 50.0;
+    return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
 void main() {
@@ -118,39 +127,34 @@ void main() {
     point.x -= lens_center_m.x;
     point.y -= lens_center_m.y;
 
+    // Radius squared. Used for culling and distortion correction.
+    // get it before we rotate everything..
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
+
     point = rotate_vector_quat(point, orientation_q);
 
     vec3 dir = point - eye;  // View direction
 
     vec4 color;  // This ends up written to the image.
 
-    // Radius squared. Used for culling and distortion correction.
-    float radius_sq = (point.x * point.x) + (point.y * point.y);
 
 
     if (false && radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
         Ray ray;
-        ray.dir = dir;
-        ray.o = point;
-
-        // TODO: change direction to simulate lens.
+        ray.o = point * barrel(radius_sq);
+        ray.dir = (ray.o - eye);
 
         Collision c = plane_collision(p, ray);
-        if (false &&c.exists) {
+        if (c.exists) {
             color = vec4(c.color,1);
         } else {
-            if (((gl_GlobalInvocationID.x / 10) % 3) == 0 ||
-                ((gl_GlobalInvocationID.y / 10) % 3) == 0) {
-                color = vec4(0,0,0,1);
-            } else {
-                color = vec4(1);
-            }
+            color = vec4(0.1, 0.1, 0.5, 1);
         }
-        c = sphere_collision(s, dir);
+        c = sphere_collision(s, ray);
         if (c.exists) {
-            color = vec4(1);
+            color = vec4(c.color, 1);
         }
     }
 
