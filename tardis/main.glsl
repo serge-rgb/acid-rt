@@ -73,6 +73,15 @@ Collision plane_collision(Plane p, Ray r) {
     return coll;
 }
 
+vec4 checkers(Ray r) {
+    float x = (r.dir.x + 1) / 2;
+    int x_i = int(x * 10);
+    if ((x_i / 10) % 2 == 0) {
+        return vec4(vec3(0),1);
+    }
+    return vec4(1);
+}
+
 void main() {
     //////
     // global
@@ -129,14 +138,19 @@ void main() {
         // TODO: change direction to simulate lens.
 
         Collision c = plane_collision(p, ray);
-        if (c.exists) {
+        if (false &&c.exists) {
             color = vec4(c.color,1);
         } else {
-            color = 10 * vec4(abs(point.x), abs(point.y), 0, 1);
+            if (((gl_GlobalInvocationID.x / 10) % 3) == 0 ||
+                ((gl_GlobalInvocationID.y / 10) % 3) == 0) {
+                color = vec4(0,0,0,1);
+            } else {
+                color = vec4(1);
+            }
         }
         c = sphere_collision(s, dir);
         if (c.exists) {
-            color = vec4(c.color,1);
+            color = vec4(1);
         }
     }
 

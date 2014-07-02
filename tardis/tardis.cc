@@ -64,8 +64,12 @@ void init() {
     m_lensconfig = OVR::GenerateLensConfigFromEyeRelief(0.01f, *m_renderinfo, dist_type);
 
     ovrHmd_CreateDistortionMesh(hmd, ovrEye_Left, fovPort_l, /*dist_caps? not used*/0, m_distmeshes[0]);
-    ovrHmd_CreateDistortionMesh(hmd, ovrEye_Right, fovPort_r, /*dist_caps? not used*/0, m_distmeshes[1]);
 
+    // Right eye adds an offset which we don't care about.
+    // ovrHmd_CreateDistortionMesh(hmd, ovrEye_Right, fovPort_r, /*dist_caps? not used*/0, m_distmeshes[1]);
+
+    // Fill a texture with UV coords.
+    //
     /*
     // Get stuff we need for ray tracing.
     //
