@@ -2,9 +2,16 @@
 
 #pragma clang system_header
 
+#include <glm/glm.hpp>
 #ifdef PH_OVR
 #include <OVR.h>
+
+// I need this to get a HMDInfo
+#include "../OculusSDK/LibOVR/Src/CAPI/CAPI_HMDState.h"
+typedef OVR::CAPI::HMDState hmdState;
+
 #endif
+
 
 extern "C" {
     // LOCAL

@@ -73,7 +73,7 @@ void main() {
     float z_eye = 0.0;
     Sphere s;
     s.r = 0.1;
-    s.center = vec3(0, sphere_y, -0.5);
+    s.center = vec3(0, sphere_y, -0.7);
 
     Plane p;
     p.normal = vec3(0, 1, 0);
@@ -84,6 +84,9 @@ void main() {
     //float ar = screen_size.y / screen_size.x;
     // The eye is a physically accurate position (in meters) of the ... ey
     vec3 eye = vec3(0, 0, eye_to_lens_m);
+
+    // Rotate eye
+    // ....
 
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
@@ -105,12 +108,15 @@ void main() {
     // Radius squared. Used for culling and distortion correction.
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
+
     if (radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
         Ray ray;
         ray.dir = dir;
         ray.o = point;
+
+        // TODO: change direction to simulate lens.
 
         Collision c = plane_collision(p, ray);
         if (c.exists) {

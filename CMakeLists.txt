@@ -29,6 +29,7 @@ include_directories(
     "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
+    "./third_party/glm/"
     "./OculusSDK/LibOVR/Include"
     )
 

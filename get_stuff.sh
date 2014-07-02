@@ -4,7 +4,7 @@ echo "========================================================================="
 
 
 # Get deps
-sudo apt-get install autogen libtool libatomic-ops-dev
+sudo apt-get install autogen libtool libatomic-ops-dev unzip
 # LUA
 sudo apt-get install libreadline-dev
 
@@ -44,6 +44,12 @@ echo "========================================================================="
 if [ ! -d lua ]; then
     git clone https://github.com/LuaDist/lua.git
 fi
+echo "========================================================================="
+echo "==== GLM"
+echo "========================================================================="
+if [ ! -d glm ]; then
+    unzip ../glm-0.9.5.4.zip
+fi
 
 cd ..  # root
 
@@ -57,3 +63,4 @@ echo "========================================================================="
 fi
 
 echo "Done."
+

@@ -13,6 +13,7 @@ flags = [
 "-I./OculusSDK/LibOVR/Include/",
 "-I./OculusSDK/LibOVR/Src/",
 "-I./third_party/glfw/include/",
+"-I./third_party/glm/",
 "--std=c++11",
 "-DPH_OVR",
 "-Weverything",
