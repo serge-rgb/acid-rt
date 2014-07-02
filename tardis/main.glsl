@@ -14,7 +14,9 @@ layout(location = 7) uniform vec4 orientation_q;  // Orientation quaternion.
 layout(local_size_x = 8, local_size_y = 8) in;
 
 vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
-    return vec + 2.0 * cross( cross( vec, quat.xyz ) + quat.w * vec, quat.xyz );
+    vec3 i = -quat.xyz;
+    float m = quat.w;
+    return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
 }
 
 struct Ray {
@@ -107,6 +109,8 @@ void main() {
     point.x -= lens_center_m.x;
     point.y -= lens_center_m.y;
 
+    point = rotate_vector_quat(point, orientation_q);
+
     vec3 dir = point - eye;  // View direction
 
     vec4 color;  // This ends up written to the image.
@@ -115,7 +119,7 @@ void main() {
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
 
-    if (radius_sq > 0.0016) {                      // <--- Cull
+    if (false && radius_sq > 0.0016) {                      // <--- Cull
         color = vec4(0);
     } else {                                    // <--- Ray trace.
         Ray ray;

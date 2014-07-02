@@ -44,10 +44,6 @@ void init() {
 
     printf("Default hvFov: %f\n", hvfov);
 
-    // ovrEyeRenderDesc desc_l = ovrHmd_GetRenderDesc(hmd, ovrEye_Left, fovPort_l);
-    // ovrEyeRenderDesc desc_r = ovrHmd_GetRenderDesc(hmd, ovrEye_Right, fovPort_r);
-
-
     ovrEyeRenderDesc rdesc[2];
 
     rdesc[0] = ovrHmd_GetRenderDesc(hmd, ovrEye_Left, fovPort_l);
@@ -109,11 +105,10 @@ void init(GLuint prog) {
         vr::m_renderinfo->LensSurfaceToMidplateInMeters;
     // Other hacks
     /* float eye_to_lens = 0.06f;  // Measured with ruler... */
+    /* float eye_to_lens = 0.10f;  // No projection distortion */
     //float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter;
     printf("Eye to lens is: %f\n", eye_to_lens);
     glUniform1f(3, eye_to_lens);  // eye to lens.
-
-    //screen_size.xy = vec2(0.149760, 0.93600);
 
     m_viewport_size[0] = GLfloat (g_size[0]) / 2;
     m_viewport_size[1] = GLfloat (g_size[1]);
@@ -150,9 +145,9 @@ void draw() {
 
     auto q = pose.Orientation;
     GLfloat quat[4] {
-        q.x, q.y, q.z, -q.w,
+        q.x, q.y, q.z, q.w,
     };
-    printf("Orientation x is %f, %f, %f, %f\n", q.x, q.y, q.z, q.w);
+    //printf("Orientation x is %f, %f, %f, %f\n", q.x, q.y, q.z, q.w);
     glUniform4fv(7, 1, quat);
 
     // Dispatch left viewport
