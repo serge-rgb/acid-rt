@@ -7,10 +7,15 @@ layout(location = 3) uniform float eye_to_lens_m;
 layout(location = 4) uniform float sphere_y;
 layout(location = 5) uniform vec2 screen_size_m;  // In meters.
 layout(location = 6) uniform vec2 lens_center_m;  // Lens center.
+layout(location = 7) uniform vec4 orientation_q;  // Orientation quaternion.
 
 
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
+
+vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
+    return vec + 2.0 * cross( cross( vec, quat.xyz ) + quat.w * vec, quat.xyz );
+}
 
 struct Ray {
     vec3 o;
@@ -50,7 +55,7 @@ Collision sphere_collision(Sphere s, vec3 dir) {
         return coll;
     } else { // Hit!
         coll.exists = true;
-        coll.color = vec3(dir.r,0,3*dir.r);
+        coll.color = vec3(0.1,0.1,10*abs(dir.g));
     }
     return coll;
 }
@@ -87,6 +92,7 @@ void main() {
 
     // Rotate eye
     // ....
+    eye = rotate_vector_quat(eye, orientation_q);
 
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
@@ -101,7 +107,7 @@ void main() {
     point.x -= lens_center_m.x;
     point.y -= lens_center_m.y;
 
-    vec3 dir = normalize(point - eye);  // View direction
+    vec3 dir = point - eye;  // View direction
 
     vec4 color;  // This ends up written to the image.
 

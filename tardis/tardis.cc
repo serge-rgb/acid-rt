@@ -52,6 +52,8 @@ void init() {
 
     rdesc[0] = ovrHmd_GetRenderDesc(hmd, ovrEye_Left, fovPort_l);
     rdesc[1] = ovrHmd_GetRenderDesc(hmd, ovrEye_Right, fovPort_r);
+
+
     hmdState* state = (hmdState*)hmd;
     m_hmdinfo = &state->HMDInfo;
     float h = m_hmdinfo->ScreenSizeInMeters.h;
@@ -101,12 +103,14 @@ void init(GLuint prog) {
     glUseProgram(prog);
     // Note... This hack is in LibOVR...
     // TODO: Check when Oculus does this without hacks...
-    /* float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter; */
-        /* 0.02733f +  // Screen center to midplate */
-        /* vr::m_renderinfo->GetEyeCenter().ReliefInMeters + */
-        /* vr::m_renderinfo->LensSurfaceToMidplateInMeters; */
-    //float eye_to_lens = 0.021887f;
-    float eye_to_lens = 0.07f;  // Not physically correct, TODO: check this
+    float eye_to_lens =
+        0.02733f +  // Screen center to midplate
+        vr::m_renderinfo->GetEyeCenter().ReliefInMeters +
+        vr::m_renderinfo->LensSurfaceToMidplateInMeters;
+    // Other hacks
+    /* float eye_to_lens = 0.06f;  // Measured with ruler... */
+    //float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter;
+    printf("Eye to lens is: %f\n", eye_to_lens);
     glUniform1f(3, eye_to_lens);  // eye to lens.
 
     //screen_size.xy = vec2(0.149760, 0.93600);
@@ -132,6 +136,24 @@ void draw() {
     glUniform1f(4, sphere_y);
     step_var += 0.05;
 
+    static unsigned int frame_index = 1;
+    if (frame_index == 1) {
+        ovrHmd_BeginFrameTiming(vr::hmd, frame_index);
+    }
+
+    ovrFrameTiming frame_timing = ovrHmd_BeginFrame(vr::hmd, frame_index);
+    frame_timing = ovrHmd_GetFrameTiming(vr::hmd, frame_index);
+
+    auto sdata = ovrHmd_GetSensorState(vr::hmd, frame_timing.ScanoutMidpointSeconds);
+
+    ovrPosef pose = sdata.Predicted.Pose;
+
+    auto q = pose.Orientation;
+    GLfloat quat[4] {
+        q.x, q.y, q.z, -q.w,
+    };
+    printf("Orientation x is %f, %f, %f, %f\n", q.x, q.y, q.z, q.w);
+    glUniform4fv(7, 1, quat);
 
     // Dispatch left viewport
     {
@@ -156,6 +178,9 @@ void draw() {
         GLCHK ( glDispatchCompute(GLuint(m_viewport_size[0] / g_warpsize[0]),
                     GLuint(m_viewport_size[1] / g_warpsize[1]), 1) );
     }
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    frame_index++;
+    ovrHmd_EndFrame(vr::hmd);
 
     // Draw screen
     cs::fill_screen();
