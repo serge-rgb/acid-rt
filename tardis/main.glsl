@@ -85,9 +85,9 @@ vec4 checkers(Ray r) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 220;
-    float k2 = 250.0;
-    float k3 = 0.0;
+    float k1 = 300;
+    float k2 = 450.0;
+    float k3 = 100.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
@@ -98,7 +98,7 @@ void main() {
     float z_eye = 0.0;
     Sphere s;
     s.r = 0.1;
-    s.center = vec3(0, sphere_y, -0.7);
+    s.center = vec3(0, sphere_y, -0.5);
 
     Plane p;
     p.normal = vec3(0, 1, 0);

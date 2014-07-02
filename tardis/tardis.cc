@@ -51,6 +51,9 @@ void init() {
     printf("eye z should be roughly %f\n", eye_z);
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
+    // Pass frameIndex == 0 if ovrHmd_GetFrameTiming isn't being used. Otherwise,
+// pass the same frame index as was used for GetFrameTiming on the main thread.
+
 }
 
 
@@ -75,14 +78,15 @@ void init(GLuint prog) {
     glUseProgram(prog);
     // Note... This hack is in LibOVR...
     // TODO: Check when Oculus does this without hacks...
-    float eye_to_lens =
-        0.02733f +  // Screen center to midplate
-        vr::m_renderinfo->GetEyeCenter().ReliefInMeters +
-        vr::m_renderinfo->LensSurfaceToMidplateInMeters;
+    /* float eye_to_lens = */
+    /*     0.02733f +  // Screen center to midplate */
+    /*     vr::m_renderinfo->GetEyeCenter().ReliefInMeters + */
+    /*     vr::m_renderinfo->LensSurfaceToMidplateInMeters; */
     // Other hacks
     /* float eye_to_lens = 0.06f;  // Measured with ruler... */
     /* float eye_to_lens = 0.10f;  // No projection distortion */
-    //float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter;
+    /* float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter + 0.043774f; */
+    float eye_to_lens = 0.043774f; // Calculated for default FOV
     printf("Eye to lens is: %f\n", eye_to_lens);
     glUniform1f(3, eye_to_lens);  // eye to lens.
 
