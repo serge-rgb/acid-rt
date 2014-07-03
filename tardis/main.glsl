@@ -2,12 +2,13 @@
 
 layout(location = 0) uniform vec2 screen_size;  // One eye! (960, 1080 for DK2)
 layout(location = 1) writeonly uniform image2D tex;
-layout(location = 2) uniform float x_offset;
+layout(location = 2) uniform float x_offset;        // In pixels, for separate viewports.
 layout(location = 3) uniform float eye_to_lens_m;
-layout(location = 4) uniform float sphere_y;
-layout(location = 5) uniform vec2 screen_size_m;  // In meters.
-layout(location = 6) uniform vec2 lens_center_m;  // Lens center.
-layout(location = 7) uniform vec4 orientation_q;  // Orientation quaternion.
+layout(location = 4) uniform float sphere_y;        // TEST
+layout(location = 5) uniform vec2 screen_size_m;    // In meters.
+layout(location = 6) uniform vec2 lens_center_m;    // Lens center.
+layout(location = 7) uniform vec4 orientation_q;    // Orientation quaternion.
+layout(location = 8) uniform bool occlude;          // Flag for occlusion circle
 
 
 // warp size: 64. (optimal warp size for my nvidia card)
@@ -40,9 +41,19 @@ struct Sphere {
 // TODO: add inside factor
 };
 
+////////////////////////////////////////
+// Collision structs
+// Collision       -- Hit or not.
+// Collision_point -- Hit, with point
+////////////////////////////////////////
+
 struct Collision {
     bool exists;
-    vec3 color;
+};
+
+struct Collision_point {
+    bool exists;
+    vec4 point;
 };
 
 Collision sphere_collision(Sphere s, Ray r) {
@@ -58,36 +69,41 @@ Collision sphere_collision(Sphere s, Ray r) {
         return coll;
     } else { // Hit!
         coll.exists = true;
-        coll.color = vec3(0.1,0.1,10*abs(dir.g));
     }
     return coll;
 }
 
-Collision plane_collision(Plane p, Ray r) {
+Collision plane_collision_p(Plane p, Ray r) {
     Collision coll;
+    coll.exists = false;
     float disc = dot(r.dir, p.normal);
     if (disc > 0) {
         return coll;
     }
     coll.exists = true;
-    coll.color = vec3(0, 4*(-r.dir.r), 0);
     return coll;
 }
 
-vec4 checkers(Ray r) {
-    float x = (r.dir.x + 1) / 2;
-    int x_i = int(x * 10);
-    if ((x_i / 10) % 2 == 0) {
-        return vec4(vec3(0),1);
+Collision_point plane_collision(Plane p, Ray r) {
+    Collision_point coll;
+    coll.exists = plane_collision_p(p, r).exists;
+    coll.point = vec4(0);
+    return coll;
+}
+
+Collision rect_collision_p(Rect rect, Ray r) {
+    Collision coll = plane_collision_p(rect.plane, r);
+    if (!coll.exists) { //
+        return coll;
     }
-    return vec4(1);
+    return coll;
 }
 
 float barrel(float r) {
     float k0 = 1.0;
     float k1 = 300;
-    float k2 = 450.0;
-    float k3 = 100.0;
+    float k2 = 800.0;
+    float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
@@ -102,7 +118,12 @@ void main() {
 
     Plane p;
     p.normal = vec3(0, 1, 0);
-    p.point = vec3(0, 0, 0);
+    p.point  = vec3(0, 0, 0);
+
+    Rect r;
+    r.plane.normal = vec3(0, 0, 1);
+    r.plane.point  = vec3(0);
+    r.size         = vec2(0.1, 0.1);
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
@@ -137,24 +158,22 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-
-
-    if (radius_sq > 0.0016) {           // <--- Cull
+    if (occlude && radius_sq > 0.0016) {         // <--- Cull
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
         ray.o = point * barrel(radius_sq);
         ray.dir = (ray.o - eye);
 
-        Collision c = plane_collision(p, ray);
+        Collision c = plane_collision_p(p, ray);
         if (c.exists) {
-            color = vec4(c.color,1);
+            color = vec4(0, 0.6, 0,1);
         } else {
             color = vec4(0.1, 0.1, 0.5, 1);
         }
         c = sphere_collision(s, ray);
         if (c.exists) {
-            color = vec4(c.color, 1);
+            color = vec4(0, 0, 0.8, 1);
         }
     }
 

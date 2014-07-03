@@ -8,7 +8,8 @@ namespace vr {
 
 static const OVR::HMDInfo* m_hmdinfo;
 static OVR::HmdRenderInfo* m_renderinfo;
-static ovrHmd hmd;
+static ovrHmd              m_hmd;
+static float               m_default_eye_z;  // Getting the default FOV, calculate eye distance from plane.
 
 void init() {
 
@@ -21,34 +22,32 @@ void init() {
     if (!ovr_Initialize()) {
         ph::phatal_error("Could not initialize OVR\n");
     }
-    hmd = ovrHmd_Create(0);
+    m_hmd = ovrHmd_Create(0);
     ovrHmdDesc desc;
-    ovrHmd_GetDesc(hmd, &desc);
+    ovrHmd_GetDesc(m_hmd, &desc);
 
-    ovrHmd_StartSensor(hmd, 0x1111/*all*/, ovrHmd_GetEnabledCaps(hmd));
+    ovrHmd_StartSensor(m_hmd, 0x1111/*all*/, ovrHmd_GetEnabledCaps(m_hmd));
 
     auto fovPort_l = desc.DefaultEyeFov[0];
     auto fovPort_r = desc.DefaultEyeFov[1];
 
-    // Down default fov
-    float hvfov = (fovPort_r.DownTan + fovPort_r.DownTan) / 2.0f;
-
-    printf("Default hvFov: %f\n", hvfov);
-
     ovrEyeRenderDesc rdesc[2];
 
-    rdesc[0] = ovrHmd_GetRenderDesc(hmd, ovrEye_Left, fovPort_l);
-    rdesc[1] = ovrHmd_GetRenderDesc(hmd, ovrEye_Right, fovPort_r);
+    rdesc[0] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, fovPort_l);
+    rdesc[1] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, fovPort_r);
 
-
-    hmdState* state = (hmdState*)hmd;
+    hmdState* state = (hmdState*)m_hmd;
     m_hmdinfo = &state->HMDInfo;
+
+    // Default fov (looking down)
+    float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;
+    printf("Default half fov (looking down): %f\n", hvfov);
     float h = m_hmdinfo->ScreenSizeInMeters.h;
     printf("Physical height/2 %f\n", h/2);
 
     // Let's get the eye distance.
-    float eye_z = h / (1 * hvfov);
-    printf("eye z should be roughly %f\n", eye_z);
+    m_default_eye_z = h / (1 * hvfov);
+    printf("eye z should be roughly %f\n", m_default_eye_z);
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
     // Pass frameIndex == 0 if ovrHmd_GetFrameTiming isn't being used. Otherwise,
@@ -56,11 +55,9 @@ void init() {
 
 }
 
-
-
 void deinit() {
-    ovrHmd_StopSensor(hmd);
-    ovrHmd_Destroy(hmd);
+    ovrHmd_StopSensor(m_hmd);
+    ovrHmd_Destroy(m_hmd);
     ovr_Shutdown();
 }
 
@@ -71,33 +68,23 @@ static GLuint g_program;
 static int g_size[] = {1280, 800};
 // Note: perf is really sensitive about this. Runtime tweak?
 static int g_warpsize[] = {8, 8};
-static GLfloat m_viewport_size[2];
+static GLfloat g_viewport_size[2];
 
 void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
-    // Note... This hack is in LibOVR...
-    // TODO: Check when Oculus does this without hacks...
-    /* float eye_to_lens = */
-    /*     0.02733f +  // Screen center to midplate */
-    /*     vr::m_renderinfo->GetEyeCenter().ReliefInMeters + */
-    /*     vr::m_renderinfo->LensSurfaceToMidplateInMeters; */
-    // Other hacks
-    /* float eye_to_lens = 0.06f;  // Measured with ruler... */
-    /* float eye_to_lens = 0.10f;  // No projection distortion */
-    /* float eye_to_lens = vr::m_lensconfig.MetersPerTanAngleAtCenter + 0.043774f; */
-    float eye_to_lens = 0.043774f; // Calculated for default FOV
+    float eye_to_lens = vr::m_default_eye_z; // Calculated for default FOV
     printf("Eye to lens is: %f\n", eye_to_lens);
     glUniform1f(3, eye_to_lens);  // eye to lens.
 
-    m_viewport_size[0] = GLfloat (g_size[0]) / 2;
-    m_viewport_size[1] = GLfloat (g_size[1]);
-    glUniform2fv(0, 1, m_viewport_size);  // screen_size
+    g_viewport_size[0] = GLfloat (g_size[0]) / 2;
+    g_viewport_size[1] = GLfloat (g_size[1]);
     GLfloat size_m[2] = {
         vr::m_renderinfo->ScreenSizeInMeters.w / 2,
         vr::m_renderinfo->ScreenSizeInMeters.h,
     };
     glUniform2fv(5, 1, size_m);  // screen_size in meters
+    glUniform1f(8, false);  // Occlude?
 
     GLCHK();
 }
@@ -113,13 +100,13 @@ void draw() {
 
     static unsigned int frame_index = 1;
     if (frame_index == 1) {
-        ovrHmd_BeginFrameTiming(vr::hmd, frame_index);
+        ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
     }
 
-    ovrFrameTiming frame_timing = ovrHmd_BeginFrame(vr::hmd, frame_index);
-    frame_timing = ovrHmd_GetFrameTiming(vr::hmd, frame_index);
+    ovrFrameTiming frame_timing = ovrHmd_BeginFrame(vr::m_hmd, frame_index);
+    frame_timing = ovrHmd_GetFrameTiming(vr::m_hmd, frame_index);
 
-    auto sdata = ovrHmd_GetSensorState(vr::hmd, frame_timing.ScanoutMidpointSeconds);
+    auto sdata = ovrHmd_GetSensorState(vr::m_hmd, frame_timing.ScanoutMidpointSeconds);
 
     ovrPosef pose = sdata.Predicted.Pose;
 
@@ -139,8 +126,8 @@ void draw() {
         };
         glUniform2fv(6, 1, lens_center);  // Lens center
         glUniform1f(2, 0);  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(m_viewport_size[0] / g_warpsize[0]),
-                    GLuint(m_viewport_size[1] / g_warpsize[1]), 1) );
+        GLCHK ( glDispatchCompute(GLuint(g_viewport_size[0] / g_warpsize[0]),
+                    GLuint(g_viewport_size[1] / g_warpsize[1]), 1) );
     }
     // Dispatch right viewport
     {
@@ -149,13 +136,13 @@ void draw() {
             vr::m_hmdinfo->CenterFromTopInMeters,
         };
         glUniform2fv(6, 1, lens_center);  // Lens center
-        glUniform1f(2, ((GLfloat)g_size[0] / 2.0f));  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(m_viewport_size[0] / g_warpsize[0]),
-                    GLuint(m_viewport_size[1] / g_warpsize[1]), 1) );
+        glUniform1f(2, ((GLfloat)g_viewport_size[0]));  // x_offset
+        GLCHK ( glDispatchCompute(GLuint(g_viewport_size[0] / g_warpsize[0]),
+                    GLuint(g_viewport_size[1] / g_warpsize[1]), 1) );
     }
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     frame_index++;
-    ovrHmd_EndFrame(vr::hmd);
+    ovrHmd_EndFrame(vr::m_hmd);
 
     // Draw screen
     cs::fill_screen();
