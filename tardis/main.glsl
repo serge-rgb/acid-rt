@@ -10,7 +10,6 @@ layout(location = 6) uniform vec2 lens_center_m;    // Lens center.
 layout(location = 7) uniform vec4 orientation_q;    // Orientation quaternion.
 layout(location = 8) uniform bool occlude;          // Flag for occlusion circle
 
-
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
 
@@ -41,6 +40,11 @@ struct Sphere {
 // TODO: add inside factor
 };
 
+struct Light {
+    vec3 position;
+    vec3 color;
+};
+
 ////////////////////////////////////////
 // Collision structs
 // Collision       -- Hit or not.
@@ -51,12 +55,12 @@ struct Collision {
     bool exists;
 };
 
-struct Collision_point {
+struct CollisionFull {
     bool exists;
-    vec4 point;
+    vec3 point;
 };
 
-Collision sphere_collision(Sphere s, Ray r) {
+Collision sphere_collision_p(Sphere s, Ray r) {
     vec3 dir = r.dir;
     Collision coll;
     coll.exists = false;
@@ -73,6 +77,27 @@ Collision sphere_collision(Sphere s, Ray r) {
     return coll;
 }
 
+CollisionFull sphere_collision(Sphere s, Ray r) {
+    vec3 dir = r.dir;
+    CollisionFull coll;
+    coll.exists = false;
+
+    float A = dot(dir, dir);
+    float B = 2 * dot(dir, s.center);
+    float C = dot(s.center, s.center) - (s.r * s.r);
+    float disc = (B*B - 4*A*C);
+    if (disc < 0.0) {
+        return coll;
+    }
+    float t = (-B + sqrt(disc)) / (2 * A);
+    if (t >= 0) {  // TODO: t has to be negative? What happens to all the diverging rays?
+        return coll;
+    }
+    coll.exists = true;
+    coll.point = r.o + (r.dir * t);
+    return coll;
+}
+
 Collision plane_collision_p(Plane p, Ray r) {
     Collision coll;
     coll.exists = false;
@@ -84,10 +109,20 @@ Collision plane_collision_p(Plane p, Ray r) {
     return coll;
 }
 
-Collision_point plane_collision(Plane p, Ray r) {
-    Collision_point coll;
-    coll.exists = plane_collision_p(p, r).exists;
-    coll.point = vec4(0);
+CollisionFull plane_collision(Plane p, Ray r) {
+    CollisionFull coll;
+    coll.exists = false;
+    float disc = dot(r.dir, p.normal);
+    if (disc > 0) {
+        return coll;
+    }
+    coll.exists = true;
+
+    float t = dot((p.point - r.o), p.normal);
+
+    coll.exists = true;
+    coll.point = r.o + (t * r.dir);
+
     return coll;
 }
 
@@ -97,6 +132,14 @@ Collision rect_collision_p(Rect rect, Ray r) {
         return coll;
     }
     return coll;
+}
+
+// ========================================
+// Material functions.
+// ========================================
+
+vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {  // Light should not be a parameter. All lights should contribute. -- Right?
+    return color * dot(normal, normalize(l.position - point));
 }
 
 float barrel(float r) {
@@ -114,7 +157,7 @@ void main() {
     float z_eye = 0.0;
     Sphere s;
     s.r = 0.1;
-    s.center = vec3(0, sphere_y, -0.5);
+    s.center = vec3(0, sphere_y + 1, -0.5);
 
     Plane p;
     p.normal = vec3(0, 1, 0);
@@ -124,6 +167,11 @@ void main() {
     r.plane.normal = vec3(0, 0, 1);
     r.plane.point  = vec3(0);
     r.size         = vec2(0.1, 0.1);
+
+    Light l;
+    l.position = vec3(0, 100, 0);
+    // l.color    = vec3(1, 0.5, 0.5);
+    l.color    = vec3(1,1,1);
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
@@ -165,15 +213,16 @@ void main() {
         ray.o = point * barrel(radius_sq);
         ray.dir = (ray.o - eye);
 
-        Collision c = plane_collision_p(p, ray);
+        CollisionFull c = plane_collision(p, ray);
         if (c.exists) {
-            color = vec4(0, 0.6, 0,1);
+            color = vec4(lambert(c.point, p.normal, vec3(0,0.5,0), l), 1);
         } else {
             color = vec4(0.1, 0.1, 0.5, 1);
         }
-        c = sphere_collision(s, ray);
-        if (c.exists) {
-            color = vec4(0, 0, 0.8, 1);
+
+        CollisionFull cf = sphere_collision(s, ray);
+        if (cf.exists) {
+            color = vec4(-lambert(cf.point, normalize(cf.point - s.center), vec3(0,0,1), l), 1);
         }
     }
 

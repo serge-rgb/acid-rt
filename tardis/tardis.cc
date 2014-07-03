@@ -61,7 +61,7 @@ void deinit() {
     ovr_Shutdown();
 }
 
-}
+}  // ns vr
 
 static GLuint g_program;
 /* static int g_size[] = {1920, 1080}; */
