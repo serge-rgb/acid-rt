@@ -1,7 +1,7 @@
 #version 430
 
-layout(location = 0) uniform vec2 screen_size;  // One eye! (960, 1080 for DK2)
-layout(location = 1) writeonly uniform image2D tex;
+layout(location = 0) uniform vec2 screen_size;      // One eye! (960, 1080 for DK2)
+layout(location = 1) writeonly uniform image2D tex; // This is the image we write to.
 layout(location = 2) uniform float x_offset;        // In pixels, for separate viewports.
 layout(location = 3) uniform float eye_to_lens_m;
 layout(location = 4) uniform float sphere_y;        // TEST
@@ -30,8 +30,7 @@ struct Plane {
 };
 
 struct Rect {
-    Plane plane;
-    vec2 size;
+    vec3 a,b,c,d;
 };
 
 struct Sphere {
@@ -42,6 +41,7 @@ struct Sphere {
 
 struct Light {
     vec3 position;
+    vec3 direction;
     vec3 color;
 };
 
@@ -58,6 +58,7 @@ struct Collision {
 struct CollisionFull {
     bool exists;
     vec3 point;
+    float t;
 };
 
 Collision sphere_collision_p(Sphere s, Ray r) {
@@ -81,6 +82,7 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
     vec3 dir = r.dir;
     CollisionFull coll;
     coll.exists = false;
+    coll.t = 0;
 
     float A = dot(dir, dir);
     float B = 2 * dot(dir, s.center);
@@ -89,18 +91,20 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
     if (disc < 0.0) {
         return coll;
     }
-    float t = (-B + sqrt(disc)) / (2 * A);
-    if (t >= 0) {  // TODO: t has to be negative? What happens to all the diverging rays?
+    float t = (B - sqrt(disc)) / (2 * A);
+    if (t <= 0) {  // TODO: t has to be negative? What happens to all the diverging rays?
         return coll;
     }
     coll.exists = true;
     coll.point = r.o + (r.dir * t);
+    coll.t = t;
     return coll;
 }
 
 Collision plane_collision_p(Plane p, Ray r) {
     Collision coll;
     coll.exists = false;
+
     float disc = dot(r.dir, p.normal);
     if (disc > 0) {
         return coll;
@@ -112,6 +116,7 @@ Collision plane_collision_p(Plane p, Ray r) {
 CollisionFull plane_collision(Plane p, Ray r) {
     CollisionFull coll;
     coll.exists = false;
+    coll.t = 0;
     float disc = dot(r.dir, p.normal);
     if (disc > 0) {
         return coll;
@@ -119,18 +124,31 @@ CollisionFull plane_collision(Plane p, Ray r) {
     coll.exists = true;
 
     float t = dot((p.point - r.o), p.normal);
+    if (t < 0) {
+        return coll;
+    }
 
     coll.exists = true;
     coll.point = r.o + (t * r.dir);
+    coll.t = t;
 
     return coll;
 }
 
-Collision rect_collision_p(Rect rect, Ray r) {
-    Collision coll = plane_collision_p(rect.plane, r);
-    if (!coll.exists) { //
+CollisionFull rect_collision(Rect rect, Ray r) {
+    vec3 normal = normalize(cross(rect.b - rect.a, rect.d - rect.a));
+    Plane p;
+    p.normal = normal;
+    p.point = rect.a;
+    CollisionFull coll = plane_collision(p, r);
+    if (!coll.exists) {
         return coll;
     }
+    coll.exists = false;
+    // Project size onto plane
+    //vec3 p_size = normalize(cross(rect.plane.normal, rect.plane.point)) * vec3(rect.size.xy,0)
+    coll.exists = true;
+
     return coll;
 }
 
@@ -139,7 +157,7 @@ Collision rect_collision_p(Rect rect, Ray r) {
 // ========================================
 
 vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {  // Light should not be a parameter. All lights should contribute. -- Right?
-    return color * dot(normal, normalize(l.position - point));
+    return color * dot(normal, normalize(l.direction - point));
 }
 
 float barrel(float r) {
@@ -157,20 +175,23 @@ void main() {
     float z_eye = 0.0;
     Sphere s;
     s.r = 0.1;
-    s.center = vec3(0, sphere_y + 1, -0.5);
+    s.center = vec3(0, sphere_y + 0.1, -0.5);
 
     Plane p;
     p.normal = vec3(0, 1, 0);
     p.point  = vec3(0, 0, 0);
 
     Rect r;
-    r.plane.normal = vec3(0, 0, 1);
-    r.plane.point  = vec3(0);
-    r.size         = vec2(0.1, 0.1);
+    float w = 0.1;
+    float h = 0.1;
+    r.a = vec3(0,0,2);
+    r.b = vec3(w,0,2);
+    r.c = vec3(w,h,2);
+    r.d = vec3(0,h,2);
 
     Light l;
-    l.position = vec3(0, 100, 0);
-    // l.color    = vec3(1, 0.5, 0.5);
+    l.position = vec3(0, 10, 0);
+    l.direction = -normalize(vec3(0, -1, -0.9));
     l.color    = vec3(1,1,1);
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
@@ -213,16 +234,26 @@ void main() {
         ray.o = point * barrel(radius_sq);
         ray.dir = (ray.o - eye);
 
-        CollisionFull c = plane_collision(p, ray);
-        if (c.exists) {
-            color = vec4(lambert(c.point, p.normal, vec3(0,0.5,0), l), 1);
-        } else {
-            color = vec4(0.1, 0.1, 0.5, 1);
-        }
+        float min_t = -1;    // Z-buffer substitute
+
+        color = vec4(0.1, 0.1, 0.5, 1);
 
         CollisionFull cf = sphere_collision(s, ray);
-        if (cf.exists) {
-            color = vec4(-lambert(cf.point, normalize(cf.point - s.center), vec3(0,0,1), l), 1);
+        if (cf.exists && min_t < cf.t) {
+            min_t = cf.t;
+            color = vec4(lambert(cf.point, normalize(cf.point - s.center), vec3(0,0,1), l), 1);
+        }
+
+        CollisionFull c = plane_collision(p, ray);
+        if (c.exists && min_t < c.t) {
+            min_t = c.t;
+            color = vec4(lambert(c.point, p.normal, vec3(0,0.5,0), l), 1);
+        }
+
+        CollisionFull cp = rect_collision(r, ray);
+        if (cp.exists && min_t < cp.t) {
+            min_t = cp.t;
+            color = vec4(0);
         }
     }
 
