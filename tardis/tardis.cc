@@ -84,7 +84,7 @@ void init(GLuint prog) {
         vr::m_renderinfo->ScreenSizeInMeters.h,
     };
     glUniform2fv(5, 1, size_m);  // screen_size in meters
-    glUniform1f(8, false);  // Occlude?
+    glUniform1f(8, true);  // Occlude?
 
     GLCHK();
 }

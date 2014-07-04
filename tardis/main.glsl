@@ -54,6 +54,10 @@ struct Rect {
     vec3 a,b,c,d;
 };
 
+struct Cube {
+    vec3 a,b,c,d,e,f,g,h;
+};
+
 struct Sphere {
     float r;
     vec3 center;
@@ -64,6 +68,10 @@ struct Light {
     vec3 position;
     vec3 color;
 };
+
+vec3 normal_for_rect(Rect r) {
+    return normalize(cross(r.c - r.b, r.d - r.b));
+}
 
 ////////////////////////////////////////
 // Collision structs
@@ -78,6 +86,13 @@ struct Collision {
 struct CollisionFull {
     bool exists;
     vec3 point;
+    float t;
+};
+
+struct CollisionCube {
+    bool exists;
+    vec3 point;
+    vec3 normal;
     float t;
 };
 
@@ -191,13 +206,83 @@ CollisionFull rect_collision(Rect rect, Ray r) {
     return coll;
 }
 
+CollisionCube cube_collision(Cube c, Ray ray) {
+    CollisionCube coll;
+    for (int i = 0; i < 6; ++i) {
+        Rect r;
+        float min_t = 1 << 16;
+        switch (i) {
+            case 0: // Front
+                {
+                    r.a = c.e;
+                    r.b = c.f;
+                    r.c = c.b;
+                    r.d = c.a;
+                }
+                break;
+            case 1: // Right
+                {
+                    r.a = c.f;
+                    r.b = c.g;
+                    r.c = c.c;
+                    r.d = c.b;
+                }
+                break;
+            case 2: // Back
+                {
+                    r.a = c.h;
+                    r.b = c.g;
+                    r.c = c.c;
+                    r.d = c.d;
+                }
+                break;
+            case 3: // Left
+                {
+                    r.a = c.h;
+                    r.b = c.e;
+                    r.c = c.a;
+                    r.d = c.d;
+                }
+                break;
+            case 4: // Top
+                {
+                    r.a = c.a;
+                    r.b = c.b;
+                    r.c = c.c;
+                    r.d = c.d;
+                }
+                break;
+            case 5: // Bottom
+                {
+                    r.a = c.e;
+                    r.b = c.f;
+                    r.c = c.g;
+                    r.d = c.h;
+                }
+                break;
+        }
+        CollisionFull _coll = rect_collision(r, ray);
+        if (_coll.exists && _coll.t < min_t) {
+            min_t = _coll.t;
+            coll.exists = true;
+            coll.point = _coll.point;
+            int s = -1;
+            if (i < 4) s = 1;
+            coll.normal = s * normal_for_rect(r);
+            coll.t = _coll.t;
+        }
+    }
+    return coll;
+}
+
 // ========================================
 // Material functions.
 // ========================================
 
 // Light should not be a parameter. All lights should contribute. -- Right?
 vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
-    return color * dot(normal, normalize(l.position - point));
+    float d = distance(l.position, point);
+    return color * dot(normal, normalize(l.position - point)) * 50 / (d*d);
 }
 
 float barrel(float r) {
@@ -214,31 +299,33 @@ void main() {
     //////
     float z_eye = 0.0;
     Sphere s;
-    s.r = 0.1;
-    s.center = vec3(0, sphere_y, -0.5);
+    s.r = 0.2;
+    s.center = vec3(0, sphere_y, -1.5);
 
     Plane p;
     p.normal = vec3(0, 1, 0);
     p.point  = vec3(0, -100, 0);
 
-    Rect r;
-    float w = 100;
-    float h = 100;
-    float z = -20;
-    r.a = vec3(-w, -h, z);
-    r.b = vec3(w , -h, z);
-    r.c = vec3(w , h , z);
-    r.d = vec3(-w, h , z);
+    Rect f;
+    float fw = 0.3;
+    f.a = vec3(-fw, -1.6, -fw);
+    f.b = vec3(10*fw,  -1.6, -fw);
+    f.c = vec3(10*fw,  -1.6, fw);
+    f.d = vec3(-fw, -1.6, fw);
 
-    Rect floor;
-    float fw = 10;
-    floor.a = vec3(-fw, -1, -fw);
-    floor.b = vec3(fw,  -1, -fw);
-    floor.c = vec3(fw,  -1, fw);
-    floor.d = vec3(-fw, -1, fw);
+    Cube c;
+    float cf = 20;
+    c.a = vec3(-cf, cf , -cf);
+    c.b = vec3(cf, cf , -cf);
+    c.c = vec3(cf, cf , cf);
+    c.d = vec3(-cf, cf , cf);
+    c.e = vec3(-cf, -cf , -cf);
+    c.f = vec3(cf, -cf , -cf);
+    c.g = vec3(cf, -cf , cf);
+    c.h = vec3(-cf, -cf , cf);
 
     Light l;
-    l.position = vec3(0, 3, 3);
+    l.position = vec3(-5, 5, 5);
     l.color    = vec3(1,1,1);
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
@@ -295,19 +382,16 @@ void main() {
             color = vec4(lambert(cf.point, normalize(cf.point - s.center), vec3(0,0,1), l), 1);
         }
 
-        CollisionFull cp = rect_collision(r, ray);
-        if (cp.exists && min_t > cp.t) {
-            min_t = cp.t;
-            color = vec4(1);
-            color = vec4(1,0,0,1);
-            color = vec4(lambert(cp.point, normalize(cross(r.c - r.b, r.d - r.b)), vec3(0,1,0), l), 1);
+        CollisionFull cs = rect_collision(f, ray);
+        if (cs.exists && min_t > cs.t) {
+            min_t = cs.t;
+            color = vec4(lambert(cs.point, -normal_for_rect(f), vec3(1), l), 0.8);
         }
-        cp = rect_collision(floor, ray);
-        if (cp.exists && min_t > cp.t) {
-            min_t = cp.t;
-            color = vec4(1);
-            color = vec4(1,0,0,1);
-            color = vec4(lambert(cp.point, normalize(cross(r.c - r.b, r.d - r.b)), vec3(0.5,0.5,0.5), l), 1);
+
+        CollisionCube cc = cube_collision(c, ray);
+        if (cc.exists && min_t > cc.t) {
+            min_t = cc.t;
+            color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
         }
         // TODO: Deal with possible negative min_t;
     }
