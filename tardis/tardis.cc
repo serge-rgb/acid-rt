@@ -92,7 +92,8 @@ void init(GLuint prog) {
 void draw() {
     GLCHK ( glUseProgram(g_program) );
 
-    glUniform1f(9, 1000.0f); // Set curr_compression to our containing volume's compression
+    glUniform1f(9, 2.0f); // Set curr_compression to our containing volume's compression
+    //glUniform1f(9, 500.0f); // Set curr_compression to our containing volume's compression
 
     static GLfloat sphere_y = 0.0f;
     static float step_var = 0.0;
