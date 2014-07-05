@@ -29,25 +29,15 @@ struct Ray {
     vec3 dir;
 };
 
-vec3 barycentric(Ray ray, vec3 p0, vec3 p1, vec3 p2) {
-    vec3 e1 = p1 - p0;
-    vec3 e2 = p2 - p0;
-    vec3 s  = ray.o - p0;
-    vec3 d = ray.dir;
-    vec3 q = cross(d, e2);
-    vec3 r = cross(s, e1);
-    float det = dot(q, e1);
-    if (det >= -EPSILON && det <= EPSILON) {
-        return vec3(-1, 0, 0);
-    }
-    return (1 / det) * vec3(dot(r, e2),
-                            dot(q, s),
-                            dot(r, d));
-}
-
 struct Plane {
     vec3 normal;
     vec3 point;
+};
+
+struct Triangle {
+    vec3 p0;
+    vec3 p1;
+    vec3 p2;
 };
 
 struct Rect {
@@ -70,7 +60,7 @@ struct Light {
 };
 
 vec3 normal_for_rect(Rect r) {
-    return normalize(cross(r.c - r.b, r.d - r.b));
+    return normalize(cross(r.a - r.b, r.d - r.b));
 }
 
 ////////////////////////////////////////
@@ -136,112 +126,109 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
     return coll;
 }
 
-Collision plane_collision_p(Plane p, Ray r) {
-    Collision coll;
-    coll.exists = false;
-
-    float disc = dot(r.dir, p.normal);
-    if (disc == 0) {
-        return coll;
-    }
-    coll.exists = true;
-    return coll;
+vec3 barycentric(Ray ray, Triangle tri) {
+    vec3 e1 = tri.p1 - tri.p0;
+    vec3 e2 = tri.p2 - tri.p0;
+    vec3 d = ray.dir;
+    vec3 q = cross(d, e2);
+    float det = dot(q, e1);
+    vec3 s  = ray.o - tri.p0;
+    vec3 r = cross(s, e1);
+    // Optimization note:
+    //   Brancing kills perf.
+    //   Defining unused vars before the if stmt is also bad.
+    /* if (det == 0) { */
+    /*     return vec3(-1,0,0); */
+    /* } */
+    return float(det == 0) * vec3(0) +
+            (1 - float(det == 0)) * (1 / det) * vec3(dot(r, e2),
+                                                    dot(q, s),
+                                                    dot(r, d));
 }
 
-CollisionFull plane_collision(Plane p, Ray r) {
-    CollisionFull coll;
-    coll.exists = false;
-    coll.t = -2;
-    float disc = dot(r.dir, p.normal);
-    if (disc == 0) {
-        return coll;
-    }
-
-    coll.exists = true;
-    float t = dot((p.point - r.o), p.normal);
-    coll.t = t;
-    if (t < 0) return coll;
-
-    coll.exists = true;
-    coll.point = r.o + (t * r.dir);
-
-    return coll;
-}
 
 CollisionFull rect_collision(Rect rect, Ray r) {
-    vec3 normal = normalize(cross(rect.c - rect.b, rect.d - rect.b));
-    Plane plane;
-    plane.normal = normal;
-    plane.point = rect.a;
-    CollisionFull coll = plane_collision(plane, r);
-
-    if (!coll.exists) {
-        return coll;
-    }
+    CollisionFull coll;
     coll.exists = false;
 
-    vec3 b_coord_0 = barycentric(r, rect.a, rect.b, rect.c);
-    vec3 b_coord_1 = barycentric(r, rect.a, rect.c, rect.d);
+    Triangle t0, t1;
+    t0.p0 = rect.a;
+    t0.p1 = rect.b;
+    t0.p2 = rect.c;
 
-    for (int i = 0; i < 2; i++)
-    {
-        vec3 b_coord;
-        if (i == 0) {
-            b_coord = b_coord_0;
-        } else {
-            b_coord = b_coord_1;
-        }
-        float z = 1 - b_coord.y - b_coord.z;
-        if (b_coord.x > 0 &&
+    t1.p0 = rect.a;
+    t1.p1 = rect.c;
+    t1.p2 = rect.d;
+
+    vec3 b_coord;
+    float z;
+    b_coord = barycentric(r, t0);
+
+    z = 1 - b_coord.y - b_coord.z;
+    if (b_coord.x > 0 &&
             b_coord.y <= 1.0 && b_coord.y >= 0 &&
             b_coord.z <= 1.0 && b_coord.z >= 0 &&
             z <= 1 && z >= 0)
-        {
-            coll.exists = true;
-            coll.t = b_coord.x;
-        }
-
+    {
+        coll.exists = true;
+        coll.t = b_coord.x;
+        coll.point = r.o + coll.t * r.dir;
     }
+
+    b_coord = barycentric(r, t1);
+    z = 1 - b_coord.y - b_coord.z;
+
+    if (b_coord.x > 0 &&
+            b_coord.y <= 1.0 && b_coord.y >= 0 &&
+            b_coord.z <= 1.0 && b_coord.z >= 0 &&
+            z <= 1 && z >= 0)
+    {
+        coll.exists = true;
+        coll.t = b_coord.x;
+        coll.point = r.o + coll.t * r.dir;
+    }
+
 
     return coll;
 }
 
 CollisionCube cube_collision(Cube c, Ray ray) {
     CollisionCube coll;
+    coll.exists = false;
+    Rect r;
+    float min_t = 1 << 16;
     for (int i = 0; i < 6; ++i) {
-        Rect r;
-        float min_t = 1 << 16;
         switch (i) {
             case 0: // Front
                 {
-                    r.a = c.e;
-                    r.b = c.f;
-                    r.c = c.b;
-                    r.d = c.a;
+                    r.a = c.a;
+                    r.b = c.e;
+                    r.c = c.f;
+                    r.d = c.b;
                 }
                 break;
-            case 1: // Right
+            case 1: // Left
                 {
-                    r.a = c.f;
-                    r.b = c.g;
-                    r.c = c.c;
-                    r.d = c.b;
+                    r.a = c.b;
+                    r.b = c.f;
+                    r.c = c.g;
+                    r.d = c.c;
                 }
                 break;
             case 2: // Back
                 {
-                    r.a = c.h;
+                    r.a = c.c;
                     r.b = c.g;
-                    r.c = c.c;
+                    r.c = c.h;
                     r.d = c.d;
                 }
                 break;
-            case 3: // Left
+            case 3: // Right
                 {
-                    r.a = c.h;
-                    r.b = c.e;
-                    r.c = c.a;
-                    r.d = c.d;
+                    r.a = c.d;
+                    r.b = c.h;
+                    r.c = c.e;
+                    r.d = c.a;
                 }
                 break;
             case 4: // Top
@@ -255,9 +242,9 @@ CollisionCube cube_collision(Cube c, Ray ray) {
             case 5: // Bottom
                 {
                     r.a = c.e;
-                    r.b = c.f;
+                    r.b = c.h;
                     r.c = c.g;
-                    r.d = c.h;
+                    r.d = c.f;
                 }
                 break;
         }
@@ -266,9 +253,7 @@ CollisionCube cube_collision(Cube c, Ray ray) {
             min_t = _coll.t;
             coll.exists = true;
             coll.point = _coll.point;
-            int s = -1;
-            if (i < 4) s = 1;
-            coll.normal = s * normal_for_rect(r);
+            coll.normal = normal_for_rect(r);
             coll.t = _coll.t;
         }
     }
@@ -281,8 +266,8 @@ CollisionCube cube_collision(Cube c, Ray ray) {
 
 // Light should not be a parameter. All lights should contribute. -- Right?
 vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
-    float d = distance(l.position, point);
-    return color * dot(normal, normalize(l.position - point)) * 50 / (d*d);
+    //return normal;
+    return color * dot(normal, normalize(l.position - point));
 }
 
 float barrel(float r) {
@@ -293,40 +278,59 @@ float barrel(float r) {
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
+////////////////////////////////////////
+// Primitive creation funcs.
+////////////////////////////////////////
+Cube MakeCube(vec3 center, vec3 size) {
+    Cube c;
+    c.a = vec3(-size.x, size.y , -size.z) + center;
+    c.b = vec3(size.x, size.y , -size.z) + center;
+    c.c = vec3(size.x, size.y , size.z) + center;
+    c.d = vec3(-size.x, size.y , size.z) + center;
+    c.e = vec3(-size.x, -size.y , -size.z) + center;
+    c.f = vec3(size.x, -size.y , -size.z) + center;
+    c.g = vec3(size.x, -size.y , size.z) + center;
+    c.h = vec3(-size.x, -size.y , size.z) + center;
+    return c;
+}
+
+Cube rotate_cube(Cube c, vec4 q) {
+    c.a = rotate_vector_quat(c.a, q);
+    c.b = rotate_vector_quat(c.b, q);
+    c.c = rotate_vector_quat(c.c, q);
+    c.d = rotate_vector_quat(c.d, q);
+    c.e = rotate_vector_quat(c.e, q);
+    c.f = rotate_vector_quat(c.f, q);
+    c.g = rotate_vector_quat(c.g, q);
+    c.h = rotate_vector_quat(c.h, q);
+    return c;
+}
+
 void main() {
     //////
     // global
     //////
-    float z_eye = 0.0;
-    Sphere s;
-    s.r = 0.2;
-    s.center = vec3(0, sphere_y, -1.5);
 
-    Plane p;
-    p.normal = vec3(0, 1, 0);
-    p.point  = vec3(0, -100, 0);
+    Light l;
+    l.position = vec3(20, 20, 20);
+    l.position = vec3(0, 1, 1);
+    l.color    = vec3(1,1,1);
+
+    Sphere s;
+    s.r = 0.3;
+    s.center = vec3(1*sphere_y, 1, -1);
 
     Rect f;
     float fw = 0.3;
-    f.a = vec3(-fw, -1.6, -fw);
-    f.b = vec3(10*fw,  -1.6, -fw);
-    f.c = vec3(10*fw,  -1.6, fw);
-    f.d = vec3(-fw, -1.6, fw);
+    f.a = vec3(-fw, -0.1, -fw);
+    f.b = vec3(fw,  -0.1, -fw);
+    f.c = vec3(fw,  -0.1, fw);
+    f.d = vec3(-fw, -0.1, fw);
 
-    Cube c;
-    float cf = 20;
-    c.a = vec3(-cf, cf , -cf);
-    c.b = vec3(cf, cf , -cf);
-    c.c = vec3(cf, cf , cf);
-    c.d = vec3(-cf, cf , cf);
-    c.e = vec3(-cf, -cf , -cf);
-    c.f = vec3(cf, -cf , -cf);
-    c.g = vec3(cf, -cf , cf);
-    c.h = vec3(-cf, -cf , cf);
+    Cube c = MakeCube(vec3(0,0,-0.5), vec3(0.1));
+    c = rotate_cube(c, (sphere_y, vec4(sphere_y, 0,1,0)));
 
-    Light l;
-    l.position = vec3(-5, 5, 5);
-    l.color    = vec3(1,1,1);
+    Cube room = MakeCube(vec3(0,0,0), vec3(50));
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
@@ -375,23 +379,31 @@ void main() {
 
         float min_t = 1 << 16;    // Z-buffer substitute
 
-        color = vec4(0.1, 0.1, 0.5, 1);
-        CollisionFull cf = sphere_collision(s, ray);
-        if (cf.exists && min_t > cf.t) {
-            min_t = cf.t;
-            color = vec4(lambert(cf.point, normalize(cf.point - s.center), vec3(0,0,1), l), 1);
+        color = vec4(1, 1, 1, 1);
+
+        CollisionFull cs = sphere_collision(s, ray);
+        if (true && cs.exists && min_t > cs.t) {
+            min_t = cs.t;
+            color = vec4(lambert(cs.point, normalize(cs.point - s.center), vec3(0,0,1), l), 1);
         }
 
-        CollisionFull cs = rect_collision(f, ray);
-        if (cs.exists && min_t > cs.t) {
-            min_t = cs.t;
-            color = vec4(lambert(cs.point, -normal_for_rect(f), vec3(1), l), 0.8);
+        CollisionFull cr;
+        for (int i = 0; i < 1000; ++i)
+        cr = rect_collision(f, ray);
+        if (cr.exists && min_t > cr.t) {
+            min_t = cr.t;
+            color = vec4(lambert(cr.point, normal_for_rect(f), vec3(1), l), 0.8);
         }
 
         CollisionCube cc = cube_collision(c, ray);
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
             color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
+        }
+        cc = cube_collision(room, ray);
+        if (cc.exists && min_t > cc.t) {
+            min_t = cc.t;
+            color = vec4(lambert(cc.point, -cc.normal, vec3(0.4, 0.4, 0.4), l), 1);
         }
         // TODO: Deal with possible negative min_t;
     }
