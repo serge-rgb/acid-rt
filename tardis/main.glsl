@@ -160,34 +160,32 @@ CollisionFull rect_collision(Rect rect, Ray r) {
     t1.p1 = rect.c;
     t1.p2 = rect.d;
 
-    vec3 b_coord;
+    vec3 b_coord0;
+    vec3 b_coord1;
     float z;
-    b_coord = barycentric(r, t0);
+    b_coord0 = barycentric(r, t0);
+    b_coord1 = barycentric(r, t1);
 
-    z = 1 - b_coord.y - b_coord.z;
-    if (b_coord.x > 0 &&
-            b_coord.y <= 1.0 && b_coord.y >= 0 &&
-            b_coord.z <= 1.0 && b_coord.z >= 0 &&
-            z <= 1 && z >= 0)
+    z = 1 - b_coord0.y - b_coord0.z;
+    float check0 = float
+            (b_coord0.x > 0 &&
+            b_coord0.y <= 1.0 && b_coord0.y >= 0 &&
+            b_coord0.z <= 1.0 && b_coord0.z >= 0 &&
+            z <= 1 && z >= 0);
+    z = 1 - b_coord1.y - b_coord1.z;
+    float check1 = float
+            (b_coord1.x > 0 &&
+            b_coord1.y <= 1.0 && b_coord1.y >= 0 &&
+            b_coord1.z <= 1.0 && b_coord1.z >= 0 &&
+            z <= 1 && z >= 0);
+
+    coll.exists = bool(check0) || bool(check1);
+
+    if (coll.exists)
     {
-        coll.exists = true;
-        coll.t = b_coord.x;
+        coll.t = check0 * b_coord0.x + check1 * b_coord1;
         coll.point = r.o + coll.t * r.dir;
     }
-
-    b_coord = barycentric(r, t1);
-    z = 1 - b_coord.y - b_coord.z;
-
-    if (b_coord.x > 0 &&
-            b_coord.y <= 1.0 && b_coord.y >= 0 &&
-            b_coord.z <= 1.0 && b_coord.z >= 0 &&
-            z <= 1 && z >= 0)
-    {
-        coll.exists = true;
-        coll.t = b_coord.x;
-        coll.point = r.o + coll.t * r.dir;
-    }
-
 
     return coll;
 }
