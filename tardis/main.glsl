@@ -386,14 +386,15 @@ void main() {
         }
 
         CollisionFull cr;
-        for (int i = 0; i < 1000; ++i)
         cr = rect_collision(f, ray);
         if (cr.exists && min_t > cr.t) {
             min_t = cr.t;
             color = vec4(lambert(cr.point, normal_for_rect(f), vec3(1), l), 0.8);
         }
 
-        CollisionCube cc = cube_collision(c, ray);
+        CollisionCube cc;
+        for (int i = 0; i < 500; ++i)
+        cc = cube_collision(c, ray);
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
             color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
