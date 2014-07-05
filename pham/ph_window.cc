@@ -89,7 +89,7 @@ void draw_loop(WindowProc func) {
     //=========================================
     double total_time_ms = 0;
     int64 num_frames = 1;
-    int ms_per_frame = 16;
+    double ms_per_frame = 13.3333;
     while (!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
 
@@ -114,6 +114,7 @@ void draw_loop(WindowProc func) {
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
+                //printf("Frame time: %fms\n", diff_ms);
             }
         }
 

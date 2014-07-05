@@ -191,69 +191,94 @@ CollisionFull rect_collision(Rect rect, Ray r) {
 }
 
 CollisionCube cube_collision(Cube c, Ray ray) {
-    CollisionCube coll;
+    CollisionCube coll;  // Final coll
+    CollisionFull _coll;  // Use it for each rect.
     coll.exists = false;
     Rect r;
     float min_t = 1 << 16;
-    for (int i = 0; i < 6; ++i) {
-        switch (i) {
-            case 0: // Front
-                {
-                    r.a = c.a;
-                    r.b = c.e;
-                    r.c = c.f;
-                    r.d = c.b;
-                }
-                break;
-            case 1: // Left
-                {
-                    r.a = c.b;
-                    r.b = c.f;
-                    r.c = c.g;
-                    r.d = c.c;
-                }
-                break;
-            case 2: // Back
-                {
-                    r.a = c.c;
-                    r.b = c.g;
-                    r.c = c.h;
-                    r.d = c.d;
-                }
-                break;
-            case 3: // Right
-                {
-                    r.a = c.d;
-                    r.b = c.h;
-                    r.c = c.e;
-                    r.d = c.a;
-                }
-                break;
-            case 4: // Top
-                {
-                    r.a = c.a;
-                    r.b = c.b;
-                    r.c = c.c;
-                    r.d = c.d;
-                }
-                break;
-            case 5: // Bottom
-                {
-                    r.a = c.e;
-                    r.b = c.h;
-                    r.c = c.g;
-                    r.d = c.f;
-                }
-                break;
-        }
-        CollisionFull _coll = rect_collision(r, ray);
-        if (_coll.exists && _coll.t < min_t) {
-            min_t = _coll.t;
-            coll.exists = true;
-            coll.point = _coll.point;
-            coll.normal = normal_for_rect(r);
-            coll.t = _coll.t;
-        }
+// Front
+    r.a = c.a;
+    r.b = c.e;
+    r.c = c.f;
+    r.d = c.b;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
+    }
+// Left
+    r.a = c.b;
+    r.b = c.f;
+    r.c = c.g;
+    r.d = c.c;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
+    }
+// Back
+    r.a = c.c;
+    r.b = c.g;
+    r.c = c.h;
+    r.d = c.d;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
+    }
+// Right
+    r.a = c.d;
+    r.b = c.h;
+    r.c = c.e;
+    r.d = c.a;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
+    }
+// Top
+    r.a = c.a;
+    r.b = c.b;
+    r.c = c.c;
+    r.d = c.d;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
+    }
+// Bottom
+    r.a = c.e;
+    r.b = c.h;
+    r.c = c.g;
+    r.d = c.f;
+    _coll = rect_collision(r, ray);
+
+    if (_coll.exists && _coll.t < min_t) {
+        min_t = _coll.t;
+        coll.exists = true;
+        coll.point = _coll.point;
+        coll.normal = normal_for_rect(r);
+        coll.t = _coll.t;
     }
     return coll;
 }
@@ -393,7 +418,6 @@ void main() {
         }
 
         CollisionCube cc;
-        for (int i = 0; i < 500; ++i)
         cc = cube_collision(c, ray);
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
