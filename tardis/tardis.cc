@@ -63,6 +63,45 @@ void deinit() {
 
 }  // ns vr
 
+enum {
+    Control_W = 1 << 0,
+    Control_A = 1 << 1,
+    Control_S = 1 << 2,
+    Control_D = 1 << 3,
+};
+
+static int pressed = 0;
+
+static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+       pressed |= Control_W;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+       pressed |= Control_A;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+       pressed |= Control_S;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+       pressed |= Control_D;
+    }
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
+       pressed &= ~Control_W;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+       pressed &= ~Control_A;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
+       pressed &= ~Control_S;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+       pressed &= ~Control_D;
+    }
+}
+
 static GLuint g_program;
 /* static int g_size[] = {1920, 1080}; */
 static int g_size[] = {1280, 800};
@@ -117,8 +156,43 @@ void draw() {
     GLfloat quat[4] {
         q.x, q.y, q.z, q.w,
     };
-    //printf("Orientation x is %f, %f, %f, %f\n", q.x, q.y, q.z, q.w);
     glUniform4fv(7, 1, quat);
+
+    static GLfloat camera_pos[2] = {0, 0};
+    static GLfloat cam_step = 0.05f;
+    auto glm_q = glm::quat(quat[0], quat[1], quat[2], quat[3]);
+    GLfloat angle = glm::eulerAngles(glm_q)[1];
+    // Degrees to radian.
+    angle = (-angle / 180) * 3.141526f;
+    printf("angle: %f\n", angle);
+    GLfloat cam_step_x;
+    GLfloat cam_step_y;
+
+    if (pressed & Control_W) {
+        cam_step_x = cam_step * cosf(angle);
+        cam_step_y = cam_step * sinf(angle);
+        camera_pos[0] -= cam_step_x;
+        camera_pos[1] -= cam_step_y;
+    }
+    if (pressed & Control_S) {
+        cam_step_x = cam_step * cosf(angle);
+        cam_step_y = cam_step * sinf(angle);
+        camera_pos[0] += cam_step_x;
+        camera_pos[1] += cam_step_y;
+    }
+    if (pressed & Control_A) {
+        cam_step_x = cam_step * cosf(angle + 3.14f/2);
+        cam_step_y = cam_step * sinf(angle + 3.14f/2);
+        camera_pos[0] -= cam_step_x;
+        camera_pos[1] -= cam_step_y;
+    }
+    if (pressed & Control_D) {
+        cam_step_x = cam_step * cosf(angle + 3.14f/2);
+        cam_step_y = cam_step * sinf(angle + 3.14f/2);
+        camera_pos[0] += cam_step_x;
+        camera_pos[1] += cam_step_y;
+    }
+    glUniform2fv(10, 1, camera_pos);  // update camera_pos
 
     // Dispatch left viewport
     {
@@ -155,7 +229,11 @@ int main() {
     vr::init();
     ph::init();
 
-    window::init("Project TARDIS", g_size[0], g_size[1], window::InitFlag_no_decoration);
+    window::init("Project TARDIS", g_size[0], g_size[1],
+            window::InitFlag(window::InitFlag_NoDecoration |
+             window::InitFlag_OverrideKeyCallback));
+
+    glfwSetKeyCallback(ph::window::m_window, key_callback);
 
     const char* paths[] = {
         "tardis/main.glsl",

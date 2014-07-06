@@ -1,15 +1,16 @@
 #version 430
 
-layout(location = 0) uniform vec2 screen_size;        // One eye! (960, 1080 for DK2)
-layout(location = 1) writeonly uniform image2D tex;   // This is the image we write to.
-layout(location = 2) uniform float x_offset;          // In pixels, for separate viewports.
-layout(location = 3) uniform float eye_to_lens_m;
-layout(location = 4) uniform float sphere_y;          // TEST
-layout(location = 5) uniform vec2 screen_size_m;      // In meters.
-layout(location = 6) uniform vec2 lens_center_m;      // Lens center.
-layout(location = 7) uniform vec4 orientation_q;      // Orientation quaternion.
-layout(location = 8) uniform bool occlude;            // Flag for occlusion circle
-layout(location = 9) uniform float curr_compression;  // Space compression from our perspective.
+layout(location = 0) uniform vec2 screen_size;          // One eye! (960, 1080 for DK2)
+layout(location = 1) writeonly uniform image2D tex;     // This is the image we write to.
+layout(location = 2) uniform float x_offset;            // In pixels, for separate viewports.
+layout(location = 3) uniform float eye_to_lens_m;       //
+layout(location = 4) uniform float sphere_y;            // TEST
+layout(location = 5) uniform vec2 screen_size_m;        // In meters.
+layout(location = 6) uniform vec2 lens_center_m;        // Lens center.
+layout(location = 7) uniform vec4 orientation_q;        // Orientation quaternion.
+layout(location = 8) uniform bool occlude;              // Flag for occlusion circle
+layout(location = 9) uniform float curr_compression;    // Space compression from our perspective.
+layout(location = 10) uniform vec2 camera_pos;          //
 
 
 float PI = 3.141526;
@@ -297,8 +298,8 @@ vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 300;
-    float k2 = 800.0;
+    float k1 = 320;
+    float k2 = 1000.0;
     float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
@@ -389,8 +390,14 @@ void main() {
     // get it before we rotate everything..
     // Normalize to curr_compression because barrel distortion is hard-wired to physical screen size.
     float radius_sq = curr_compression * curr_compression * ((point.x * point.x) + (point.y * point.y));
+    point *= barrel(radius_sq);
 
     point = rotate_vector_quat(point, orientation_q);
+
+    // Camera move!
+    eye.zx += camera_pos.xy;
+    point.zx += camera_pos.xy;
+
 
     vec4 color;  // This ends up written to the image.
 
@@ -398,7 +405,7 @@ void main() {
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
-        ray.o = point * barrel(radius_sq);
+        ray.o = point;
         ray.dir = ray.o - eye;
 
         float min_t = 1 << 16;    // Z-buffer substitute
@@ -434,11 +441,11 @@ void main() {
             sr.dir = l.position - sr.o;
             CollisionCube sc = cube_collision(c, sr);
             if (sc.exists && sc.t < 1) {
-                color = vec4(0);
+                color = mix(color, vec4(0), 0.5);
             }
             sc = cube_collision(c2, sr);
             if (sc.exists && sc.t < 1) {
-                color = vec4(0);
+                color = mix(color, vec4(0), 0.5);
             }
         }
 
@@ -455,10 +462,14 @@ void main() {
             sr.dir = l.position - sr.o;
             CollisionCube sc = cube_collision(c, sr);
             if (sc.exists) {
-                color = vec4(0);
+                color = mix(color, vec4(0), 0.5);
             }
             sc = cube_collision(c2, sr);
-            if (sc.exists) color = vec4(0);
+            if (sc.exists)
+            {
+
+                color = mix(color, vec4(0), 0.5);
+            }
         }
 
         // TODO: Deal with possible negative min_t;

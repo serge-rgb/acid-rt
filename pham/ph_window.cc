@@ -4,7 +4,7 @@
 
 namespace ph {
 namespace window {
-static GLFWwindow*  m_window;
+GLFWwindow*  m_window = NULL;
 static GLFWmonitor* m_rift_monitor;
 
 ////////////////////////////////////////
@@ -31,7 +31,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_RESIZABLE, false);
-    if (flags & InitFlag_no_decoration) {
+    if (flags & InitFlag_NoDecoration) {
         glfwWindowHint(GLFW_DECORATED, false);
     }
 
@@ -77,7 +77,9 @@ void init(const char* title, int width, int height, InitFlag flags) {
     printf("GL version is %d.%d\n", gl_version[0], gl_version[1]);
 
     glfwSetErrorCallback(error_callback);
-    glfwSetKeyCallback(m_window, key_callback);
+    if (!(flags & InitFlag_OverrideKeyCallback)) {
+        glfwSetKeyCallback(m_window, key_callback);
+    }
 
     glfwMakeContextCurrent(m_window);
 
@@ -114,7 +116,7 @@ void draw_loop(WindowProc func) {
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
-                printf("Frame time: %fms\n", diff_ms);
+                //printf("Frame time: %fms\n", diff_ms);
             }
         }
 

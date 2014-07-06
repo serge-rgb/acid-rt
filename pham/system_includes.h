@@ -3,6 +3,7 @@
 #pragma clang system_header
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #ifdef PH_OVR
 #include <OVR.h>
 
