@@ -143,10 +143,10 @@ void draw() {
         GLCHK ( glDispatchCompute(GLuint(g_viewport_size[0] / g_warpsize[0]),
                     GLuint(g_viewport_size[1] / g_warpsize[1]), 1) );
     }
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     frame_index++;
     ovrHmd_EndFrame(vr::m_hmd);
 
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     // Draw screen
     cs::fill_screen();
 }

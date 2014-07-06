@@ -45,6 +45,7 @@ struct Rect {
 };
 
 struct Cube {
+    vec3 center;
     vec3 a,b,c,d,e,f,g,h;
 };
 
@@ -190,6 +191,7 @@ CollisionFull rect_collision(Rect rect, Ray r) {
     return coll;
 }
 
+// Perf note: this approach is about 33% slower than rendering 6 arbitrary rects.
 CollisionCube cube_collision(Cube c, Ray ray) {
     CollisionCube coll;  // Final coll
     CollisionFull _coll;  // Use it for each rect.
@@ -306,6 +308,7 @@ float barrel(float r) {
 ////////////////////////////////////////
 Cube MakeCube(vec3 center, vec3 size) {
     Cube c;
+    c.center = center;
     c.a = vec3(-size.x, size.y , -size.z) + center;
     c.b = vec3(size.x, size.y , -size.z) + center;
     c.c = vec3(size.x, size.y , size.z) + center;
@@ -318,14 +321,14 @@ Cube MakeCube(vec3 center, vec3 size) {
 }
 
 Cube rotate_cube(Cube c, vec4 q) {
-    c.a = rotate_vector_quat(c.a, q);
-    c.b = rotate_vector_quat(c.b, q);
-    c.c = rotate_vector_quat(c.c, q);
-    c.d = rotate_vector_quat(c.d, q);
-    c.e = rotate_vector_quat(c.e, q);
-    c.f = rotate_vector_quat(c.f, q);
-    c.g = rotate_vector_quat(c.g, q);
-    c.h = rotate_vector_quat(c.h, q);
+    c.a = c.center + rotate_vector_quat(c.a - c.center, q);
+    c.b = c.center + rotate_vector_quat(c.b - c.center, q);
+    c.c = c.center + rotate_vector_quat(c.c - c.center, q);
+    c.d = c.center + rotate_vector_quat(c.d - c.center, q);
+    c.e = c.center + rotate_vector_quat(c.e - c.center, q);
+    c.f = c.center + rotate_vector_quat(c.f - c.center, q);
+    c.g = c.center + rotate_vector_quat(c.g - c.center, q);
+    c.h = c.center + rotate_vector_quat(c.h - c.center, q);
     return c;
 }
 
@@ -335,25 +338,23 @@ void main() {
     //////
 
     Light l;
-    l.position = vec3(20, 20, 20);
-    l.position = vec3(0, 1, 1);
+    l.position = vec3(0, 1.5, -1.5);
     l.color    = vec3(1,1,1);
 
-    Sphere s;
-    s.r = 0.3;
-    s.center = vec3(1*sphere_y, 1, -1);
-
     Rect f;
-    float fw = 0.3;
-    f.a = vec3(-fw, -0.1, -fw);
-    f.b = vec3(fw,  -0.1, -fw);
-    f.c = vec3(fw,  -0.1, fw);
-    f.d = vec3(-fw, -0.1, fw);
+    float fw = 1.8;
+    float fz = -1;
+    f.a = vec3(-fw, -.5, -fw + fz);
+    f.b = vec3(fw,  -.5, -fw + fz);
+    f.c = vec3(fw,  -.5, fw + fz);
+    f.d = vec3(-fw, -.5, fw + fz);
 
-    Cube c = MakeCube(vec3(0,0,-0.5), vec3(0.1));
-    c = rotate_cube(c, (sphere_y, vec4(sphere_y, 0,1,0)));
+    Cube c = MakeCube(vec3(0,0,-2.0), vec3(0.1));
+    c = rotate_cube(c, normalize(vec4(0,1,1, sphere_y*10)));
 
-    Cube room = MakeCube(vec3(0,0,0), vec3(50));
+    Cube c2 = MakeCube(vec3(0, 0.5, -1.9 + sphere_y), vec3(0.05));
+
+    Cube room = MakeCube(vec3(0,0,0), vec3(10));
 
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
@@ -404,30 +405,62 @@ void main() {
 
         color = vec4(1, 1, 1, 1);
 
-        CollisionFull cs = sphere_collision(s, ray);
-        if (true && cs.exists && min_t > cs.t) {
-            min_t = cs.t;
-            color = vec4(lambert(cs.point, normalize(cs.point - s.center), vec3(0,0,1), l), 1);
-        }
-
-        CollisionFull cr;
-        cr = rect_collision(f, ray);
-        if (cr.exists && min_t > cr.t) {
-            min_t = cr.t;
-            color = vec4(lambert(cr.point, normal_for_rect(f), vec3(1), l), 0.8);
-        }
-
         CollisionCube cc;
         cc = cube_collision(c, ray);
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
             color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
+            Ray sr;
+            sr.o = cc.point;
+            sr.dir = l.position - sr.o;
+            CollisionCube sc  = cube_collision(c2, sr);
+            if (sc.exists) {
+                color = mix(color, vec4(0), 0.5);
+            }
         }
+
+        cc = cube_collision(c2, ray);
+        if (cc.exists && min_t > cc.t) {
+            min_t = cc.t;
+            color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
+        }
+
         cc = cube_collision(room, ray);
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
             color = vec4(lambert(cc.point, -cc.normal, vec3(0.4, 0.4, 0.4), l), 1);
+            Ray sr;
+            sr.o = cc.point;
+            sr.dir = l.position - sr.o;
+            CollisionCube sc = cube_collision(c, sr);
+            if (sc.exists && sc.t < 1) {
+                color = vec4(0);
+            }
+            sc = cube_collision(c2, sr);
+            if (sc.exists && sc.t < 1) {
+                color = vec4(0);
+            }
         }
+
+// Transparent shit
+        CollisionFull cr;
+        cr = rect_collision(f, ray);
+        if (cr.exists && cr.t < min_t) {
+            min_t = cr.t;
+            color = 0.5*vec4(lambert(cr.point, normal_for_rect(f), vec3(1), l), 0.5) + 0.5 * color;
+
+            // Demo: Collide against rect.
+            Ray sr;
+            sr.o = cr.point;
+            sr.dir = l.position - sr.o;
+            CollisionCube sc = cube_collision(c, sr);
+            if (sc.exists) {
+                color = vec4(0);
+            }
+            sc = cube_collision(c2, sr);
+            if (sc.exists) color = vec4(0);
+        }
+
         // TODO: Deal with possible negative min_t;
     }
 
