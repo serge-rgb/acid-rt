@@ -131,9 +131,6 @@ void init(GLuint prog) {
 void draw() {
     GLCHK ( glUseProgram(g_program) );
 
-    glUniform1f(9, 2.0f); // Set curr_compression to our containing volume's compression
-    //glUniform1f(9, 500.0f); // Set curr_compression to our containing volume's compression
-
     static GLfloat sphere_y = 0.0f;
     static float step_var = 0.0;
     sphere_y = 0.2f * sinf(step_var);
@@ -159,12 +156,11 @@ void draw() {
     glUniform4fv(7, 1, quat);
 
     static GLfloat camera_pos[2] = {0, 0};
-    static GLfloat cam_step = 0.05f;
+    static GLfloat cam_step = 0.03f;
     auto glm_q = glm::quat(quat[0], quat[1], quat[2], quat[3]);
     GLfloat angle = glm::eulerAngles(glm_q)[1];
     // Degrees to radian.
     angle = (-angle / 180) * 3.141526f;
-    printf("angle: %f\n", angle);
     GLfloat cam_step_x;
     GLfloat cam_step_y;
 

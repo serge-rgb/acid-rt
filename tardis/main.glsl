@@ -9,7 +9,7 @@ layout(location = 5) uniform vec2 screen_size_m;        // In meters.
 layout(location = 6) uniform vec2 lens_center_m;        // Lens center.
 layout(location = 7) uniform vec4 orientation_q;        // Orientation quaternion.
 layout(location = 8) uniform bool occlude;              // Flag for occlusion circle
-layout(location = 9) uniform float curr_compression;    // Space compression from our perspective.
+// 9 unused
 layout(location = 10) uniform vec2 camera_pos;          //
 
 
@@ -62,7 +62,7 @@ struct Light {
 };
 
 vec3 normal_for_rect(Rect r) {
-    return normalize(cross(r.a - r.b, r.d - r.b));
+    return normalize(cross(r.a - r.b, r.c - r.b));
 }
 
 ////////////////////////////////////////
@@ -138,7 +138,7 @@ vec3 barycentric(Ray ray, Triangle tri) {
     vec3 r = cross(s, e1);
     // Optimization note:
     //   Brancing kills perf.
-    //   Defining unused vars before the if stmt is also bad.
+    //   Defining unused vars after the if stmt is also bad.
     /* if (det == 0) { */
     /*     return vec3(-1,0,0); */
     /* } */
@@ -363,10 +363,6 @@ void main() {
     // The eye is a physically accurate position (in meters) of the ... ey
     vec3 eye = vec3(0, 0, eye_to_lens_m);
 
-    // The compression of the volume we are currently in.
-    eye.z /= curr_compression;
-
-
     // Rotate eye
     // ....
     eye = rotate_vector_quat(eye, orientation_q);
@@ -380,24 +376,21 @@ void main() {
     // We need to convert it to meters relative to the screen.
     point.xy *= screen_size_m;
 
-    // ... we need to take into account the current compression.
-    point.xy /= curr_compression;
     // Center the point at zero (lens center)
-    point.x -= lens_center_m.x / curr_compression;
-    point.y -= lens_center_m.y / curr_compression;
+    point.x -= lens_center_m.x;
+    point.y -= lens_center_m.y;
 
     // Radius squared. Used for culling and distortion correction.
     // get it before we rotate everything..
-    // Normalize to curr_compression because barrel distortion is hard-wired to physical screen size.
-    float radius_sq = curr_compression * curr_compression * ((point.x * point.x) + (point.y * point.y));
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
+
     point *= barrel(radius_sq);
 
     point = rotate_vector_quat(point, orientation_q);
 
-    // Camera move!
+    // Camera movement
     eye.zx += camera_pos.xy;
     point.zx += camera_pos.xy;
-
 
     vec4 color;  // This ends up written to the image.
 
@@ -465,9 +458,7 @@ void main() {
                 color = mix(color, vec4(0), 0.5);
             }
             sc = cube_collision(c2, sr);
-            if (sc.exists)
-            {
-
+            if (sc.exists) {
                 color = mix(color, vec4(0), 0.5);
             }
         }
