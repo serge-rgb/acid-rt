@@ -12,13 +12,8 @@ layout(location = 8) uniform bool occlude;              // Flag for occlusion ci
 // 9 unused
 layout(location = 10) uniform vec2 camera_pos;          //
 
-
-
 float PI = 3.141526;
 float EPSILON = 0.00000000;
-
-// warp size: 64. (optimal warp size for my nvidia card)
-layout(local_size_x = 8, local_size_y = 8) in;
 
 vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
     vec3 i = -quat.xyz;
@@ -42,8 +37,8 @@ struct Triangle {
     vec3 p2;
 };
 
-layout(binding = 0) buffer TrianglePool {
-    float data[];
+layout(std430, binding = 0) buffer TrianglePool {
+    Triangle data[];
 } triangle_pool;
 
 struct Rect {
@@ -152,7 +147,6 @@ vec3 barycentric(Ray ray, Triangle tri) {
     /*                                                 dot(r, ray.dir)); */
     return (1 / det) * vec3(dot(r, e2), dot(q,s), dot(r,ray.dir));
 }
-
 
 CollisionFull rect_collision(Rect rect, Ray r) {
     CollisionFull coll;
@@ -338,6 +332,8 @@ Cube rotate_cube(Cube c, vec4 q) {
     return c;
 }
 
+// warp size: 64. (optimal warp size for my nvidia card)
+layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
     //////
     // global
@@ -467,29 +463,14 @@ void main() {
                 color = mix(color, vec4(0), 0.5);
             }
         }
-
-        vec3 p0;
-        vec3 p1;
-        vec3 p2;
-        p0.x = triangle_pool.data[0];
-        p0.y = triangle_pool.data[1];
-        p0.z = triangle_pool.data[2];
-        p1.x = triangle_pool.data[3];
-        p1.y = triangle_pool.data[4];
-        p1.z = triangle_pool.data[5];
-        p2.x = triangle_pool.data[6];
-        p2.y = triangle_pool.data[7];
-        p2.z = triangle_pool.data[8];
-        Triangle tri;
-        tri.p0 = p0;
-        tri.p1 = p1;
-        tri.p2 = p2;
-        vec3 bar = barycentric(ray, tri);
-        if (bar.x > 0 &&
-            bar.y < 1 && bar.y > 0 &&
-            bar.z < 1 && bar.z > 0 &&
-            (bar.y + bar.z) < 1) {
-            color = vec4(bar.y*0, bar.z, 0, 1);
+        for (int i = 0; i < triangle_pool.data.length(); ++i) {
+            vec3 bar = barycentric(ray, triangle_pool.data[i]);
+            if (bar.x > 0 &&
+                    bar.y < 1 && bar.y > 0 &&
+                    bar.z < 1 && bar.z > 0 &&
+                    (bar.y + bar.z) < 1) {
+                color = vec4(bar.y*0, bar.z, 0, 1);
+            }
         }
         // TODO: Deal with possible negative min_t;
     }

@@ -103,8 +103,10 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 static GLuint g_program;
+static GLuint g_green_prog;  // Program to fill the viewport green (debug mem barrier)
 /* static int g_size[] = {1920, 1080}; */
 static int g_size[] = {1280, 800};
+/* static int g_size[] = {640, 400}; */
 // Note: perf is really sensitive about this. Runtime tweak?
 static int g_warpsize[] = {8, 8};
 static GLfloat g_viewport_size[2];
@@ -125,20 +127,36 @@ void init(GLuint prog) {
     glUniform2fv(5, 1, size_m);  // screen_size in meters
     glUniform1f(8, true);  // Occlude?
 
-    GLfloat triangle[] = {
-        0, 0, -2,
-        -0.1f, 0, -2,
-        0, 0.2f, -2,
+    struct vec3 {
+        float x;
+        float y;
+        float z;
+        float _padding;
     };
+    struct Triangle {
+        vec3 p0;
+        vec3 p1;
+        vec3 p2;
+    };
+
+    Triangle t0 = {
+        {0,0,-2,0},
+        {-0.1f,0,-2,0},
+        {0,0.1f,-2,0},
+    };
+    Triangle t1 = {
+        {0,0,-2,0},
+        {0,-0.1f,-2,0},
+        {-0.1f,0,-2,0},
+    };
+    Triangle triangles[] = {t0, t1};
 
     GLuint point_buffer;
     glGenBuffers(1, &point_buffer);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 9 * sizeof(GLfloat), (GLvoid*)&triangle, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer);
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-
     GLCHK();
+    GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer) );
+    GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(triangles), (GLvoid*)&triangles, GL_DYNAMIC_COPY) );
+    GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer) );
 }
 
 void draw() {
@@ -203,6 +221,21 @@ void draw() {
     }
     glUniform2fv(10, 1, camera_pos);  // update camera_pos
 
+    // Draw green screen
+    GLCHK ( glUseProgram(g_green_prog) );
+    {
+        GLfloat lens_center[2] = {
+            (vr::m_renderinfo->ScreenSizeInMeters.w / 2) -
+                (vr::m_renderinfo->LensSeparationInMeters / 2),
+            vr::m_hmdinfo->CenterFromTopInMeters,
+        };
+        glUniform2fv(6, 1, lens_center);  // Lens center
+        glUniform1f(2, 0);  // x_offset
+        GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
+                    GLuint(g_size[1] / g_warpsize[1]), 1) );
+    }
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    GLCHK ( glUseProgram(g_program) );
     // Dispatch left viewport
     {
         GLfloat lens_center[2] = {
@@ -249,8 +282,11 @@ int main() {
     };
 
     g_program = cs::init(g_size[0], g_size[1], paths, 1);
+    const char* test_path = "tardis/green.glsl";
+    g_green_prog = cs::init(g_size[0], g_size[1], &test_path, 1);
 
     init(g_program);
+    init(g_green_prog);
 
     window::draw_loop(draw);
 
