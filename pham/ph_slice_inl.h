@@ -55,8 +55,9 @@ void release(Slice<T>*) {
 }
 
 // Add an element to the end.
+// Returns the location of the element in the array
 template<typename T>
-void append(Slice<T>* slice, T elem) {
+int64 append(Slice<T>* slice, T elem) {
     if (slice->n_elems > 0 && slice->n_capacity == slice->n_elems) {
         slice->n_capacity *= 2;
 #if defined(PH_SLICES_ARE_MANUAL)
@@ -70,7 +71,7 @@ void append(Slice<T>* slice, T elem) {
 #endif
     }
     slice->ptr[slice->n_elems] = elem;
-    slice->n_elems++;
+    return (int64)slice->n_elems++;
 }
 /*
  * NOT IN USE

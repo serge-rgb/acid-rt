@@ -112,29 +112,137 @@ static int g_warpsize[] = {8, 8};
 static GLfloat g_viewport_size[2];
 
 namespace scene {
-struct vec3 {
+struct GLvec3 {
     float x;
     float y;
     float z;
     float _padding;
 };
 
-struct Triangle {
-    vec3 p0;
-    vec3 p1;
-    vec3 p2;
+struct GLtriangle {
+    GLvec3 p0;
+    GLvec3 p1;
+    GLvec3 p2;
 };
 
-static Slice<Triangle> g_triangle_pool;
+struct Cube {
+    glm::vec3 center;   //
+    glm::vec3 sizes;    //
+    int64 index;        //  Place in triangle pool where associated triangles begin.
+};
+
+static Slice<GLtriangle> m_triangle_pool;
+
+// Return a vec3 with layout expected by the compute shader.
+// Reverse z while we're at it, so it is in view coords.
+GLvec3 to_gl(glm::vec3 in) {
+    GLvec3 out = {in.x, in.y, -in.z, 0};
+    return out;
+}
+
+int64 submit_triangles(Cube cube) {
+    // 6 points of cube
+    //       d----c
+    //      / |  /|
+    //     a----b |
+    //     |  g-|-f
+    //     | /  |/
+    //     h----e
+    // I am an artist!
+
+    // Vertex data
+    GLvec3 a,b,c,d,e,f,g,h;
+
+    // Temp struct, fill-and-submit.
+    GLtriangle tri;
+
+    // Return index to the first appended triangle.
+    int64 index = -1;
+
+    a = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, -cube.sizes.z)));
+    b = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, -cube.sizes.z)));
+    c = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, cube.sizes.z)));
+    d = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, cube.sizes.z)));
+    e = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, -cube.sizes.z)));
+    f = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, cube.sizes.z)));
+    g = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, cube.sizes.z)));
+    h = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, -cube.sizes.z)));
+
+    // Front face
+    tri.p0 = h;
+    tri.p1 = b;
+    tri.p2 = a;
+    index = append(&m_triangle_pool, tri);
+    tri.p0 = h;
+    tri.p1 = e;
+    tri.p2 = b;
+    append(&m_triangle_pool, tri);
+
+    // Right
+    tri.p0 = e;
+    tri.p1 = c;
+    tri.p2 = b;
+    append(&m_triangle_pool, tri);
+    tri.p0 = e;
+    tri.p1 = c;
+    tri.p2 = f;
+    append(&m_triangle_pool, tri);
+
+    // Back
+    tri.p0 = d;
+    tri.p1 = c;
+    tri.p2 = g;
+    append(&m_triangle_pool, tri);
+    tri.p0 = c;
+    tri.p1 = f;
+    tri.p2 = g;
+    append(&m_triangle_pool, tri);
+
+    // Left
+    tri.p0 = a;
+    tri.p1 = h;
+    tri.p2 = d;
+    append(&m_triangle_pool, tri);
+    tri.p0 = h;
+    tri.p1 = d;
+    tri.p2 = g;
+    append(&m_triangle_pool, tri);
+
+    // Top
+    tri.p0 = a;
+    tri.p1 = c;
+    tri.p2 = d;
+    append(&m_triangle_pool, tri);
+    tri.p0 = a;
+    tri.p1 = b;
+    tri.p2 = c;
+    append(&m_triangle_pool, tri);
+
+    // Bottom
+    tri.p0 = h;
+    tri.p1 = f;
+    tri.p2 = g;
+    append(&m_triangle_pool, tri);
+    tri.p0 = h;
+    tri.p1 = e;
+    tri.p2 = f;
+    append(&m_triangle_pool, tri);
+
+    return index;
+}
 
 void init() {
-    g_triangle_pool = MakeSlice<Triangle>(1);
-    append(&g_triangle_pool, {
+    m_triangle_pool = MakeSlice<GLtriangle>(1);
+
+    Cube cube = {{0,0,1}, {0.1,0.1,0.1}, -1};
+    cube.index = submit_triangles(cube);
+
+    append(&m_triangle_pool, {
         {0,0,-2,0},
         {-0.1f,0,-2,0},
         {0,0.1f,-2,0},
     });
-    append(&g_triangle_pool, {
+    append(&m_triangle_pool, {
         {0,0,-2,0},
         {0,-0.1f,-1.8f,0},
         {-0.1f,0,-2,0},
@@ -164,8 +272,8 @@ void init(GLuint prog) {
     GLCHK();
     GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer) );
     glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::Triangle) * scene::g_triangle_pool.n_elems),
-                (GLvoid*)scene::g_triangle_pool.ptr, GL_DYNAMIC_COPY);
+                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
+                (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
     GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer) );
 }
 

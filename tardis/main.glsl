@@ -469,7 +469,10 @@ void main() {
                     bar.y < 1 && bar.y > 0 &&
                     bar.z < 1 && bar.z > 0 &&
                     (bar.y + bar.z) < 1) {
-                color = vec4(bar.y*0, bar.z, 0, 1);
+                if (bar.x < min_t) {
+                    min_t = bar.x;
+                    color = vec4(bar.y*0, bar.z, 0, 1);
+                }
             }
         }
         // TODO: Deal with possible negative min_t;
