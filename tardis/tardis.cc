@@ -111,6 +111,38 @@ static int g_size[] = {1280, 800};
 static int g_warpsize[] = {8, 8};
 static GLfloat g_viewport_size[2];
 
+namespace scene {
+struct vec3 {
+    float x;
+    float y;
+    float z;
+    float _padding;
+};
+
+struct Triangle {
+    vec3 p0;
+    vec3 p1;
+    vec3 p2;
+};
+
+static Slice<Triangle> g_triangle_pool;
+
+void init() {
+    g_triangle_pool = MakeSlice<Triangle>(1);
+    append(&g_triangle_pool, {
+        {0,0,-2,0},
+        {-0.1f,0,-2,0},
+        {0,0.1f,-2,0},
+    });
+    append(&g_triangle_pool, {
+        {0,0,-2,0},
+        {0,-0.1f,-1.8f,0},
+        {-0.1f,0,-2,0},
+    });
+}
+
+} // ns scene
+
 void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
@@ -127,35 +159,13 @@ void init(GLuint prog) {
     glUniform2fv(5, 1, size_m);  // screen_size in meters
     glUniform1f(8, true);  // Occlude?
 
-    struct vec3 {
-        float x;
-        float y;
-        float z;
-        float _padding;
-    };
-    struct Triangle {
-        vec3 p0;
-        vec3 p1;
-        vec3 p2;
-    };
-
-    Triangle t0 = {
-        {0,0,-2,0},
-        {-0.1f,0,-2,0},
-        {0,0.1f,-2,0},
-    };
-    Triangle t1 = {
-        {0,0,-2,0},
-        {0,-0.1f,-2,0},
-        {-0.1f,0,-2,0},
-    };
-    Triangle triangles[] = {t0, t1};
-
     GLuint point_buffer;
     glGenBuffers(1, &point_buffer);
     GLCHK();
     GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer) );
-    GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(triangles), (GLvoid*)&triangles, GL_DYNAMIC_COPY) );
+    glBufferData(GL_SHADER_STORAGE_BUFFER,
+                GLsizeiptr(sizeof(scene::Triangle) * scene::g_triangle_pool.n_elems),
+                (GLvoid*)scene::g_triangle_pool.ptr, GL_DYNAMIC_COPY);
     GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer) );
 }
 
@@ -273,7 +283,7 @@ int main() {
 
     window::init("Project TARDIS", g_size[0], g_size[1],
             window::InitFlag(window::InitFlag_NoDecoration |
-             window::InitFlag_OverrideKeyCallback));
+                window::InitFlag_OverrideKeyCallback));
 
     glfwSetKeyCallback(ph::window::m_window, key_callback);
 
@@ -284,6 +294,8 @@ int main() {
     g_program = cs::init(g_size[0], g_size[1], paths, 1);
     const char* test_path = "tardis/green.glsl";
     g_green_prog = cs::init(g_size[0], g_size[1], &test_path, 1);
+
+    scene::init();
 
     init(g_program);
     init(g_green_prog);
