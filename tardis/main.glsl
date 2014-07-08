@@ -13,6 +13,7 @@ layout(location = 8) uniform bool occlude;              // Flag for occlusion ci
 layout(location = 10) uniform vec2 camera_pos;          //
 
 
+
 float PI = 3.141526;
 float EPSILON = 0.00000000;
 
@@ -40,6 +41,10 @@ struct Triangle {
     vec3 p1;
     vec3 p2;
 };
+
+layout(binding = 0) buffer TrianglePool {
+    float data[];
+} triangle_pool;
 
 struct Rect {
     vec3 a,b,c,d;
@@ -131,8 +136,7 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
 vec3 barycentric(Ray ray, Triangle tri) {
     vec3 e1 = tri.p1 - tri.p0;
     vec3 e2 = tri.p2 - tri.p0;
-    vec3 d = ray.dir;
-    vec3 q = cross(d, e2);
+    vec3 q = cross(ray.dir, e2);
     float det = dot(q, e1);
     vec3 s  = ray.o - tri.p0;
     vec3 r = cross(s, e1);
@@ -142,10 +146,11 @@ vec3 barycentric(Ray ray, Triangle tri) {
     /* if (det == 0) { */
     /*     return vec3(-1,0,0); */
     /* } */
-    return float(det == 0) * vec3(0) +
-            (1 - float(det == 0)) * (1 / det) * vec3(dot(r, e2),
-                                                    dot(q, s),
-                                                    dot(r, d));
+    /* return float(det == 0) * vec3(0) + */
+    /*         (1 - float(det == 0)) * (1 / det) * vec3(dot(r, e2), */
+    /*                                                 dot(q, s), */
+    /*                                                 dot(r, ray.dir)); */
+    return (1 / det) * vec3(dot(r, e2), dot(q,s), dot(r,ray.dir));
 }
 
 
@@ -463,8 +468,32 @@ void main() {
             }
         }
 
+        vec3 p0;
+        vec3 p1;
+        vec3 p2;
+        p0.x = triangle_pool.data[0];
+        p0.y = triangle_pool.data[1];
+        p0.z = triangle_pool.data[2];
+        p1.x = triangle_pool.data[3];
+        p1.y = triangle_pool.data[4];
+        p1.z = triangle_pool.data[5];
+        p2.x = triangle_pool.data[6];
+        p2.y = triangle_pool.data[7];
+        p2.z = triangle_pool.data[8];
+        Triangle tri;
+        tri.p0 = p0;
+        tri.p1 = p1;
+        tri.p2 = p2;
+        vec3 bar = barycentric(ray, tri);
+        if (bar.x > 0 &&
+            bar.y < 1 && bar.y > 0 &&
+            bar.z < 1 && bar.z > 0 &&
+            (bar.y + bar.z) < 1) {
+            color = vec4(bar.y*0, bar.z, 0, 1);
+        }
         // TODO: Deal with possible negative min_t;
     }
+
 
     imageStore(tex, coord, color);
 }

@@ -125,6 +125,19 @@ void init(GLuint prog) {
     glUniform2fv(5, 1, size_m);  // screen_size in meters
     glUniform1f(8, true);  // Occlude?
 
+    GLfloat triangle[] = {
+        0, 0, -2,
+        -0.1f, 0, -2,
+        0, 0.2f, -2,
+    };
+
+    GLuint point_buffer;
+    glGenBuffers(1, &point_buffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 9 * sizeof(GLfloat), (GLvoid*)&triangle, GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer);
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
     GLCHK();
 }
 
