@@ -123,6 +123,7 @@ struct GLtriangle {
     GLvec3 p0;
     GLvec3 p1;
     GLvec3 p2;
+    GLvec3 normal;
 };
 
 struct Cube {
@@ -151,7 +152,12 @@ int64 submit_triangles(Cube cube) {
     // I am an artist!
 
     // Vertex data
+    glm::vec3 _a,_b,_c,_d,_e,_f,_g,_h;
     GLvec3 a,b,c,d,e,f,g,h;
+
+    // Normal data for each face
+    GLvec3 nf, nr, nb, nl, nt, nm;
+
 
     // Temp struct, fill-and-submit.
     GLtriangle tri;
@@ -159,73 +165,103 @@ int64 submit_triangles(Cube cube) {
     // Return index to the first appended triangle.
     int64 index = -1;
 
-    a = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, -cube.sizes.z)));
-    b = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, -cube.sizes.z)));
-    c = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, cube.sizes.z)));
-    d = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, cube.sizes.z)));
-    e = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, -cube.sizes.z)));
-    f = to_gl(glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, cube.sizes.z)));
-    g = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, cube.sizes.z)));
-    h = to_gl(glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, -cube.sizes.z)));
+    _a = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, -cube.sizes.z));
+    _b = glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, -cube.sizes.z));
+    _c = glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, cube.sizes.z));
+    _d = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, cube.sizes.z));
+    _e = glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, -cube.sizes.z));
+    _f = glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, cube.sizes.z));
+    _g = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, cube.sizes.z));
+    _h = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, -cube.sizes.z));
+
+    a = to_gl(_a);
+    b = to_gl(_b);
+    c = to_gl(_c);
+    d = to_gl(_d);
+    e = to_gl(_e);
+    f = to_gl(_f);
+    g = to_gl(_g);
+    h = to_gl(_h);
+
+    nf = to_gl(glm::normalize(-glm::cross(_b - _e, _h - _e)));
+    nr = to_gl(glm::normalize(-glm::cross(_c - _f, _e - _f)));
+    nb = to_gl(glm::normalize(-glm::cross(_d - _g, _f - _g)));
+    nl = to_gl(glm::normalize(-glm::cross(_a - _h, _g - _h)));
+    nt = to_gl(glm::normalize(-glm::cross(_c - _b, _a - _b)));
+    nm = to_gl(glm::normalize(-glm::cross(_e - _f, _g - _f)));
+    // 6 normals
+
 
     // Front face
     tri.p0 = h;
     tri.p1 = b;
     tri.p2 = a;
+    tri.normal = nf;
     index = append(&m_triangle_pool, tri);
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = b;
+    tri.normal = nf;
     append(&m_triangle_pool, tri);
 
     // Right
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = b;
+    tri.normal = nr;
     append(&m_triangle_pool, tri);
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = f;
+    tri.normal = nr;
     append(&m_triangle_pool, tri);
 
     // Back
     tri.p0 = d;
     tri.p1 = c;
     tri.p2 = g;
+    tri.normal = nb;
     append(&m_triangle_pool, tri);
     tri.p0 = c;
     tri.p1 = f;
     tri.p2 = g;
+    tri.normal = nb;
     append(&m_triangle_pool, tri);
 
     // Left
     tri.p0 = a;
     tri.p1 = h;
     tri.p2 = d;
+    tri.normal = nl;
     append(&m_triangle_pool, tri);
     tri.p0 = h;
     tri.p1 = d;
     tri.p2 = g;
+    tri.normal = nl;
     append(&m_triangle_pool, tri);
 
     // Top
     tri.p0 = a;
     tri.p1 = c;
     tri.p2 = d;
+    tri.normal = nt;
     append(&m_triangle_pool, tri);
     tri.p0 = a;
     tri.p1 = b;
     tri.p2 = c;
+    tri.normal = nt;
     append(&m_triangle_pool, tri);
 
     // Bottom
     tri.p0 = h;
     tri.p1 = f;
     tri.p2 = g;
+    tri.normal = nm;
     append(&m_triangle_pool, tri);
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = f;
+    tri.normal = nm;
     append(&m_triangle_pool, tri);
 
     return index;
@@ -234,19 +270,8 @@ int64 submit_triangles(Cube cube) {
 void init() {
     m_triangle_pool = MakeSlice<GLtriangle>(1);
 
-    Cube cube = {{0,0,1}, {0.1,0.1,0.1}, -1};
+    Cube cube = {{0,-0.1,2}, {1,1,1}, -1};
     cube.index = submit_triangles(cube);
-
-    append(&m_triangle_pool, {
-        {0,0,-2,0},
-        {-0.1f,0,-2,0},
-        {0,0.1f,-2,0},
-    });
-    append(&m_triangle_pool, {
-        {0,0,-2,0},
-        {0,-0.1f,-1.8f,0},
-        {-0.1f,0,-2,0},
-    });
 }
 
 } // ns scene

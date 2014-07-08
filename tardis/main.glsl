@@ -35,6 +35,7 @@ struct Triangle {
     vec3 p0;
     vec3 p1;
     vec3 p2;
+    vec3 normal;
 };
 
 layout(std430, binding = 0) buffer TrianglePool {
@@ -340,7 +341,7 @@ void main() {
     //////
 
     Light l;
-    l.position = vec3(0, 1.5, -1.5);
+    l.position = vec3(0, -1, -2);
     l.color    = vec3(1,1,1);
 
     Rect f;
@@ -408,6 +409,7 @@ void main() {
 
         CollisionCube cc;
         cc = cube_collision(c, ray);
+/*j
         if (cc.exists && min_t > cc.t) {
             min_t = cc.t;
             color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
@@ -425,6 +427,7 @@ void main() {
             min_t = cc.t;
             color = vec4(lambert(cc.point, cc.normal, vec3(0.99,0.5,0.5), l), 1);
         }
+*/
 
         cc = cube_collision(room, ray);
         if (cc.exists && min_t > cc.t) {
@@ -463,8 +466,10 @@ void main() {
                 color = mix(color, vec4(0), 0.5);
             }
         }
+        min_t = 1 << 16;
         for (int i = 0; i < triangle_pool.data.length(); ++i) {
-            vec3 bar = barycentric(ray, triangle_pool.data[i]);
+            Triangle t = triangle_pool.data[i];
+            vec3 bar = barycentric(ray, t);
             if (bar.x > 0 &&
                     bar.y < 1 && bar.y > 0 &&
                     bar.z < 1 && bar.z > 0 &&
@@ -472,6 +477,10 @@ void main() {
                 if (bar.x < min_t) {
                     min_t = bar.x;
                     color = vec4(bar.y*0, bar.z, 0, 1);
+                    float u = bar.y;
+                    float v = bar.z;
+                    vec3 point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                    color = vec4(lambert(point, -t.normal, vec3(1,1,1),l),1);
                 }
             }
         }
