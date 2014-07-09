@@ -126,13 +126,24 @@ struct GLtriangle {
     GLvec3 normal;
 };
 
+struct GLlight {
+    GLvec3 position;
+    GLvec3 color;
+};
+
+struct Light {
+    GLlight data;
+    int64 index;
+}
+
 struct Cube {
     glm::vec3 center;   //
     glm::vec3 sizes;    //
     int64 index;        //  Place in triangle pool where associated triangles begin.
 };
 
-static Slice<GLtriangle> m_triangle_pool;
+static Slice<GLtriangle>    m_triangle_pool;
+static Slice<GLlight>       m_light_pool;
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
@@ -141,7 +152,11 @@ GLvec3 to_gl(glm::vec3 in) {
     return out;
 }
 
-int64 submit_triangles(Cube cube) {
+void submit_light(Light* light) {
+    light->index = append(&m_light_pool, light->data);
+}
+
+void submit_triangles(Cube* cube) {
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -165,14 +180,14 @@ int64 submit_triangles(Cube cube) {
     // Return index to the first appended triangle.
     int64 index = -1;
 
-    _a = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, -cube.sizes.z));
-    _b = glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, -cube.sizes.z));
-    _c = glm::vec3(cube.center + glm::vec3(cube.sizes.x, cube.sizes.y, cube.sizes.z));
-    _d = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, cube.sizes.y, cube.sizes.z));
-    _e = glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, -cube.sizes.z));
-    _f = glm::vec3(cube.center + glm::vec3(cube.sizes.x, -cube.sizes.y, cube.sizes.z));
-    _g = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, cube.sizes.z));
-    _h = glm::vec3(cube.center + glm::vec3(-cube.sizes.x, -cube.sizes.y, -cube.sizes.z));
+    _a = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, cube->sizes.y, -cube->sizes.z));
+    _b = glm::vec3(cube->center + glm::vec3(cube->sizes.x, cube->sizes.y, -cube->sizes.z));
+    _c = glm::vec3(cube->center + glm::vec3(cube->sizes.x, cube->sizes.y, cube->sizes.z));
+    _d = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, cube->sizes.y, cube->sizes.z));
+    _e = glm::vec3(cube->center + glm::vec3(cube->sizes.x, -cube->sizes.y, -cube->sizes.z));
+    _f = glm::vec3(cube->center + glm::vec3(cube->sizes.x, -cube->sizes.y, cube->sizes.z));
+    _g = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, -cube->sizes.y, cube->sizes.z));
+    _h = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, -cube->sizes.y, -cube->sizes.z));
 
     a = to_gl(_a);
     b = to_gl(_b);
@@ -187,8 +202,8 @@ int64 submit_triangles(Cube cube) {
     nr = to_gl(glm::normalize(-glm::cross(_c - _f, _e - _f)));
     nb = to_gl(glm::normalize(-glm::cross(_d - _g, _f - _g)));
     nl = to_gl(glm::normalize(-glm::cross(_a - _h, _g - _h)));
-    nt = to_gl(glm::normalize(-glm::cross(_c - _b, _a - _b)));
-    nm = to_gl(glm::normalize(-glm::cross(_e - _f, _g - _f)));
+    nt = to_gl(glm::normalize(glm::cross(_d - _a, _b - _a)));
+    nm = to_gl(glm::normalize(glm::cross(_h - _g, _f - _g)));
     // 6 normals
 
 
@@ -264,14 +279,33 @@ int64 submit_triangles(Cube cube) {
     tri.normal = nm;
     append(&m_triangle_pool, tri);
 
-    return index;
+    cube->index = index;
 }
 
 void init() {
-    m_triangle_pool = MakeSlice<GLtriangle>(1);
+    m_triangle_pool = MakeSlice<GLtriangle>(1024);
+    m_light_pool    = MakeSlice<GLlight>(8);
 
-    Cube cube = {{0,-0.1,2}, {1,1,1}, -1};
-    cube.index = submit_triangles(cube);
+    double float_scale = 10;
+    Cube room = {{0,0,0}, {float_scale, float_scale, float_scale}, -1};
+    submit_triangles(&room);
+    for (auto i = room.index; i < count(m_triangle_pool); ++i) {
+        auto t = m_triangle_pool[i];
+        auto n = t.normal;
+        printf("Triangle %ld, %f %f %f\n", i, n.x, n.y, n.z);
+    }
+
+    Cube floor = {{0,-0.5,2}, {2, 0.1, 2}, -1};
+    submit_triangles(&floor);
+
+    Cube top = {{0,2,2}, {2, 0.1, 2}, -1};
+    submit_triangles(&top);
+
+    Cube thing = {{0,0,2}, {0.5, 0.5, 0.5}, -1};
+    submit_triangles(&thing);
+
+    GLlight light = {{0,0,0,-1}, {1,1,1,-1}};
+    submit_light(&light);
 }
 
 } // ns scene
