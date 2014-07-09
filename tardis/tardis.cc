@@ -112,6 +112,12 @@ static int g_warpsize[] = {8, 8};
 static GLfloat g_viewport_size[2];
 
 namespace scene {
+
+enum SubmitFlags {
+    SubmitFlags_None = 1 << 0,
+    SubmitFlags_FlipNormals
+};
+
 struct GLvec3 {
     float x;
     float y;
@@ -156,7 +162,7 @@ void submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);
 }
 
-void submit_triangles(Cube* cube) {
+void submit_triangles(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -198,14 +204,23 @@ void submit_triangles(Cube* cube) {
     g = to_gl(_g);
     h = to_gl(_h);
 
+
+    // 6 normals
     nf = to_gl(glm::normalize(glm::cross(_b - _e, _h - _e)));
     nr = to_gl(glm::normalize(glm::cross(_c - _f, _e - _f)));
     nb = to_gl(glm::normalize(glm::cross(_d - _g, _f - _g)));
     nl = to_gl(glm::normalize(glm::cross(_a - _h, _g - _h)));
     nt = to_gl(glm::normalize(glm::cross(_c - _b, _a - _b)));
     nm = to_gl(glm::normalize(glm::cross(_e - _f, _g - _f)));
-    // 6 normals
 
+    if (flags & SubmitFlags_FlipNormals) {
+        GLvec3* normals[] = {&nf, &nr, &nb, &nl, &nt, &nm};
+        for (int i = 0; i < 6; ++i) {
+            normals[i]->x *= -1;
+            normals[i]->y *= -1;
+            normals[i]->z *= -1;
+        }
+    }
 
     // Front face
     tri.p0 = h;
@@ -288,7 +303,7 @@ void init() {
 
     double float_scale = 10;
     Cube room = {{0,0,-2}, {float_scale, float_scale, float_scale}, -1};
-    submit_triangles(&room);
+    submit_triangles(&room, SubmitFlags_FlipNormals);
 
     Cube floor = {{0,-0.6,-2}, {2, 0.1, 2}, -1};
     submit_triangles(&floor);
@@ -300,7 +315,7 @@ void init() {
     submit_triangles(&thing);
 
     Light light;
-    light.data.position = {3, 8, 2, 1};
+    light.data.position = {1, 0.5, -1, 1};
     submit_light(&light);
     /* light.data.position = {1, 1, -2, 1}; */
     /* submit_light(&light); */

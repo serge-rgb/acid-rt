@@ -126,21 +126,10 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
 vec3 barycentric(Ray ray, Triangle tri) {
     vec3 e1 = tri.p1 - tri.p0;
     vec3 e2 = tri.p2 - tri.p0;
-    vec3 q = cross(ray.dir, e2);
-    float det = dot(q, e1);
     vec3 s  = ray.o - tri.p0;
-    vec3 r = cross(s, e1);
-    // Optimization note:
-    //   Brancing kills perf.
-    //   Defining unused vars after the if stmt is also bad.
-    /* if (det == 0) { */
-    /*     return vec3(-1,0,0); */
-    /* } */
-    /* return float(det == 0) * vec3(0) + */
-    /*         (1 - float(det == 0)) * (1 / det) * vec3(dot(r, e2), */
-    /*                                                 dot(q, s), */
-    /*                                                 dot(r, ray.dir)); */
-    return (1 / det) * vec3(dot(r, e2), dot(q,s), dot(r,ray.dir));
+    vec3 m  = cross(s, ray.dir);
+    vec3 n = cross(e1, e2);
+    return (1 / dot(-n, ray.dir)) * vec3(dot(n, s), dot(m, e2), dot(-m,e1));
 }
 
 
@@ -233,6 +222,7 @@ void main() {
                     min_t = bar.x;
                     float u = bar.y;
                     float v = bar.z;
+                    //point = ray.o + bar.x * ray.dir;
                     point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
                     normal = t.normal;
                 }

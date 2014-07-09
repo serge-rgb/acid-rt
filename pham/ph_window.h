@@ -10,7 +10,7 @@ namespace window {
 extern GLFWwindow* m_window;
 
 enum InitFlag {
-    InitFlag_default             = 1 << 0,
+    InitFlag_Default             = 1 << 0,
     InitFlag_NoDecoration        = 1 << 1,
     InitFlag_OverrideKeyCallback = 1 << 2,
 };
