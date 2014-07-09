@@ -47,7 +47,7 @@ layout(std430, binding = 0) buffer TrianglePool {
     Triangle data[];
 } triangle_pool;
 
-layout(std430, binding = 0) buffer LightPool {
+layout(std430, binding = 1) buffer LightPool {
     Light data[];
 } light_pool;
 
@@ -63,9 +63,7 @@ struct Cube {
 struct Sphere {
     float r;
     vec3 center;
-// TODO: add inside factor
 };
-
 
 vec3 normal_for_rect(Rect r) {
     return normalize(cross(r.a - r.b, r.c - r.b));
@@ -73,8 +71,6 @@ vec3 normal_for_rect(Rect r) {
 
 ////////////////////////////////////////
 // Collision structs
-// Collision       -- Hit or not.
-// Collision_point -- Hit, with point
 ////////////////////////////////////////
 
 struct Collision {
@@ -155,7 +151,7 @@ vec3 barycentric(Ray ray, Triangle tri) {
 // Light should not be a parameter. All lights should contribute. -- Right?
 vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
     //return normal;
-    return color * dot(normal, normalize(l.position - point));
+    return color * clamp(dot(normal, normalize(l.position - point)), 0, 1);
 }
 
 float barrel(float r) {
@@ -223,7 +219,9 @@ void main() {
 
         // Single trace against triangle pool
         float min_t = 1 << 16;
-        color = vec4(0, 1, 0, 1);
+        color = vec4(0, 0, 0, 1);
+        vec3 point;
+        vec3 normal;
         for (int i = 0; i < triangle_pool.data.length(); ++i) {
             Triangle t = triangle_pool.data[i];
             vec3 bar = barycentric(ray, t);
@@ -233,14 +231,23 @@ void main() {
                     (bar.y + bar.z) < 1) {
                 if (bar.x < min_t) {
                     min_t = bar.x;
-                    color = vec4(bar.y*0, bar.z, 0, 1);
                     float u = bar.y;
                     float v = bar.z;
-                    vec3 point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                    color = vec4(lambert(point, t.normal, vec3(1,1,1),l),1);
+                    point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                    normal = t.normal;
                 }
             }
         }
+
+        color += vec4(vec3(0.1), 0); // Ambient
+        int num_lights = light_pool.data.length();
+        for (int i = 0; i < num_lights; ++i) {
+            Light light = light_pool.data[i];
+            /* light.position = vec3(0,100,0); */
+            vec3 rgb = 0.9 * (1.0 / num_lights) * lambert(point, normal, vec3(1), light);
+            color += vec4(abs(rgb), 1);
+        }
+        color *= float(min_t < 1 << 16);
         // TODO: Deal with possible negative min_t;
     }
 
