@@ -15,6 +15,10 @@ layout(location = 10) uniform vec2 camera_pos;          //
 float PI = 3.141526;
 float EPSILON = 0.00001;
 
+
+// Sync this with enum in C codebase.
+int MaterialType_Lambert = 0;
+
 vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
     vec3 i = -quat.xyz;
     float m = quat.w;
@@ -130,7 +134,7 @@ vec3 barycentric(Ray ray, Triangle tri) {
     vec3 m  = cross(s, ray.dir);
     vec3 n = cross(e1, e2);
     float det = dot(-n, ray.dir);
-    if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
+    //if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
     return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
 }
 
@@ -156,14 +160,6 @@ float barrel(float r) {
 // warp size: 64. (optimal warp size for my nvidia card)
 layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
-    //////
-    // global
-    //////
-
-    Light l;
-    l.position = vec3(0, 0, 0);
-    l.color    = vec3(1,1,1);
-
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
     //float ar = screen_size.y / screen_size.x;

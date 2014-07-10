@@ -142,13 +142,25 @@ struct Light {
 };
 
 struct Cube {
-    glm::vec3 center;   //
-    glm::vec3 sizes;    //
+    glm::vec3 center;
+    glm::vec3 sizes;
     int64 index;        //  Place in triangle pool where associated triangles begin.
+};
+
+enum MaterialType {
+    MaterialType_Lambert,
+};
+
+// Info we need for acceleration structure.
+struct Primitive {
+    int64 offset;           // Num of elements into the triangle pool where this primitive begins.
+    int64 num_triangles;
+    int material;           // Enum (copy in shader).
 };
 
 static Slice<GLtriangle>    m_triangle_pool;
 static Slice<GLlight>       m_light_pool;
+static Slice<Primitive>     m_primitives;
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
@@ -161,7 +173,7 @@ void submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);
 }
 
-void submit_triangles(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
+void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -294,24 +306,39 @@ void submit_triangles(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     append(&m_triangle_pool, tri);
 
     cube->index = index;
+    append(&m_primitives, {cube->index, 12, MaterialType_Lambert});
 }
 
 void init() {
     m_triangle_pool = MakeSlice<GLtriangle>(1024);
     m_light_pool    = MakeSlice<GLlight>(8);
+    m_primitives    = MakeSlice<Primitive>(1024);
 
     double float_scale = 10;
     Cube room = {{0,0,-2}, {float_scale, float_scale, float_scale}, -1};
-    submit_triangles(&room, SubmitFlags_FlipNormals);
+    submit_primitive(&room, SubmitFlags_FlipNormals);
 
     Cube floor = {{0,-0.6,-2}, {2, 0.1, 2}, -1};
-    submit_triangles(&floor);
+    submit_primitive(&floor);
 
     Cube top = {{0,4,-2}, {2, 0.1, 2}, -1};
-    submit_triangles(&top);
+    submit_primitive(&top);
 
-    Cube thing = {{0,0,-2}, {0.5, 0.5, 0.5}, -1};
-    submit_triangles(&thing);
+    Cube thing;
+    {
+        int x = 5;
+        int y = 4;
+        int z = 1;
+        for (int i = 0; i < x; ++i) {
+            for (int j = 0; j < y; ++j) {
+                for (int k = 0; k < z; ++k) {
+                    thing = {{i * 1.1, j * 1.1, -2 - k * 1.1}, {0.5, 0.5, 0.5}, -1};
+                    submit_primitive(&thing);
+                }
+            }
+        }
+    }
+
 
     Light light;
     light.data.position = {1, 0.5, -1, 1};

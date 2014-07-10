@@ -106,7 +106,7 @@ void draw_loop(WindowProc func) {
         }
 
         // ---- Get end time. Measure
-        GLCHK ( glFinish() );  // Make GL finish.
+        GLCHK ( glFinish() );
         clock_gettime(CLOCK_REALTIME, &tp);
         long diff = tp.tv_nsec - start_ns;
         double diff_ms = double(diff) / (1000.0 * 1000.0);
