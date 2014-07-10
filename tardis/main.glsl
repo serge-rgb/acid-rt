@@ -13,7 +13,7 @@ layout(location = 8) uniform bool occlude;              // Flag for occlusion ci
 layout(location = 10) uniform vec2 camera_pos;          //
 
 float PI = 3.141526;
-float EPSILON = 0.00000000;
+float EPSILON = 0.00001;
 
 vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
     vec3 i = -quat.xyz;
@@ -129,7 +129,9 @@ vec3 barycentric(Ray ray, Triangle tri) {
     vec3 s  = ray.o - tri.p0;
     vec3 m  = cross(s, ray.dir);
     vec3 n = cross(e1, e2);
-    return (1 / dot(-n, ray.dir)) * vec3(dot(n, s), dot(m, e2), dot(-m,e1));
+    float det = dot(-n, ray.dir);
+    if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
+    return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
 }
 
 
@@ -137,10 +139,10 @@ vec3 barycentric(Ray ray, Triangle tri) {
 // Material functions.
 // ========================================
 
-// Light should not be a parameter. All lights should contribute. -- Right?
 vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
     //return normal;
-    return color * clamp(dot(normal, normalize(l.position - point)), 0, 1);
+    float d = max(dot(normal, normalize(l.position - point)), 0);
+    return color * d;
 }
 
 float barrel(float r) {
@@ -211,6 +213,7 @@ void main() {
         color = vec4(0, 0, 0, 1);
         vec3 point;
         vec3 normal;
+        vec2 uv;
         for (int i = 0; i < triangle_pool.data.length(); ++i) {
             Triangle t = triangle_pool.data[i];
             vec3 bar = barycentric(ray, t);
@@ -222,22 +225,25 @@ void main() {
                     min_t = bar.x;
                     float u = bar.y;
                     float v = bar.z;
-                    //point = ray.o + bar.x * ray.dir;
-                    point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                    point = ray.o + bar.x * ray.dir;
+                    //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
                     normal = t.normal;
+                    uv = vec2(u,v);
                 }
             }
         }
 
-        color += vec4(vec3(0.1), 0); // Ambient
-        int num_lights = light_pool.data.length();
-        for (int i = 0; i < num_lights; ++i) {
-            Light light = light_pool.data[i];
-            /* light.position = vec3(0,100,0); */
-            vec3 rgb = 0.9 * (1.0 / num_lights) * lambert(point, normal, vec3(1), light);
-            color += vec4(abs(rgb), 1);
+        if (min_t < 1 << 16) {
+            int num_lights = light_pool.data.length();
+            for (int i = 0; i < num_lights; ++i) {
+                Light light = light_pool.data[i];
+                /* light.position = vec3(0,100,0); */
+                vec3 rgb = (1.0 / num_lights) * lambert(point, normal, vec3(1), light);
+                //vec3 rgb = point;
+                color += vec4(rgb, 1);
+            }
+
         }
-        color *= float(min_t < 1 << 16);
         // TODO: Deal with possible negative min_t;
     }
 

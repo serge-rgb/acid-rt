@@ -103,7 +103,6 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
 }
 
 static GLuint g_program;
-static GLuint g_green_prog;  // Program to fill the viewport green (debug mem barrier)
 /* static int g_size[] = {1920, 1080}; */
 static int g_size[] = {1280, 800};
 /* static int g_size[] = {640, 400}; */
@@ -429,20 +428,6 @@ void draw() {
     }
     glUniform2fv(10, 1, camera_pos);  // update camera_pos
 
-    // Draw green screen
-    GLCHK ( glUseProgram(g_green_prog) );
-    {
-        GLfloat lens_center[2] = {
-            (vr::m_renderinfo->ScreenSizeInMeters.w / 2) -
-                (vr::m_renderinfo->LensSeparationInMeters / 2),
-            vr::m_hmdinfo->CenterFromTopInMeters,
-        };
-        glUniform2fv(6, 1, lens_center);  // Lens center
-        glUniform1f(2, 0);  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(g_size[0] / g_warpsize[0]),
-                    GLuint(g_size[1] / g_warpsize[1]), 1) );
-    }
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     GLCHK ( glUseProgram(g_program) );
     // Dispatch left viewport
     {
@@ -490,13 +475,10 @@ int main() {
     };
 
     g_program = cs::init(g_size[0], g_size[1], paths, 1);
-    const char* test_path = "tardis/green.glsl";
-    g_green_prog = cs::init(g_size[0], g_size[1], &test_path, 1);
 
     scene::init();
 
     init(g_program);
-    init(g_green_prog);
 
     window::draw_loop(draw);
 
