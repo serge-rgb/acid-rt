@@ -107,10 +107,20 @@ static GLuint g_program;
 static int g_size[] = {1280, 800};
 /* static int g_size[] = {640, 400}; */
 // Note: perf is really sensitive about this. Runtime tweak?
-static int g_warpsize[] = {8, 8};
+static int g_warpsize[] = {16, 8};
 static GLfloat g_viewport_size[2];
 
 namespace scene {
+
+// Defined below
+struct GLtriangle;
+struct GLlight;
+struct Primitive;
+
+static Slice<GLtriangle>    m_triangle_pool;
+static Slice<GLlight>       m_light_pool;
+static Slice<Primitive>     m_primitives;
+
 
 enum SubmitFlags {
     SubmitFlags_None = 1 << 0,
@@ -144,27 +154,81 @@ struct Light {
 struct Cube {
     glm::vec3 center;
     glm::vec3 sizes;
-    int64 index;        //  Place in triangle pool where associated triangles begin.
+    int index;          //  Place in triangle pool where associated triangles begin.
 };
 
 enum MaterialType {
     MaterialType_Lambert,
 };
 
-// Info we need for acceleration structure.
 struct Primitive {
-    int64 offset;           // Num of elements into the triangle pool where this primitive begins.
-    int64 num_triangles;
+    int offset;             // Num of elements into the triangle pool where this primitive begins.
+    int num_triangles;
     int material;           // Enum (copy in shader).
+    int _padding;           // std430 align to vec4
 };
 
-static Slice<GLtriangle>    m_triangle_pool;
-static Slice<GLlight>       m_light_pool;
-static Slice<Primitive>     m_primitives;
+struct AABB {
+    float xmin;
+    float xmax;
+    float ymin;
+    float ymax;
+    float zmin;
+    float zmax;
+};
+
+const char* str(AABB b) {
+    char* out = phanaged(char, 16);
+    sprintf(out, "%f, %f\n%f, %f\n %f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
+    return out;
+}
+
+AABB get_bbox(Primitive primitive) {
+    AABB bbox;
+    if (primitive.offset < 0) {
+        return bbox;
+    }
+    { // Fill bbox with not-nonsense
+        auto first = m_triangle_pool[primitive.offset];
+        bbox.xmin = first.p0.x;
+        bbox.xmax = first.p0.x;
+        bbox.ymin = first.p0.y;
+        bbox.ymax = first.p0.y;
+        bbox.zmin = first.p0.z;
+        bbox.zmax = first.p0.z;
+    }
+
+    for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
+        GLtriangle tri = m_triangle_pool[i];
+        GLvec3 points[3] = {tri.p0, tri.p1, tri.p2};
+        for (int j = 0; j < 3; ++j) {
+            auto p = points[j];
+            if (p.x < bbox.xmin) bbox.xmin = p.x;
+            if (p.x > bbox.xmax) bbox.xmax = p.x;
+            if (p.y < bbox.ymin) bbox.ymin = p.y;
+            if (p.y > bbox.ymax) bbox.ymax = p.y;
+            if (p.z < bbox.zmin) bbox.zmin = p.z;
+            if (p.z > bbox.zmax) bbox.zmax = p.z;
+        }
+    }
+    return bbox;
+}
+
+////////////////////////////////////////
+// BVH Accel
+////////////////////////////////////////
+
+struct BVHNode {
+    int primitive_offset;       // >0 when leaf. -1 when not.
+    int right_child_offset;     // Left child is adjacent to node.
+    AABB box;
+    // Alignment of box: 6*32 bits
+    // This struct: 8*32 -- aligns with 2 vec4, no padding required.
+};
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
-GLvec3 to_gl(glm::vec3 in) {
+static GLvec3 to_gl(glm::vec3 in) {
     GLvec3 out = {in.x, in.y, in.z, 0};
     return out;
 }
@@ -305,8 +369,9 @@ void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     tri.normal = nm;
     append(&m_triangle_pool, tri);
 
-    cube->index = index;
-    append(&m_primitives, {cube->index, 12, MaterialType_Lambert});
+    ph_assert(index <= long(1) << 32);
+    cube->index = (int)index;
+    append(&m_primitives, {cube->index, 12, MaterialType_Lambert, -1});
 }
 
 void init() {
@@ -339,6 +404,13 @@ void init() {
         }
     }
 
+    // Test
+    printf("Testing primitives\n");
+    for (int i = 0; i < count(m_primitives); ++i) {
+        auto p = m_primitives[i];
+        auto bbox = get_bbox(p);
+        printf("For primitive %d: AABB is: \n%s\n", i, str(bbox));
+    }
 
     Light light;
     light.data.position = {1, 0.5, -1, 1};

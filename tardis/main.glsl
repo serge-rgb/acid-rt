@@ -157,8 +157,8 @@ float barrel(float r) {
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
 
-// warp size: 64. (optimal warp size for my nvidia card)
-layout(local_size_x = 8, local_size_y = 8) in;
+// (x * y) % 32 == 0
+layout(local_size_x = 16, local_size_y = 8) in;
 void main() {
     ivec2 coord = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
 
