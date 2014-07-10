@@ -14,6 +14,7 @@ int main() {
     printf("Bytes used at start: %zu\n", memory::bytes_allocated());
     // Test slices
     {
+        // Test append =======================================
         auto s = MakeSlice<int>(1);
         for (int i = 0; i < 100000; ++i) {
             append(&s, i);
@@ -21,6 +22,18 @@ int main() {
         ph_assert(count(s) == 100000);
         for (int i = 0; i < count(s); ++i) {
             ph_assert(s[i] == i);
+        }
+
+        // Test slice func. ==================================
+        auto c = slice(s, 0, 10);
+        ph_assert(count(c) == 10);
+        for (int i = 0; i < count(c); ++i) {
+            ph_assert(c[i] == i);
+        }
+        c = slice(s, 42, 1729);
+        ph_assert(count(c) == (1729 - 42));
+        for (int i = 0; i < count(c); ++i) {
+            ph_assert(c[i] == i + 42);
         }
         // Slices are by default GC'd
         // so there is no need for this, unless the test

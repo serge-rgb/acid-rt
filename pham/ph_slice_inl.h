@@ -85,6 +85,20 @@ void append_array(Slice<T>* slice, T* elems, int64 n_elems) {
 */
 
 template<typename T>
+Slice<T> slice(Slice<T> orig, int64 begin, int64 end) {
+    ph_assert(begin < end);
+    ph_assert(end <= (int64)orig.n_elems);
+
+    Slice<T> out = MakeSlice<T>(orig.n_elems / 2);
+
+    for (auto i = begin; i < end; ++i) {
+        append(&out, orig[i]);
+    }
+
+    return out;
+}
+
+template<typename T>
 int64 count(Slice<T> slice) {
     return (int64)slice.n_elems;
 }

@@ -183,13 +183,11 @@ const char* str(AABB b) {
     return out;
 }
 
-AABB get_bbox(Primitive primitive) {
+AABB get_bbox(Primitive* primitives, int count) {
+    ph_assert(count > 0);
     AABB bbox;
-    if (primitive.offset < 0) {
-        return bbox;
-    }
     { // Fill bbox with not-nonsense
-        auto first = m_triangle_pool[primitive.offset];
+        auto first = m_triangle_pool[primitives[0].offset];
         bbox.xmin = first.p0.x;
         bbox.xmax = first.p0.x;
         bbox.ymin = first.p0.y;
@@ -197,18 +195,24 @@ AABB get_bbox(Primitive primitive) {
         bbox.zmin = first.p0.z;
         bbox.zmax = first.p0.z;
     }
+    for (int pi = 0; pi < count; ++pi) {
+        auto primitive = primitives[pi];
+        if (primitive.offset < 0) {
+            return bbox;
+        }
 
-    for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
-        GLtriangle tri = m_triangle_pool[i];
-        GLvec3 points[3] = {tri.p0, tri.p1, tri.p2};
-        for (int j = 0; j < 3; ++j) {
-            auto p = points[j];
-            if (p.x < bbox.xmin) bbox.xmin = p.x;
-            if (p.x > bbox.xmax) bbox.xmax = p.x;
-            if (p.y < bbox.ymin) bbox.ymin = p.y;
-            if (p.y > bbox.ymax) bbox.ymax = p.y;
-            if (p.z < bbox.zmin) bbox.zmin = p.z;
-            if (p.z > bbox.zmax) bbox.zmax = p.z;
+        for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
+            GLtriangle tri = m_triangle_pool[i];
+            GLvec3 points[3] = {tri.p0, tri.p1, tri.p2};
+            for (int j = 0; j < 3; ++j) {
+                auto p = points[j];
+                if (p.x < bbox.xmin) bbox.xmin = p.x;
+                if (p.x > bbox.xmax) bbox.xmax = p.x;
+                if (p.y < bbox.ymin) bbox.ymin = p.y;
+                if (p.y > bbox.ymax) bbox.ymax = p.y;
+                if (p.z < bbox.zmin) bbox.zmin = p.z;
+                if (p.z > bbox.zmax) bbox.zmax = p.z;
+            }
         }
     }
     return bbox;
@@ -218,13 +222,45 @@ AABB get_bbox(Primitive primitive) {
 // BVH Accel
 ////////////////////////////////////////
 
+// Plain and simple struct for flattened tree.
 struct BVHNode {
     int primitive_offset;       // >0 when leaf. -1 when not.
     int right_child_offset;     // Left child is adjacent to node.
-    AABB box;
+    AABB bbox;
     // Alignment of box: 6*32 bits
     // This struct: 8*32 -- aligns with 2 vec4, no padding required.
 };
+
+// Big fat struct for tree construction
+struct BVHTreeNode {
+    BVHNode data;  // Fill this and write it to the array
+    // Children
+    BVHTreeNode* left;
+    BVHTreeNode* right;
+};
+
+// Returns a memory managed BVH tree from primitives.
+// 'indices' keeps the original order of the slice.
+static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
+    BVHTreeNode* node = phanaged(BVHTreeNode, 1);
+    BVHNode data;
+
+    data.bbox = get_bbox(primitives.ptr, (int)count(primitives));
+
+    if (count(primitives) == 1) {           // ---- Leaf
+        data.primitive_offset = *indices;
+        data.right_child_offset = -1;
+    } else if (count(primitives) == 0) {    // ---- Empty (right) child
+        int split = int(count(primitives) / 2);
+        auto slice_left = slice(primitives, 0, split);
+        auto slice_right = slice(primitives, split, count(primitives));
+        node->left = build_bvh(slice_left, indices);
+        node->right = build_bvh(slice_right, indices + split);
+    } else {                                // ---- Inner node
+
+    }
+    return node;
+}
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
@@ -369,7 +405,7 @@ void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     tri.normal = nm;
     append(&m_triangle_pool, tri);
 
-    ph_assert(index <= long(1) << 32);
+    ph_assert(index <= long(1) << 31);
     cube->index = (int)index;
     append(&m_primitives, {cube->index, 12, MaterialType_Lambert, -1});
 }
@@ -404,13 +440,24 @@ void init() {
         }
     }
 
+    // Do this after submitting everything:
+    ph_assert(count(m_primitives) < long(1) << 31)
+
     // Test
     printf("Testing primitives\n");
     for (int i = 0; i < count(m_primitives); ++i) {
         auto p = m_primitives[i];
-        auto bbox = get_bbox(p);
+        auto bbox = get_bbox(&p, 1);
         printf("For primitive %d: AABB is: \n%s\n", i, str(bbox));
     }
+    auto bbox = get_bbox(m_primitives.ptr, (int)count(m_primitives));
+    printf("World bbox: \n%s\n", str(bbox));
+
+    int* indices = phalloc(int, count(m_primitives));
+    BVHTreeNode* root = build_bvh(m_primitives, indices);
+    root = NULL; // shut up, clang
+    phree(indices);
+
 
     Light light;
     light.data.position = {1, 0.5, -1, 1};
