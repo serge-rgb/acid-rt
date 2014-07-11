@@ -262,19 +262,15 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
     BVHNode data;
     data.primitive_offset = -1;
     data.right_child_offset = -1;
-    if (count(primitives) == 1) {
-        printf("=======================   Creating leaf %i\n", indices[0]);
-    }
 
     ph_assert(count(primitives) != 0);
     data.bbox = get_bbox(primitives.ptr, (int)count(primitives));
 
     if (count(primitives) == 1) {           // ---- Leaf
         data.primitive_offset = *indices;
-        data.right_child_offset = -1;
+        node->left  = NULL;
+        node->right = NULL;
     } else {                                // ---- Inner node
-        printf("New inner node, %ld\n", count(primitives));
-
         auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
         glm::vec3 midpoint;
 
@@ -284,11 +280,9 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
                 midpoint.x += centroids[ci].x;
                 midpoint.y += centroids[ci].y;
                 midpoint.z += centroids[ci].z;
-                //printf("%s\n", str(centroids[ci]));
             }
             ph_assert(count(centroids) == count(primitives));
             midpoint /= count(primitives);
-            //printf("Midpoint: %s\n", str(midpoint));
         }
 
         // Fill variations.
@@ -315,9 +309,6 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
             ph_assert ( v > 0 );
         }
 
-        printf("Split plane is: %d\n", (int)split);
-
-
         // Make two new slices.
         auto slice_left  = MakeSlice<Primitive>(size_t(count(primitives) / 2));
         auto slice_right = MakeSlice<Primitive>(size_t(count(primitives) / 2));
@@ -329,6 +320,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
 
+        // Partition two slices based on which side of the midpoint.
         for (int i = 0; i < count(primitives); ++i) {
 
             auto centroid = centroids[i];
@@ -373,14 +365,6 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
             }
         }
 
-        /* for( int i = 0; i < count(slice_left); ++i ) { */
-        /*     printf("Left index %d: %d\n", i, new_indices_l[i]); */
-        /* } */
-
-        /* for( int i = 0; i < count(slice_right); ++i ) { */
-        /*     printf("Right index %d: %d\n", i, new_indices_r[i]); */
-        /* } */
-
         node->left = build_bvh(slice_left, new_indices_l);
         node->right = build_bvh(slice_right, new_indices_r);
         phree(new_indices_l);
@@ -388,6 +372,59 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
     }
     node->data = data;
     return node;
+}
+
+bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
+    BVHTreeNode* stack[64];
+    int stack_offset = 0;
+    bool* checks = phalloc(bool, count(data));  // Every element must be present once.
+    stack[stack_offset++] = root->right;
+    stack[stack_offset++] = root->left;
+    int height = 0;
+    float avg_height = 0;
+
+    for (int i = 0; i < count(data); ++i) {
+        checks[i] = false;
+    }
+
+    while (stack_offset > 0) {
+        BVHTreeNode* node = stack[--stack_offset];
+        if (node->left == NULL && node->right == NULL) {
+            int i = node->data.primitive_offset;
+            if (checks[i]) {
+                printf("Found double leaf %d\n", i);
+                return false;
+            } else {
+                checks[i] = true;
+                avg_height += stack_offset;
+            }
+        } else {
+            if (node->left == NULL || node->right == NULL) {
+                printf("Found null child on non-leaf node\n");
+                return false;
+            }
+            stack[stack_offset++] = node->right;
+            stack[stack_offset++] = node->left;
+            if (stack_offset > height) {
+                height = stack_offset;
+            }
+        }
+    }
+
+    for (int i = 0; i < count(data); ++i) {
+        if(checks[i] == false) {
+            printf("Leaf %d not found.\n", i);
+            return false;
+        }
+    }
+
+    avg_height /= count(data);
+    phree (checks);
+    printf("BVH valid.\n");
+    printf("  -- Info             \t\t-- \n");
+    printf("  -- Tree height:   %d\t\t-- \n", height);
+    printf("  -- Avg height:    %f\t-- \n", avg_height);
+    return true;
 }
 
 // Return a vec3 with layout expected by the compute shader.
@@ -556,7 +593,7 @@ void init() {
     Cube thing;
     {
         int x = 5;
-        int y = 4;
+        int y = 5;
         int z = 1;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
@@ -588,12 +625,13 @@ void init() {
     BVHTreeNode* root = build_bvh(m_primitives, indices);
     phree(indices);
 
-    //root = root;
+    validate_bvh(root, m_primitives);
+
+    root = root->right->right;
     auto descr = str(root->data.bbox);
     printf("Node: \n%s\n", descr);
     printf("Primitive offset: %i\n", root->data.primitive_offset);
-
-    ph::phatal_error("Just testing");
+    printf("Left/right: %p, %p\n", root->left, root->right);
 
     Light light;
     light.data.position = {1, 0.5, -1, 1};
