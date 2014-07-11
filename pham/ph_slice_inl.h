@@ -99,6 +99,11 @@ Slice<T> slice(Slice<T> orig, int64 begin, int64 end) {
 }
 
 template<typename T>
+T pop(Slice<T>* slice) {
+    return slice->ptr[slice->n_elems--];
+}
+
+template<typename T>
 int64 count(Slice<T> slice) {
     return (int64)slice.n_elems;
 }
