@@ -107,7 +107,7 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
         glUseProgram(m_compute_program);
 
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
-        float fsize[2] = {(float)width / 2, (float)height};
+        float fsize[2] = {(float)width, (float)height};
         glUniform2fv(0, 1, &fsize[0]);
     }
     return m_compute_program;
