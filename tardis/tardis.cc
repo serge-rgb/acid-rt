@@ -245,10 +245,16 @@ struct BVHTreeNode {
 
 enum SplitPlane {
     SplitPlane_X,
-    SplitPlane_Y
+    SplitPlane_Y,
+    SplitPlane_Z,
 };
 
-static SplitPlane curr_split_plane = SplitPlane_X;
+const char* str(const glm::vec3& v) {
+    char* out = phanaged(char, 16);
+    sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
+    return out;
+}
+
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
 static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
@@ -257,7 +263,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
     data.primitive_offset = -1;
     data.right_child_offset = -1;
     if (count(primitives) == 1) {
-        printf("Creating leaf %i\n", indices[0]);
+        printf("=======================   Creating leaf %i\n", indices[0]);
     }
 
     ph_assert(count(primitives) != 0);
@@ -267,75 +273,118 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
         data.primitive_offset = *indices;
         data.right_child_offset = -1;
     } else {                                // ---- Inner node
+        printf("New inner node, %ld\n", count(primitives));
+
         auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
         glm::vec3 midpoint;
-        { // Calculate midpoint. Fill centroids.
+
+        { // Fill centroids. Calculate midpoint.
             for (int i = 0; i < count(primitives); ++i) {
-                append(&centroids, get_centroid(get_bbox(&primitives[i], 1)));
+                auto ci = append(&centroids, get_centroid(get_bbox(&primitives[i], 1)));
+                midpoint.x += centroids[ci].x;
+                midpoint.y += centroids[ci].y;
+                midpoint.z += centroids[ci].z;
+                //printf("%s\n", str(centroids[ci]));
             }
-            midpoint.x = (data.bbox.xmax + data.bbox.xmin) / 2;
-            midpoint.y = (data.bbox.ymax + data.bbox.ymin) / 2;
+            ph_assert(count(centroids) == count(primitives));
+            midpoint /= count(primitives);
+            //printf("Midpoint: %s\n", str(midpoint));
         }
+
+        // Fill variations.
+
+        float variation[3] = {0, 0, 0};  // Used to choose split axis
+        for (int i = 0; i < count(centroids) - 1; ++i) {
+            variation[0] += fabs(centroids[i].x - centroids[i + 1].x);
+            variation[1] += fabs(centroids[i].y - centroids[i + 1].y);
+            variation[2] += fabs(centroids[i].z - centroids[i + 1].z);
+        }
+
+        SplitPlane split = SplitPlane_X;
+        { // Choose split plane
+            float v = -1;
+            for (int i = 0; i < 3; i++) {
+                if (v < variation[i]) {
+                    v = variation[i];
+                    split = SplitPlane(i);
+                }
+            }
+            if (v == 0.0f) {
+                printf ("Two objets have the same centroid. Fix that, or fix me.\n");
+            }
+            ph_assert ( v > 0 );
+        }
+
+        printf("Split plane is: %d\n", (int)split);
+
 
         // Make two new slices.
         auto slice_left  = MakeSlice<Primitive>(size_t(count(primitives) / 2));
         auto slice_right = MakeSlice<Primitive>(size_t(count(primitives) / 2));
         // These indices keep the old ordering.
-        int* new_indices_l = phanaged(int, (size_t)count(primitives));
-        int* new_indices_r = phanaged(int, (size_t)count(primitives));
+        int* new_indices_l = phalloc(int, (size_t)count(primitives));
+        int* new_indices_r = phalloc(int, (size_t)count(primitives));
         int offset_l = 0;
         int offset_r = 0;
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
-        printf("New inner node\n");
+
         for (int i = 0; i < count(primitives); ++i) {
-            auto primitive = primitives[i];
-            int dir = 0; // Decide if this primitive goes left or right.
-            switch(curr_split_plane) {
+
+            auto centroid = centroids[i];
+
+            switch (split) {
             case SplitPlane_X:
                 {
-                    if (centroids[i].x < midpoint.x) {
-                        dir = -1;
-                    } else {
-                        dir = 1;
+                    if (centroid.x < midpoint.x) {
+                        append(&slice_left, primitives[i]);
+                        new_indices_l[offset_l++] = indices[i];
+                    }
+                    if (centroid.x >= midpoint.x) {
+                        append(&slice_right, primitives[i]);
+                        new_indices_r[offset_r++] = indices[i];
                     }
                     break;
                 }
             case SplitPlane_Y:
                 {
-                    if (centroids[i].y < midpoint.y) {
-                        dir = -1;
-                    } else {
-                        dir = 1;
+                    if (centroid.y < midpoint.y) {
+                        append(&slice_left, primitives[i]);
+                        new_indices_l[offset_l++] = indices[i];
+                    }
+                    if (centroid.y >= midpoint.y) {
+                        append(&slice_right, primitives[i]);
+                        new_indices_r[offset_r++] = indices[i];
+                    }
+                    break;
+                }
+            case SplitPlane_Z:
+                {
+                    if (centroid.z < midpoint.z) {
+                        append(&slice_left, primitives[i]);
+                        new_indices_l[offset_l++] = indices[i];
+                    }
+                    if (centroid.z >= midpoint.z) {
+                        append(&slice_right, primitives[i]);
+                        new_indices_r[offset_r++] = indices[i];
                     }
                     break;
                 }
             }
-            if (dir == -1) {
-                append(&slice_left, primitive);
-                new_indices_l[offset_l++] = indices[i];
-            } else if (dir == 1) {
-                append(&slice_right, primitive);
-                new_indices_r[offset_r++] = indices[i];
-            } else {
-                phatal_error("No direction in BVH construction");
-            }
         }
-        if (count(slice_left) == 0) {
-            puts("left is empty");
-            for (int j = 0; j < count(slice_right); ++j) {
-                append(&slice_left, pop(&slice_right));
-            }
-        }
-        if (count(slice_right) == 0) {
-            puts("right is empty");
-            for (int j = 0; j < count(slice_left); ++j) {
-                append(&slice_right, pop(&slice_left));
-            }
-        }
-        curr_split_plane = SplitPlane(((int)curr_split_plane + 1) % 2);
+
+        /* for( int i = 0; i < count(slice_left); ++i ) { */
+        /*     printf("Left index %d: %d\n", i, new_indices_l[i]); */
+        /* } */
+
+        /* for( int i = 0; i < count(slice_right); ++i ) { */
+        /*     printf("Right index %d: %d\n", i, new_indices_r[i]); */
+        /* } */
+
         node->left = build_bvh(slice_left, new_indices_l);
         node->right = build_bvh(slice_right, new_indices_r);
+        phree(new_indices_l);
+        phree(new_indices_r);
     }
     node->data = data;
     return node;
@@ -495,7 +544,7 @@ void init() {
     m_primitives    = MakeSlice<Primitive>(1024);
 
     double float_scale = 10;
-    Cube room = {{0,0,-2}, {float_scale, float_scale, float_scale}, -1};
+    Cube room = {{0,0,-1.5}, {float_scale, float_scale, float_scale}, -1};
     submit_primitive(&room, SubmitFlags_FlipNormals);
 
     Cube floor = {{0,-0.6,-2}, {2, 0.1, 2}, -1};
@@ -541,11 +590,8 @@ void init() {
 
     //root = root;
     auto descr = str(root->data.bbox);
-    auto left = root->left;
-    auto right = root->right;
     printf("Node: \n%s\n", descr);
     printf("Primitive offset: %i\n", root->data.primitive_offset);
-    printf("Left and right: %p, %p\n", (void*)left, (void*)right);
 
     ph::phatal_error("Just testing");
 
