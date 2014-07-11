@@ -63,44 +63,6 @@ void deinit() {
 
 }  // ns vr
 
-enum {
-    Control_W = 1 << 0,
-    Control_A = 1 << 1,
-    Control_S = 1 << 2,
-    Control_D = 1 << 3,
-};
-
-static int pressed = 0;
-
-static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-       pressed |= Control_W;
-    }
-    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-       pressed |= Control_A;
-    }
-    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-       pressed |= Control_S;
-    }
-    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-       pressed |= Control_D;
-    }
-    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
-       pressed &= ~Control_W;
-    }
-    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
-       pressed &= ~Control_A;
-    }
-    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
-       pressed &= ~Control_S;
-    }
-    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
-       pressed &= ~Control_D;
-    }
-}
 
 static GLuint g_program;
 /* static int g_size[] = {1920, 1080}; */
@@ -120,7 +82,7 @@ struct Primitive;
 static Slice<GLtriangle>    m_triangle_pool;
 static Slice<GLlight>       m_light_pool;
 static Slice<Primitive>     m_primitives;
-
+static int                  m_debug_bvh_height = -1;
 
 enum SubmitFlags {
     SubmitFlags_None = 1 << 0,
@@ -381,7 +343,6 @@ bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     stack[stack_offset++] = root->right;
     stack[stack_offset++] = root->left;
     int height = 0;
-    float avg_height = 0;
 
     for (int i = 0; i < count(data); ++i) {
         checks[i] = false;
@@ -396,7 +357,22 @@ bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
                 return false;
             } else {
                 checks[i] = true;
-                avg_height += stack_offset;
+                /* printf("Leaf bounding box: \n%s", str(node->data.bbox)); */
+                /* printf("Leaf prim: %d\n\n", node->data.primitive_offset); */
+            }
+            auto bbox = node->data.bbox;
+            auto bbox0 = get_bbox(&data[i], 1);
+            float epsilon = 0.00001f;
+            bool check =
+                bbox.xmin - bbox0.xmin < epsilon &&
+                bbox.xmax - bbox0.xmax < epsilon &&
+                bbox.ymin - bbox0.ymin < epsilon &&
+                bbox.ymax - bbox0.ymax < epsilon &&
+                bbox.zmin - bbox0.zmin < epsilon &&
+                bbox.zmax - bbox0.zmax < epsilon;
+            if (!check) {
+                printf("Incorrect bounding box for leaf %d\n", i);
+                return false;
             }
         } else {
             if (node->left == NULL || node->right == NULL) {
@@ -418,12 +394,10 @@ bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
         }
     }
 
-    avg_height /= count(data);
     phree (checks);
     printf("BVH valid.\n");
     printf("  -- Info             \t\t-- \n");
     printf("  -- Tree height:   %d\t\t-- \n", height);
-    printf("  -- Avg height:    %f\t-- \n", avg_height);
     return true;
 }
 
@@ -575,6 +549,42 @@ void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     append(&m_primitives, {cube->index, 12, MaterialType_Lambert, -1});
 }
 
+void submit_primitive(AABB* bbox) {
+    glm::vec3 center = {(bbox->xmax + bbox->xmin) / 2,
+        (bbox->ymax + bbox->ymin) / 2, (bbox->zmax + bbox->zmin) / 2};
+    Cube cube = {center, {bbox->xmax - center.x, bbox->ymax - center.y, bbox->zmax - center.y}, -1};
+    submit_primitive(&cube);
+}
+
+// For debugging purposes.
+void submit_primitive(BVHTreeNode* root) {
+    if (m_debug_bvh_height < 0) return;
+
+    auto nodes = MakeSlice<BVHTreeNode*>(1);
+
+    BVHTreeNode* stack[64];
+    int stack_offset = 0;
+    stack[stack_offset++] = root->right;
+    stack[stack_offset++] = root->left;
+
+    while (stack_offset > 0) {
+        BVHTreeNode* node = stack[--stack_offset];
+        if (stack_offset == m_debug_bvh_height) {
+            append(&nodes, node);
+        }
+
+        if (node->left != NULL && node->right != NULL) {
+            stack[stack_offset++] = node->right;
+            stack[stack_offset++] = node->left;
+        }
+    }
+
+    for (int i = 0; i < count(nodes); ++i) {
+        submit_primitive(&nodes[i]->data.bbox);
+    }
+}
+
+
 void init() {
     m_triangle_pool = MakeSlice<GLtriangle>(1024);
     m_light_pool    = MakeSlice<GLlight>(8);
@@ -592,8 +602,8 @@ void init() {
 
     Cube thing;
     {
-        int x = 5;
-        int y = 5;
+        int x = 4;
+        int y = 1;
         int z = 1;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
@@ -608,16 +618,6 @@ void init() {
     // Do this after submitting everything:
     ph_assert(count(m_primitives) < long(1) << 31)
 
-    // Test
-    printf("Testing primitives\n");
-    for (int i = 0; i < count(m_primitives); ++i) {
-        auto p = m_primitives[i];
-        auto bbox = get_bbox(&p, 1);
-        printf("For primitive %d: AABB is: \n%s\n", i, str(bbox));
-    }
-    auto bbox = get_bbox(m_primitives.ptr, (int)count(m_primitives));
-    printf("World bbox: \n%s\n", str(bbox));
-
     int* indices = phalloc(int, count(m_primitives));
     for (int i = 0; i < count(m_primitives); ++i) {
         indices[i] = i;
@@ -627,7 +627,9 @@ void init() {
 
     validate_bvh(root, m_primitives);
 
-    root = root->right->right;
+    submit_primitive(root);
+
+    //root = root;
     auto descr = str(root->data.bbox);
     printf("Node: \n%s\n", descr);
     printf("Primitive offset: %i\n", root->data.primitive_offset);
@@ -650,6 +652,52 @@ void init() {
 
 } // ns scene
 
+enum {
+    Control_W = 1 << 0,
+    Control_A = 1 << 1,
+    Control_S = 1 << 2,
+    Control_D = 1 << 3,
+};
+
+static int pressed = 0;
+
+static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+       pressed |= Control_W;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+       pressed |= Control_A;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+       pressed |= Control_S;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+       pressed |= Control_D;
+    }
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
+       pressed &= ~Control_W;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+       pressed &= ~Control_A;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
+       pressed &= ~Control_S;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+       pressed &= ~Control_D;
+    }
+    if (key == GLFW_KEY_0 && action == GLFW_PRESS) {
+        if (scene::m_debug_bvh_height >= 0) {
+            scene::m_debug_bvh_height--;
+        }
+    }
+    if (key == GLFW_KEY_9 && action == GLFW_PRESS) {
+        scene::m_debug_bvh_height++;
+    }
+}
 void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
