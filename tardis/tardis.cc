@@ -2,8 +2,23 @@
 
 #include <ph.h>
 
-using namespace ph;
 
+namespace ph {
+
+const char* str(const glm::vec3& v) {
+    char* out = phanaged(char, 16);
+    sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
+    return out;
+}
+
+////////////////////////////////////////
+//          -- ph::vr --
+// Handle the creation / destruction
+// of Oculus resources.
+// Members should provide everything
+// needed by higher level abstractions
+// to handle rendering and so on.
+////////////////////////////////////////
 namespace vr {
 
 static const OVR::HMDInfo* m_hmdinfo;
@@ -12,7 +27,12 @@ static ovrHmd              m_hmd;
 static float               m_default_eye_z;  // Getting the default FOV, calculate eye distance from plane.
 
 void init() {
-
+    // Safety net.
+    static bool is_init = false;
+    if (is_init) {
+        phatal_error("vr::init called twice");
+    }
+    is_init = true;
     ///////////////
     // Allocate crap
     // Not deallocated. This should only be called once or the caller is dumb and ugly.
@@ -50,8 +70,6 @@ void init() {
     printf("eye z should be roughly %f\n", m_default_eye_z);
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
-    // Pass frameIndex == 0 if ovrHmd_GetFrameTiming isn't being used. Otherwise,
-// pass the same frame index as was used for GetFrameTiming on the main thread.
 
 }
 
@@ -64,15 +82,20 @@ void deinit() {
 }  // ns vr
 
 
-static GLuint g_program;
-/* static int g_size[] = {1920, 1080}; */
-static int g_size[] = {1280, 800};
-/* static int g_size[] = {640, 400}; */
-// Note: perf is really sensitive about this. Runtime tweak?
-static int g_warpsize[] = {16, 8};
-static GLfloat g_viewport_size[2];
-
+////////////////////////////////////////
+//          -- ph::scene --
+// Handle the creation of primitives
+//  (triangle meshes, essentially)
+// Handle the description of primitives
+//  (i.e. material data)
+// Handle submitting primitives to the
+// GPU program.
+//  (i.e. Acceleration structures)
+////////////////////////////////////////
 namespace scene {
+
+// For DFS buffers.
+static const int kTreeStackLimit = 64;
 
 // Defined below
 struct GLtriangle;
@@ -191,7 +214,7 @@ static AABB get_bbox(const Primitive* primitives, int count) {
 // Plain and simple struct for flattened tree.
 struct BVHNode {
     int primitive_offset;       // >0 when leaf. -1 when not.
-    int right_child_offset;     // Left child is adjacent to node.
+    int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
     // Alignment of box: 6*32 bits
     // This struct: 8*32 -- aligns with 2 vec4, no padding required.
@@ -210,12 +233,6 @@ enum SplitPlane {
     SplitPlane_Y,
     SplitPlane_Z,
 };
-
-const char* str(const glm::vec3& v) {
-    char* out = phanaged(char, 16);
-    sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
-    return out;
-}
 
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
@@ -336,8 +353,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
     return node;
 }
 
-bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
-    BVHTreeNode* stack[64];
+static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
+    BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
     bool* checks = phalloc(bool, count(data));  // Every element must be present once.
     stack[stack_offset++] = root->right;
@@ -557,6 +574,7 @@ void submit_primitive(AABB* bbox) {
 }
 
 // For debugging purposes.
+// TODO: height check is broken.
 void submit_primitive(BVHTreeNode* root) {
     if (m_debug_bvh_height < 0) return;
 
@@ -603,7 +621,7 @@ void init() {
     Cube thing;
     {
         int x = 4;
-        int y = 1;
+        int y = 2;
         int z = 1;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
@@ -652,6 +670,21 @@ void init() {
 
 } // ns scene
 
+
+////////////////////////////////////////
+//          -- tardis --
+//  Entry point for the game.
+////////////////////////////////////////
+
+static GLuint g_program;
+static int g_size[] = {1920, 1080};
+/* static int g_size[] = {1280, 800}; */
+/* static int g_size[] = {640, 400}; */
+// Note: perf is really sensitive about this. Runtime tweak?
+// Note 2: Workgroup size should be a multiple of workgroup size.
+static int g_warpsize[] = {16, 8};
+static GLfloat g_viewport_size[2];
+
 enum {
     Control_W = 1 << 0,
     Control_A = 1 << 1,
@@ -698,12 +731,13 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
         scene::m_debug_bvh_height++;
     }
 }
+
 void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
-    float eye_to_lens = vr::m_default_eye_z; // Calculated for default FOV
-    printf("Eye to lens is: %f\n", eye_to_lens);
-    glUniform1f(3, eye_to_lens);  // eye to lens.
+    float eye_to_lens_m = vr::m_default_eye_z; // Calculated for default FOV
+    printf("Eye to lens is: %f\n", eye_to_lens_m);
+    glUniform1f(3, eye_to_lens_m);
 
     g_viewport_size[0] = GLfloat (g_size[0]) / 2;
     g_viewport_size[1] = GLfloat (g_size[1]);
@@ -711,26 +745,33 @@ void init(GLuint prog) {
         vr::m_renderinfo->ScreenSizeInMeters.w / 2,
         vr::m_renderinfo->ScreenSizeInMeters.h,
     };
-    glUniform2fv(5, 1, size_m);  // screen_size in meters
-    glUniform1f(8, true);  // Occlude?
+    glUniform2fv(5, 1, size_m);     // screen_size_m
+    glUniform1f(8, true);           // Occlude?
 
-    GLuint point_buffer;
-    glGenBuffers(1, &point_buffer);
-    GLCHK();
-    GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, point_buffer) );
-    glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
-                (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
-    GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, point_buffer) );
+    // TODO: cs::scene should handle the actual submit.
+    //  especially regarding triangles.
+    // Submit triangle pool
+    {
+        GLuint triangle_buffer;
+        glGenBuffers(1, &triangle_buffer);
+        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangle_buffer) );
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                    GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
+                    (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, triangle_buffer) );
+    }
 
-    GLuint light_buffer;
-    glGenBuffers(1, &light_buffer);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, light_buffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER,
-            GLsizeiptr(sizeof(scene::GLlight) * scene::m_light_pool.n_elems),
-            (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, light_buffer);
-    GLCHK();
+    // Submit light data to gpu.
+    {
+        GLuint light_buffer;
+        glGenBuffers(1, &light_buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, light_buffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                GLsizeiptr(sizeof(scene::GLlight) * scene::m_light_pool.n_elems),
+                (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, light_buffer);
+        GLCHK();
+    }
 
 }
 
@@ -764,35 +805,37 @@ void draw() {
     static GLfloat camera_pos[2] = {0, 0};
     static GLfloat cam_step = 0.03f;
     auto glm_q = glm::quat(quat[0], quat[1], quat[2], quat[3]);
-    GLfloat angle = glm::eulerAngles(glm_q)[1];
-    // Degrees to radian.
-    angle = (-angle / 180) * 3.141526f;
+    auto axis = glm::axis(glm_q);
+    auto e = glm::vec3(0, 0, 1);
+
+    glm::vec3 rotated_e = e + 2.0f * glm::cross(glm::cross(e, axis) + glm_q.w * e, axis);
+
     GLfloat cam_step_x;
     GLfloat cam_step_y;
+    cam_step_x = cam_step * rotated_e.z;
+    cam_step_y = cam_step * rotated_e.x;
 
     if (pressed & Control_W) {
-        cam_step_x = cam_step * cosf(angle);
-        cam_step_y = cam_step * sinf(angle);
         camera_pos[0] -= cam_step_x;
         camera_pos[1] -= cam_step_y;
     }
     if (pressed & Control_S) {
-        cam_step_x = cam_step * cosf(angle);
-        cam_step_y = cam_step * sinf(angle);
         camera_pos[0] += cam_step_x;
         camera_pos[1] += cam_step_y;
     }
+
+    e = glm::vec3(1, 0, 0);
+    rotated_e = e + 2.0f * glm::cross(glm::cross(e, axis) + glm_q.w * e, axis);
+    cam_step_x = cam_step * rotated_e.z;
+    cam_step_y = cam_step * rotated_e.x;
+
     if (pressed & Control_A) {
-        cam_step_x = cam_step * cosf(angle + 3.14f/2);
-        cam_step_y = cam_step * sinf(angle + 3.14f/2);
-        camera_pos[0] -= cam_step_x;
-        camera_pos[1] -= cam_step_y;
+        camera_pos[0] += cam_step_x;
+        camera_pos[1] += cam_step_y;
     }
     if (pressed & Control_D) {
-        cam_step_x = cam_step * cosf(angle + 3.14f/2);
-        cam_step_y = cam_step * sinf(angle + 3.14f/2);
-        camera_pos[0] += cam_step_x;
-        camera_pos[1] += cam_step_y;
+        camera_pos[0] -= cam_step_x;
+        camera_pos[1] -= cam_step_y;
     }
     glUniform2fv(10, 1, camera_pos);  // update camera_pos
 
@@ -828,9 +871,12 @@ void draw() {
     cs::fill_screen();
 }
 
+} // ph
+
+using namespace ph;
 int main() {
-    vr::init();
     ph::init();
+    vr::init();
 
     window::init("Project TARDIS", g_size[0], g_size[1],
             window::InitFlag(window::InitFlag_NoDecoration |
@@ -853,5 +899,5 @@ int main() {
     window::deinit();
 
     vr::deinit();
+    return 0;
 }
-

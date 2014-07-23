@@ -5,6 +5,12 @@
 #include "ph_gl.h"
 
 namespace ph {
+
+////////////////////////////////////////
+//          -- ph::cs --
+//  Create a GLSL compute program for
+//  rendering..
+////////////////////////////////////////
 namespace cs {
 
 // Pass the width and height of the currently active GL context.

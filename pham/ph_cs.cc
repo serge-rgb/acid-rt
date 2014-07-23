@@ -10,12 +10,12 @@ static GLuint m_quad_vao;
 static GLuint m_quad_program;
 static GLuint m_compute_program;
 static GLuint m_size[2];
-/* static int g_warp_size[2] = {8, 4}; */
 
 GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
     enum Location {
-        Location_pos,
-        Location_tex,
+        Location_pos = 0,
+        Location_screen_size = 0,
+        Location_tex = 1,
     };
 
     m_size[0] = (GLuint)width;
@@ -99,27 +99,26 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
 
         m_compute_program = glCreateProgram();
         ph::gl::link_program(m_compute_program, shaders, num_shaders);
+
         phree(shaders);
 
         ph_expect(Location_tex == glGetUniformLocation(m_compute_program, "tex"));
-        ph_expect(0 == glGetUniformLocation(m_compute_program, "screen_size"));
+        ph_expect(Location_screen_size == glGetUniformLocation(m_compute_program, "screen_size"));
 
         glUseProgram(m_compute_program);
 
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
         float fsize[2] = {(float)width / 2, (float)height};
-        glUniform2fv(0, 1, &fsize[0]);
+        glUniform2fv(Location_screen_size, 1, &fsize[0]);
     }
     return m_compute_program;
 }
 
 void fill_screen() {
     // Draw screen quad
-    {
-        GLCHK (glUseProgram      (cs::m_quad_program) );
-        GLCHK (glBindVertexArray (cs::m_quad_vao) );
-        GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
-    }
+    GLCHK (glUseProgram      (cs::m_quad_program) );
+    GLCHK (glBindVertexArray (cs::m_quad_vao) );
+    GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
 }
 
 
