@@ -100,12 +100,26 @@ Slice<T> slice(Slice<T> orig, int64 begin, int64 end) {
 
 template<typename T>
 T pop(Slice<T>* slice) {
-    return slice->ptr[slice->n_elems--];
+    return slice->ptr[--slice->n_elems];
 }
 
 template<typename T>
 int64 count(Slice<T> slice) {
     return (int64)slice.n_elems;
+}
+
+template<typename T>
+int64 find(Slice<T> slice, T to_find, T* out = NULL) {
+    for (int64 i = 0; i < count(slice); ++i) {
+        T* e = &slice.ptr[i];
+        if (*e == to_find){
+            if (out) {
+                *out = *e;
+            }
+            return i;
+        }
+    }
+    return -1;
 }
 
 }  // ns ph

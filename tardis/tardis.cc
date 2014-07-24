@@ -11,6 +11,11 @@ const char* str(const glm::vec3& v) {
     return out;
 }
 
+namespace scene {
+struct AABB;
+const char* str(scene::AABB b);
+}
+
 ////////////////////////////////////////
 //          -- ph::vr --
 // Handle the creation / destruction
@@ -61,13 +66,10 @@ void init() {
 
     // Default fov (looking down)
     float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;
-    printf("Default half fov (looking down): %f\n", hvfov);
     float h = m_hmdinfo->ScreenSizeInMeters.h;
-    printf("Physical height/2 %f\n", h/2);
 
     // Let's get the eye distance.
     m_default_eye_z = h / (1 * hvfov);
-    printf("eye z should be roughly %f\n", m_default_eye_z);
 
     *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
 
@@ -162,7 +164,7 @@ struct AABB {
     float zmax;
 };
 
-static const char* str(AABB b) {
+const char* str(AABB b) {
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
     return out;
@@ -344,8 +346,13 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
             }
         }
 
-        node->left = build_bvh(slice_left, new_indices_l);
-        node->right = build_bvh(slice_right, new_indices_r);
+        node->left = node->right = NULL;
+        if (count(slice_left)) {
+            node->left = build_bvh(slice_left, new_indices_l);
+        }
+        if (count(slice_right)) {
+            node->right = build_bvh(slice_right, new_indices_r);
+        }
         phree(new_indices_l);
         phree(new_indices_r);
     }
@@ -357,8 +364,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
     bool* checks = phalloc(bool, count(data));  // Every element must be present once.
-    stack[stack_offset++] = root->right;
-    stack[stack_offset++] = root->left;
+    stack[stack_offset++] = root;
     int height = 0;
 
     for (int i = 0; i < count(data); ++i) {
@@ -392,6 +398,10 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
                 return false;
             }
         } else {
+            if (node->data.primitive_offset != -1) {
+                printf("Non-leaf node has primitive!\n");
+                return false;
+            }
             if (node->left == NULL || node->right == NULL) {
                 printf("Found null child on non-leaf node\n");
                 return false;
@@ -413,8 +423,86 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
 
     phree (checks);
     printf("BVH valid.\n");
-    printf("  -- Info             \t\t-- \n");
-    printf("  -- Tree height:   %d\t\t-- \n", height);
+    return true;
+}
+
+// Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
+BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
+    assert(root->left && root->right);
+
+    auto slice = MakeSlice<BVHNode>(1024);          // Too big?
+    auto ptrs  = MakeSlice<BVHTreeNode*>(1024);     // Use this to get offsets for right childs (too slow?)
+
+    BVHTreeNode* stack[kTreeStackLimit];
+    int stack_offset = 0;
+    stack[stack_offset++] = root;
+
+    while(stack_offset > 0) {
+        auto fatnode = stack[--stack_offset];
+        BVHNode node = fatnode->data;
+        append(&slice, node);
+        append(&ptrs, fatnode); // Slow? push pointer...
+        bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
+        if (!is_leaf) {
+            stack[stack_offset++] = fatnode->right;
+            stack[stack_offset++] = fatnode->left;
+        }
+    }
+
+    ////////////////
+    // second pass
+    ////////////////
+    stack_offset = 0;
+    stack[stack_offset++] = root;
+    int i = 0;
+    while(stack_offset > 0) {
+        auto fatnode = stack[--stack_offset];
+        bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
+        if (!is_leaf) {
+            stack[stack_offset++] = fatnode->right;
+            stack[stack_offset++] = fatnode->left;
+            int64 found_i = find(ptrs, fatnode->right);
+            ph_assert(found_i >= 0);
+            ph_assert(found_i < int64(1) << 31);
+            slice.ptr[i].right_child_offset = (int)found_i;
+        }
+        i++;
+    }
+
+    *out_len = count(slice);
+    return slice.ptr;
+}
+
+bool validate_flattened_bvh(BVHNode* node, int64 len) {
+    bool* check = phalloc(bool, len);
+    for (int64 i = 0; i < len; ++i) {
+        check[i] = false;
+    }
+
+    int64 num_leafs = 0;
+
+    for (int64 i = 0; i < len; ++i) {
+        /* printf("Node %ld: At its right: %d\n", i, node->right_child_offset); */
+        if (node->primitive_offset != -1) {
+            num_leafs++;
+            /* printf("  Leaf! %d\n", node->primitive_offset); */
+            if (check[node->primitive_offset]) {
+                printf("Double leaf %d\n", node->primitive_offset);
+                return false;
+            }
+            check[node->primitive_offset] = true;
+        }
+        node++;
+    }
+
+    for (int64 i = 0; i < num_leafs; ++i) {
+        if (!check[i]) {
+            printf("Missing leaf %ld\n", i);
+            return false;
+        }
+    }
+    phree(check);
+    printf("Flat tree valid.\n");
     return true;
 }
 
@@ -620,8 +708,8 @@ void init() {
 
     Cube thing;
     {
-        int x = 4;
-        int y = 2;
+        int x = 1;
+        int y = 1;
         int z = 1;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
@@ -645,13 +733,12 @@ void init() {
 
     validate_bvh(root, m_primitives);
 
-    submit_primitive(root);
+    int64 len;
+    auto* flatroot = flatten_bvh(root, &len);
 
-    //root = root;
-    auto descr = str(root->data.bbox);
-    printf("Node: \n%s\n", descr);
-    printf("Primitive offset: %i\n", root->data.primitive_offset);
-    printf("Left/right: %p, %p\n", root->left, root->right);
+    validate_flattened_bvh(flatroot, len);
+
+    submit_primitive(root);  // Debug BVH submitting...
 
     Light light;
     light.data.position = {1, 0.5, -1, 1};
@@ -736,7 +823,6 @@ void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
     float eye_to_lens_m = vr::m_default_eye_z; // Calculated for default FOV
-    printf("Eye to lens is: %f\n", eye_to_lens_m);
     glUniform1f(3, eye_to_lens_m);
 
     g_viewport_size[0] = GLfloat (g_size[0]) / 2;
