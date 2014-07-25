@@ -213,8 +213,8 @@ vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 300;
-    float k2 = 400.0;
+    float k1 = 250;
+    float k2 = 800.0;
     float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
@@ -304,7 +304,7 @@ void main() {
         box.zmin = -6;
         box.zmax = -2;
         float box_t;
-        for (int as = 0; as < 300; as++)
+        for (int as = 0; as < 30; as++)
         {
             box_t = bbox_collision(box, ray);
         }
