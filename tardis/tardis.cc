@@ -148,11 +148,13 @@ enum MaterialType {
     MaterialType_Lambert,
 };
 
+// Note: When brute force ray tracing:
+// The extra level of indirection has no perceivable overhead compared to
+// tracing against a triangle pool.
 struct Primitive {
     int offset;             // Num of elements into the triangle pool where this primitive begins.
     int num_triangles;
     int material;           // Enum (copy in shader).
-    int _padding;           // std430 align to vec4
 };
 
 struct AABB {
@@ -218,8 +220,9 @@ struct BVHNode {
     int primitive_offset;       // >0 when leaf. -1 when not.
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
-    // Alignment of box: 6*32 bits
-    // This struct: 8*32 -- aligns with 2 vec4, no padding required.
+    // Alignment of box: 6*32 bits, which aligns to 8 * 32 bits.
+    // With two extra ints, we need 6 bytes of padding for GL alignment.
+    int _padding[6];
 };
 
 // Big fat struct for tree construction
@@ -651,7 +654,7 @@ void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
 
     ph_assert(index <= long(1) << 31);
     cube->index = (int)index;
-    append(&m_primitives, {cube->index, 12, MaterialType_Lambert, -1});
+    append(&m_primitives, {cube->index, 12, MaterialType_Lambert});
 }
 
 void submit_primitive(AABB* bbox) {
@@ -708,7 +711,7 @@ void init() {
 
     Cube thing;
     {
-        int x = 1;
+        int x = 4;
         int y = 1;
         int z = 1;
         for (int i = 0; i < x; ++i) {
@@ -835,6 +838,7 @@ void init(GLuint prog) {
 
     // TODO: cs::scene should handle the actual submit.
     //  especially regarding triangles.
+
     // Submit triangle pool
     {
         GLuint triangle_buffer;
@@ -856,6 +860,17 @@ void init(GLuint prog) {
                 (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, light_buffer);
         GLCHK();
+    }
+
+    // Submit primitive pool.
+    {
+        GLuint prim_buffer;
+        GLCHK ( glGenBuffers(1, &prim_buffer) );
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, prim_buffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                GLsizeiptr(sizeof(scene::Primitive) * scene::m_primitives.n_elems),
+                (GLvoid*)scene::m_primitives.ptr, GL_DYNAMIC_COPY);
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, prim_buffer) );
     }
 
 }

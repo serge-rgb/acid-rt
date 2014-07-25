@@ -42,6 +42,12 @@ struct Triangle {
     vec3 normal;
 };
 
+struct Primitive {
+    int offset;  // Into triangle_pool
+    int num_triangles;
+    int material;
+};
+
 struct Light {
     vec3 position;
     vec3 color;
@@ -54,6 +60,10 @@ layout(std430, binding = 0) buffer TrianglePool {
 layout(std430, binding = 1) buffer LightPool {
     Light data[];
 } light_pool;
+
+layout(std430, binding = 2) buffer PrimitivePool {
+    Primitive data[];
+} primitive_pool;
 
 struct Rect {
     vec3 a,b,c,d;
@@ -210,24 +220,29 @@ void main() {
         vec3 point;
         vec3 normal;
         vec2 uv;
-        for (int i = 0; i < triangle_pool.data.length(); ++i) {
-            Triangle t = triangle_pool.data[i];
-            vec3 bar = barycentric(ray, t);
-            if (bar.x > 0 &&
-                    bar.y < 1 && bar.y > 0 &&
-                    bar.z < 1 && bar.z > 0 &&
-                    (bar.y + bar.z) < 1) {
-                if (bar.x < min_t) {
-                    min_t = bar.x;
-                    float u = bar.y;
-                    float v = bar.z;
-                    point = ray.o + bar.x * ray.dir;
-                    //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                    normal = t.normal;
-                    uv = vec2(u,v);
+
+        for (int i = 0; i < primitive_pool.data.length(); ++i) {
+            Primitive p = primitive_pool.data[i];
+            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
+                Triangle t = triangle_pool.data[j];
+                vec3 bar = barycentric(ray, t);
+                if (bar.x > 0 &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1) {
+                    if (bar.x < min_t) {
+                        min_t = bar.x;
+                        float u = bar.y;
+                        float v = bar.z;
+                        point = ray.o + bar.x * ray.dir;
+                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                        normal = t.normal;
+                        uv = vec2(u,v);
+                    }
                 }
             }
         }
+        // --- actual trace ends here
 
         if (min_t < 1 << 16) {
             int num_lights = light_pool.data.length();
@@ -235,7 +250,7 @@ void main() {
                 Light light = light_pool.data[i];
                 /* light.position = vec3(0,100,0); */
                 vec3 rgb = (1.0 / num_lights) * lambert(point, normal, vec3(1), light);
-                //vec3 rgb = point;
+                /* vec3 rgb = point; */
                 color += vec4(rgb, 1);
             }
 
