@@ -48,6 +48,21 @@ struct Primitive {
     int material;
 };
 
+struct AABB {
+    float xmin;
+    float xmax;
+    float ymin;
+    float ymax;
+    float zmin;
+    float zmax;
+};
+
+struct BVHNode {
+    int primitive_offset;
+    int r_child_offset;
+    AABB bbox;
+};
+
 struct Light {
     vec3 position;
     vec3 color;
@@ -137,6 +152,43 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
     return coll;
 }
 
+float bbox_collision(AABB box, Ray ray) {
+    float t0 = 0;
+    float t1 = 1 << 16;
+    float xmin, xmax, ymin, ymax, zmin, zmax;
+
+    xmin = (box.xmin - ray.o.x) / ray.dir.x;
+    xmax = (box.xmax - ray.o.x) / ray.dir.x;
+    if (xmin > xmax) {
+        float tmp = xmin;
+        xmin = xmax;
+        xmax = tmp;
+    }
+
+    ymin = (box.ymin - ray.o.y) / ray.dir.y;
+    ymax = (box.ymax - ray.o.y) / ray.dir.y;
+    if (ymin > ymax) {
+        float tmp = ymin;
+        ymin = ymax;
+        ymax = tmp;
+    }
+
+    zmin = (box.zmin - ray.o.z) / ray.dir.z;
+    zmax = (box.zmax - ray.o.z) / ray.dir.z;
+    if (zmin > zmax) {
+        float tmp = zmin;
+        zmin = zmax;
+        zmax = tmp;
+    }
+
+    t0 = max(max(xmin, ymin), zmin);
+    t1 = min(min(xmax, ymax), zmax);
+
+    if (t0 < t1) return t0 < 0? t1 : t0;
+
+    return -1 << 16;
+}
+
 vec3 barycentric(Ray ray, Triangle tri) {
     vec3 e1 = tri.p1 - tri.p0;
     vec3 e2 = tri.p2 - tri.p0;
@@ -221,28 +273,45 @@ void main() {
         vec3 normal;
         vec2 uv;
 
-        for (int i = 0; i < primitive_pool.data.length(); ++i) {
-            Primitive p = primitive_pool.data[i];
-            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
-                Triangle t = triangle_pool.data[j];
-                vec3 bar = barycentric(ray, t);
-                if (bar.x > 0 &&
-                        bar.y < 1 && bar.y > 0 &&
-                        bar.z < 1 && bar.z > 0 &&
-                        (bar.y + bar.z) < 1) {
-                    if (bar.x < min_t) {
-                        min_t = bar.x;
-                        float u = bar.y;
-                        float v = bar.z;
-                        point = ray.o + bar.x * ray.dir;
-                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                        normal = t.normal;
-                        uv = vec2(u,v);
-                    }
-                }
-            }
-        }
+/*         for (int i = 0; i < primitive_pool.data.length(); ++i) { */
+/*             Primitive p = primitive_pool.data[i]; */
+/*             for (int j = p.offset; j < p.offset + p.num_triangles; ++j) { */
+/*                 Triangle t = triangle_pool.data[j]; */
+/*                 vec3 bar = barycentric(ray, t); */
+/*                 if (bar.x > 0 && */
+/*                         bar.y < 1 && bar.y > 0 && */
+/*                         bar.z < 1 && bar.z > 0 && */
+/*                         (bar.y + bar.z) < 1) { */
+/*                     if (bar.x < min_t) { */
+/*                         min_t = bar.x; */
+/*                         float u = bar.y; */
+/*                         float v = bar.z; */
+/*                         point = ray.o + bar.x * ray.dir; */
+/*                         //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2; */
+/*                         normal = t.normal; */
+/*                         uv = vec2(u,v); */
+/*                     } */
+/*                 } */
+/*             } */
+/*         } */
         // --- actual trace ends here
+
+        AABB box;
+        box.xmin = -2;
+        box.xmax = 2;
+        box.ymin = -2;
+        box.ymax = 2;
+        box.zmin = -6;
+        box.zmax = -2;
+        float box_t;
+        for (int as = 0; as < 300; as++)
+        {
+            box_t = bbox_collision(box, ray);
+        }
+        if (box_t > 0) {
+            min_t = box_t;
+            color = vec4(1);
+        }
 
         if (min_t < 1 << 16) {
             int num_lights = light_pool.data.length();

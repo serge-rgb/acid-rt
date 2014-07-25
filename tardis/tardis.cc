@@ -766,8 +766,8 @@ void init() {
 ////////////////////////////////////////
 
 static GLuint g_program;
-static int g_size[] = {1920, 1080};
-/* static int g_size[] = {1280, 800}; */
+/* static int g_size[] = {1920, 1080}; */
+static int g_size[] = {1280, 800};
 /* static int g_size[] = {640, 400}; */
 // Note: perf is really sensitive about this. Runtime tweak?
 // Note 2: Workgroup size should be a multiple of workgroup size.
