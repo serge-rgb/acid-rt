@@ -750,7 +750,6 @@ void init() {
     /* light.data.position = {0, 9, -2, 1}; */
     /* submit_light(&light); */
 
-
     /* submit_light(&light); */
 
 }
