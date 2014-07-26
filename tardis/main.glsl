@@ -272,7 +272,7 @@ void main() {
 
         // Single trace against triangle pool
         float min_t = 1 << 16;
-        color = vec4(0, 0, 0, 1);
+        color = vec4(1);
         vec3 point;
         vec3 normal;
         vec2 uv;
@@ -314,6 +314,7 @@ void main() {
         // --- actual trace ends here
 
         if (min_t < 1 << 16) {
+            color = vec4(0);
             int num_lights = light_pool.data.length();
             for (int i = 0; i < num_lights; ++i) {
                 Light light = light_pool.data[i];

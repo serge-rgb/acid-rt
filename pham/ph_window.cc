@@ -116,7 +116,7 @@ void draw_loop(WindowProc func) {
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
-                printf("Frame time: %fms\n", diff_ms);
+                /* printf("Frame time: %fms\n", diff_ms); */
             }
         }
 
