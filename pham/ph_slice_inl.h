@@ -66,8 +66,11 @@ int64 append(Slice<T>* slice, T elem) {
         phree(slice->ptr);
         slice->ptr = new_mem;
 #else
-        slice->ptr = phanaged_realloc(T, slice->ptr,
-                sizeof(T) * slice->n_elems);
+        T* new_mem = phanaged(T, slice->n_capacity);
+        memcpy(new_mem, slice->ptr, sizeof(T) * slice->n_elems);
+        slice->ptr = new_mem;
+        /* slice->ptr = phanaged_realloc(T, slice->ptr, */
+        /*         sizeof(T) * slice->n_elems); */
 #endif
     }
     slice->ptr[slice->n_elems] = elem;

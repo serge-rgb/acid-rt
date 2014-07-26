@@ -97,7 +97,7 @@ void deinit() {
 namespace scene {
 
 // For DFS buffers.
-static const int kTreeStackLimit = 64;
+static const int kTreeStackLimit = 16;
 
 // Defined below
 struct GLtriangle;
@@ -222,7 +222,7 @@ struct BVHNode {
     AABB bbox;
     // Alignment of box: 6*32 bits, which aligns to 8 * 32 bits.
     // With two extra ints, we need 6 bytes of padding for GL alignment.
-    int _padding[6];
+    //int _padding[6];
 };
 
 // Big fat struct for tree construction
@@ -409,6 +409,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
                 printf("Found null child on non-leaf node\n");
                 return false;
             }
+            ph_assert(stack_offset + 2 < kTreeStackLimit)
             stack[stack_offset++] = node->right;
             stack[stack_offset++] = node->left;
             if (stack_offset > height) {
@@ -699,9 +700,9 @@ void init() {
     m_light_pool    = MakeSlice<GLlight>(8);
     m_primitives    = MakeSlice<Primitive>(1024);
 
-    double float_scale = 10;
-    Cube room = {{0,0,-1.5}, {float_scale, float_scale, float_scale}, -1};
-    submit_primitive(&room, SubmitFlags_FlipNormals);
+    /* double float_scale = 1000; */
+    /* Cube room = {{0,0,-1.5}, {float_scale, float_scale, float_scale}, -1}; */
+    /* submit_primitive(&room, SubmitFlags_FlipNormals); */
 
     Cube floor = {{0,-0.6,-2}, {2, 0.1, 2}, -1};
     submit_primitive(&floor);
@@ -711,9 +712,9 @@ void init() {
 
     Cube thing;
     {
-        int x = 4;
-        int y = 1;
-        int z = 1;
+        int x = 8;
+        int y = 4;
+        int z = 20;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < z; ++k) {
@@ -722,6 +723,7 @@ void init() {
                 }
             }
         }
+        printf("Info: Submitted %d polygons.\n", (3 * 12) + x * y * z * 12);
     }
 
     // Do this after submitting everything:
@@ -740,6 +742,19 @@ void init() {
     auto* flatroot = flatten_bvh(root, &len);
 
     validate_flattened_bvh(flatroot, len);
+
+    // Submit flat bvh.
+    {
+        GLuint bvh_buffer;
+        glGenBuffers(1, &bvh_buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvh_buffer);
+        GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER,
+                    GLsizeiptr(sizeof(BVHNode) * (size_t)len),
+                    (GLvoid*)flatroot, GL_DYNAMIC_COPY) );
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, bvh_buffer) );
+
+    }
+
 
     submit_primitive(root);  // Debug BVH submitting...
 

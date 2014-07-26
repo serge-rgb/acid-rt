@@ -59,7 +59,8 @@ namespace memory {
 int64 bytes_allocated();
 
 void* typeless_managed(size_t n_bytes);
-void* typeless_managed_realloc(void* old, size_t n_bytes);
+//////////// Note: Boehm has had bugs with this for years.
+/* void* typeless_managed_realloc(void* old, size_t n_bytes); */
 
 // malloc equivalent. Use phalloc macro
 void* typeless_alloc(size_t n_bytes);

@@ -80,6 +80,10 @@ layout(std430, binding = 2) buffer PrimitivePool {
     Primitive data[];
 } primitive_pool;
 
+layout(std430, binding = 3) buffer BVH {
+    BVHNode data[];
+} bvh;
+
 struct Rect {
     vec3 a,b,c,d;
 };
@@ -189,7 +193,7 @@ float bbox_collision(AABB box, Ray ray) {
     return -1 << 16;
 }
 
-vec3 barycentric(Ray ray, Triangle tri) {
+vec3 barycentric(Triangle tri, Ray ray) {
     vec3 e1 = tri.p1 - tri.p0;
     vec3 e2 = tri.p2 - tri.p0;
     vec3 s  = ray.o - tri.p0;
@@ -273,45 +277,41 @@ void main() {
         vec3 normal;
         vec2 uv;
 
-/*         for (int i = 0; i < primitive_pool.data.length(); ++i) { */
-/*             Primitive p = primitive_pool.data[i]; */
-/*             for (int j = p.offset; j < p.offset + p.num_triangles; ++j) { */
-/*                 Triangle t = triangle_pool.data[j]; */
-/*                 vec3 bar = barycentric(ray, t); */
-/*                 if (bar.x > 0 && */
-/*                         bar.y < 1 && bar.y > 0 && */
-/*                         bar.z < 1 && bar.z > 0 && */
-/*                         (bar.y + bar.z) < 1) { */
-/*                     if (bar.x < min_t) { */
-/*                         min_t = bar.x; */
-/*                         float u = bar.y; */
-/*                         float v = bar.z; */
-/*                         point = ray.o + bar.x * ray.dir; */
-/*                         //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2; */
-/*                         normal = t.normal; */
-/*                         uv = vec2(u,v); */
-/*                     } */
-/*                 } */
-/*             } */
-/*         } */
+        int stack[16];
+        int stack_offset = 0;
+        stack[stack_offset++] = 0;
+        while (stack_offset > 0) {
+            int i = stack[--stack_offset];
+            BVHNode node = bvh.data[i];
+            float bbox_t = bbox_collision(node.bbox, ray);
+            if (node.primitive_offset >= 0 && bbox_t > 0) {       // LEAF
+                Primitive p = primitive_pool.data[node.primitive_offset];
+                for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
+                    Triangle t = triangle_pool.data[j];
+                    vec3 bar = barycentric(t, ray);
+                    if (bar.x > 0 &&
+                            bar.y < 1 && bar.y > 0 &&
+                            bar.z < 1 && bar.z > 0 &&
+                            (bar.y + bar.z) < 1) {
+                        if (bar.x < min_t) {
+                            min_t = bar.x;
+                            float u = bar.y;
+                            float v = bar.z;
+                            point = ray.o + bar.x * ray.dir;
+                            //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                            normal = t.normal;
+                            uv = vec2(u,v);
+                        }
+                    }
+                }
+            } else {                                // INNER NODE
+                if (bbox_collision(node.bbox, ray) > 0) {
+                    stack[stack_offset++] = i + 1;
+                    stack[stack_offset++] = node.r_child_offset;
+                }
+            }
+        }
         // --- actual trace ends here
-
-        AABB box;
-        box.xmin = -2;
-        box.xmax = 2;
-        box.ymin = -2;
-        box.ymax = 2;
-        box.zmin = -6;
-        box.zmax = -2;
-        float box_t;
-        for (int as = 0; as < 30; as++)
-        {
-            box_t = bbox_collision(box, ray);
-        }
-        if (box_t > 0) {
-            min_t = box_t;
-            color = vec4(1);
-        }
 
         if (min_t < 1 << 16) {
             int num_lights = light_pool.data.length();

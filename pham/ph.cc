@@ -4,7 +4,8 @@ namespace ph {
 
 void init() {
 #ifndef PH_SLICES_ARE_MANUAL
-    GC_enable_incremental();
+    /* GC_enable_incremental(); */
+    GC_init();
 #endif
 }
 
@@ -52,9 +53,9 @@ void* typeless_managed(size_t n_bytes) {
     return GC_malloc(n_bytes);
 }
 
-void* typeless_managed_realloc(void* old, size_t n_bytes) {
-    return GC_realloc(old, n_bytes);
-}
+/* void* typeless_managed_realloc(void* old, size_t n_bytes) { */
+/*     return GC_realloc(old, n_bytes); */
+/* } */
 
 void* typeless_alloc(size_t n_bytes) {
     void* ptr = malloc(n_bytes);
