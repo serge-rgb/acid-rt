@@ -156,29 +156,30 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
     return coll;
 }
 
-float bbox_collision(AABB box, Ray ray) {
+float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     float t0 = 0;
     float t1 = 1 << 16;
     float xmin, xmax, ymin, ymax, zmin, zmax;
+    vec3 inv_dir = vec3(1) / ray.dir;
 
-    xmin = (box.xmin - ray.o.x) / ray.dir.x;
-    xmax = (box.xmax - ray.o.x) / ray.dir.x;
+    xmin = (box.xmin - ray.o.x) * inv_dir.x;
+    xmax = (box.xmax - ray.o.x) * inv_dir.x;
     if (xmin > xmax) {
         float tmp = xmin;
         xmin = xmax;
         xmax = tmp;
     }
 
-    ymin = (box.ymin - ray.o.y) / ray.dir.y;
-    ymax = (box.ymax - ray.o.y) / ray.dir.y;
+    ymin = (box.ymin - ray.o.y) * inv_dir.y;
+    ymax = (box.ymax - ray.o.y) * inv_dir.y;
     if (ymin > ymax) {
         float tmp = ymin;
         ymin = ymax;
         ymax = tmp;
     }
 
-    zmin = (box.zmin - ray.o.z) / ray.dir.z;
-    zmax = (box.zmax - ray.o.z) / ray.dir.z;
+    zmin = (box.zmin - ray.o.z) * inv_dir.z;
+    zmax = (box.zmax - ray.o.z) * inv_dir.z;
     if (zmin > zmax) {
         float tmp = zmin;
         zmin = zmax;
@@ -188,7 +189,11 @@ float bbox_collision(AABB box, Ray ray) {
     t0 = max(max(xmin, ymin), zmin);
     t1 = min(min(xmax, ymax), zmax);
 
-    if (t0 < t1) return t0 < 0? t1 : t0;
+    if (t0 < t1) {
+        //return t0;
+        is_inside = t0 <= 0;
+        return t0 > 0? t0 : t1;
+    }
 
     return -1 << 16;
 }
@@ -217,8 +222,8 @@ vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 250;
-    float k2 = 800.0;
+    float k1 = 300;
+    float k2 = 350.0;
     float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
 }
@@ -283,8 +288,10 @@ void main() {
         while (stack_offset > 0) {
             int i = stack[--stack_offset];
             BVHNode node = bvh.data[i];
-            float bbox_t = bbox_collision(node.bbox, ray);
-            if (node.primitive_offset >= 0 && bbox_t > 0) {       // LEAF
+            bool is_inside; // is inside bbox?
+            float bbox_t = bbox_collision(node.bbox, ray, is_inside);
+            bool ditch_node = !is_inside && bbox_t > min_t;
+            if (node.primitive_offset >= 1 && !ditch_node) {                     // LEAF
                 Primitive p = primitive_pool.data[node.primitive_offset];
                 for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
                     Triangle t = triangle_pool.data[j];
@@ -304,8 +311,8 @@ void main() {
                         }
                     }
                 }
-            } else {                                // INNER NODE
-                if (bbox_collision(node.bbox, ray) > 0) {
+            } else {                                                            // INNER NODE
+                if (bbox_t > 0 && !ditch_node) {
                     stack[stack_offset++] = i + 1;
                     stack[stack_offset++] = node.r_child_offset;
                 }

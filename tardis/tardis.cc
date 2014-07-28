@@ -704,16 +704,16 @@ void init() {
     /* Cube room = {{0,0,-1.5}, {float_scale, float_scale, float_scale}, -1}; */
     /* submit_primitive(&room, SubmitFlags_FlipNormals); */
 
-    Cube floor = {{0,-0.6,-2}, {2, 0.1, 2}, -1};
-    submit_primitive(&floor);
+    /* Cube floor = {{0,-1.6,-2}, {2, 0.1, 2}, -1}; */
+    /* submit_primitive(&floor); */
 
-    Cube top = {{0,4,-2}, {2, 0.1, 2}, -1};
-    submit_primitive(&top);
+    /* Cube top = {{0,4,-2}, {2, 0.1, 2}, -1}; */
+    /* submit_primitive(&top); */
 
     Cube thing;
     {
-        int x = 8;
-        int y = 4;
+        int x = 16;
+        int y = 8;
         int z = 20;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
