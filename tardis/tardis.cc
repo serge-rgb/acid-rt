@@ -712,9 +712,9 @@ void init() {
 
     Cube thing;
     {
-        int x = 16;
-        int y = 8;
-        int z = 20;
+        int x = 32;
+        int y = 16;
+        int z = 32;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < z; ++k) {

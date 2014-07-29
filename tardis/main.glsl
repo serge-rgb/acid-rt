@@ -157,45 +157,41 @@ CollisionFull sphere_collision(Sphere s, Ray r) {
 }
 
 float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
+    // Perf note:
+    //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
+    // vec3 inv_dir = vec3(1) / ray.dir;
     float t0 = 0;
     float t1 = 1 << 16;
     float xmin, xmax, ymin, ymax, zmin, zmax;
-    vec3 inv_dir = vec3(1) / ray.dir;
 
-    xmin = (box.xmin - ray.o.x) * inv_dir.x;
-    xmax = (box.xmax - ray.o.x) * inv_dir.x;
-    if (xmin > xmax) {
-        float tmp = xmin;
-        xmin = xmax;
-        xmax = tmp;
-    }
+    xmin = (box.xmin - ray.o.x) / ray.dir.x;
+    xmax = (box.xmax - ray.o.x) / ray.dir.x;
 
-    ymin = (box.ymin - ray.o.y) * inv_dir.y;
-    ymax = (box.ymax - ray.o.y) * inv_dir.y;
-    if (ymin > ymax) {
-        float tmp = ymin;
-        ymin = ymax;
-        ymax = tmp;
-    }
+    t0 = min(xmin, xmax);
+    t1 = max(xmin, xmax);
 
-    zmin = (box.zmin - ray.o.z) * inv_dir.z;
-    zmax = (box.zmax - ray.o.z) * inv_dir.z;
-    if (zmin > zmax) {
-        float tmp = zmin;
-        zmin = zmax;
-        zmax = tmp;
-    }
+    ymin = (box.ymin - ray.o.y) / ray.dir.y;
+    ymax = (box.ymax - ray.o.y) / ray.dir.y;
 
-    t0 = max(max(xmin, ymin), zmin);
-    t1 = min(min(xmax, ymax), zmax);
+    t0 = max(t0, min(ymin, ymax));
+    t1 = min(t1, max(ymin, ymax));
 
-    if (t0 < t1) {
-        //return t0;
-        is_inside = t0 <= 0;
-        return t0 > 0? t0 : t1;
-    }
+    zmin = (box.zmin - ray.o.z) / ray.dir.z;
+    zmax = (box.zmax - ray.o.z) / ray.dir.z;
 
-    return -1 << 16;
+    t0 = max(t0, min(zmin, zmax));
+    t1 = min(t1, max(zmin, zmax));
+
+    is_inside = t0 <= 0;
+
+    float collides = float(t0 < t1);
+    return collides * t0 + (1 - collides) * (-1 << 16);
+
+    /* if (t0 < t1) { */
+        /* return t0;// > 0? t0 : t1; */
+    /* } else { */
+    /*     return -1 << 16; */
+    /* } */
 }
 
 vec3 barycentric(Triangle tri, Ray ray) {
@@ -291,7 +287,7 @@ void main() {
             bool is_inside; // is inside bbox?
             float bbox_t = bbox_collision(node.bbox, ray, is_inside);
             bool ditch_node = !is_inside && bbox_t > min_t;
-            if (node.primitive_offset >= 1 && !ditch_node) {                     // LEAF
+            if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
                 Primitive p = primitive_pool.data[node.primitive_offset];
                 for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
                     Triangle t = triangle_pool.data[j];
@@ -311,11 +307,9 @@ void main() {
                         }
                     }
                 }
-            } else {                                                            // INNER NODE
-                if (bbox_t > 0 && !ditch_node) {
+            } else if (bbox_t > 0 && !ditch_node) {                              // INNER NODE
                     stack[stack_offset++] = i + 1;
                     stack[stack_offset++] = node.r_child_offset;
-                }
             }
         }
         // --- actual trace ends here
