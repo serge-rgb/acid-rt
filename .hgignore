@@ -1,3 +1,6 @@
+# optimizing
+callgrind.out.*
+
 # use glob syntax
 syntax: glob
 
