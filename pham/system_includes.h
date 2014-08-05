@@ -1,9 +1,18 @@
 #pragma once
 
+#if defined(_MSC_VER)
+
+#pragma warning( push, 0 )
+
+#else
+
 #pragma clang system_header
+
+#endif
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
 #ifdef PH_OVR
 #include <OVR.h>
 
@@ -13,7 +22,6 @@ typedef OVR::CAPI::HMDState hmdState;
 
 #endif
 
-
 extern "C" {
     // LOCAL
 #include <gc.h>
@@ -21,7 +29,7 @@ extern "C" {
 #include <lauxlib.h>
 #include <lualib.h>
 #include <lua.h>
-	// Cross platform
+    // Cross platform
 #ifdef _WIN32
 #include <Windows.h>
 #include <GL/glew.h>
@@ -37,4 +45,8 @@ extern "C" {
 #include <string.h>
 #include <time.h>
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 

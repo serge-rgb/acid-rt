@@ -22,7 +22,7 @@ GLuint compile_shader(const char* path, GLuint type) {
         GLsizei written_len;
         GLCHK ( glGetShaderInfoLog(obj, length, &written_len, log) );
         printf("Shader compilation failed. \n    ---- Info log:\n%s", log);
-        ph_assert(false);
+        phatal_error("Exiting: Error compiling shader");
     } else {
         printf("INFO: Compiled shader: %s\n", path);
     }
