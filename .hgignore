@@ -45,4 +45,14 @@ tags
 *.orig
 */*.orig
 
+# Visual Studio crap
+Windows/**/Debug/*
+Windows/**/Release/*
+*.filters
+*.user
+*.opensdf
+*.suo
+*.sdf
+
+
 

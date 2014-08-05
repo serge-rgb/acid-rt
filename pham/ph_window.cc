@@ -96,9 +96,7 @@ void draw_loop(WindowProc func) {
         glfwPollEvents();
 
         // ---- Get start time
-        struct timespec tp;
-        clock_gettime(CLOCK_REALTIME, &tp);
-        long start_ns = tp.tv_nsec;
+        long start_ns = ph::io::get_microseconds();
 
         // Call user supplied draw function.
         {
@@ -107,9 +105,8 @@ void draw_loop(WindowProc func) {
 
         // ---- Get end time. Measure
         GLCHK ( glFinish() );
-        clock_gettime(CLOCK_REALTIME, &tp);
-        long diff = tp.tv_nsec - start_ns;
-        double diff_ms = double(diff) / (1000.0 * 1000.0);
+        long diff = ph::io::get_microseconds() - start_ns;
+        double diff_ms = double(diff) / (1000.0);
         if (diff_ms >= ms_per_frame) {
             fprintf(stderr, "Overshot: %fms\n", diff_ms);
         } else {
@@ -126,7 +123,7 @@ void draw_loop(WindowProc func) {
 
     double avg = total_time_ms / double(num_frames);
     printf("Average frame time in ms: %f  %f%%\n",
-            avg,100 * (avg/13.333));
+            avg, 100 * (avg/13.333));
 }
 
 void deinit() {

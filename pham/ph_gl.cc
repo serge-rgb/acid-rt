@@ -7,7 +7,6 @@ namespace gl {
 
 GLuint compile_shader(const char* path, GLuint type) {
     GLuint obj = glCreateShader(type);
-    GLCHK();
     const char* src = ph::io::slurp(path);
     GLCHK ( glShaderSource(obj, 1, &src, NULL) );
     GLCHK ( glCompileShader(obj) );

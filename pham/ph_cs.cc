@@ -58,7 +58,7 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
 
         m_quad_program = glCreateProgram();
 
-        ph::gl::link_program(m_quad_program, shaders, 2); GLCHK();
+        ph::gl::link_program(m_quad_program, shaders, 2); 
 
         ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
         ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));

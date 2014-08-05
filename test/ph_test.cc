@@ -8,10 +8,10 @@ using namespace ph;
 ////////////////////////////////////////
 
 int main() {
-	ph::init();
+    ph::init();
 
     printf("Boehm GC version is %d.%d.%d\n", GC_VERSION_MAJOR, GC_VERSION_MINOR, GC_VERSION_MICRO);
-    printf("Bytes used at start: %zu\n", memory::bytes_allocated());
+    printf("Bytes used at start: %llu\n", memory::bytes_allocated());
     // Test slices
     {
         // Test append =======================================
@@ -49,12 +49,12 @@ int main() {
             array[i] = i;
         }
         printf("Hello world! %d\n", array[5]);
-        printf("Bytes used before free: %zu\n", memory::bytes_allocated());
+        printf("Bytes used before free: %llu\n", memory::bytes_allocated());
         phree(array);
-        printf("Bytes used after free : %zu\n", memory::bytes_allocated());
+        printf("Bytes used after free : %llu\n", memory::bytes_allocated());
         ph_assert(true);
     }
-    printf("Bytes used at end: %zu\n", memory::bytes_allocated());
+    printf("Bytes used at end: %llu\n", memory::bytes_allocated());
     ph::quit(EXIT_SUCCESS);
 }
 
