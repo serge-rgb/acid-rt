@@ -5,17 +5,27 @@ cmake_minimum_required(VERSION 2.8)
 
 add_subdirectory(third_party/lua)
 add_subdirectory(third_party/glfw)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "..")
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "..")
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
+add_subdirectory(third_party/bdwgc)
 
 project(nuwen)
+if (UNIX)
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_CXX_COMPILER clang++)
 
-set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++)
+    set(CMAKE_CXX_FLAGS "--std=c++11 -m64 -Weverything -Werror -Wno-c++98-compat -Wno-missing-prototypes -Wno-padded -fno-exceptions -Wno-old-style-cast -Wno-missing-noreturn -Wno-c++98-compat-pedantic -pthread")
 
-set(CMAKE_CXX_FLAGS "--std=c++11 -m64 -Weverything -Werror -Wno-c++98-compat -Wno-missing-prototypes -Wno-padded -fno-exceptions -Wno-old-style-cast -Wno-missing-noreturn -Wno-c++98-compat-pedantic -pthread")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DPH_DEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DPH_DEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+endif()
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "/W4 /WX /D_CRT_SECURE_NO_WARNINGS")
+    set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2")
+endif()
 
 #===============================================================================
 # nuwen runtime
@@ -32,24 +42,40 @@ include_directories(
     "./third_party/glm/"
     "./OculusSDK/LibOVR/Include"
     )
+if (WIN32)
+    include_directories(
+        "./Windows/"
+        "./cmake/third_party/lua/"
+        )
+endif()
 
 add_library(gc SHARED IMPORTED)
-set_property(TARGET gc PROPERTY IMPORTED_LOCATION
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/libgc.so")
-
-# Note: Linux x86_64 only
 add_library(ovr STATIC IMPORTED)
-set_property(TARGET ovr PROPERTY IMPORTED_LOCATION
-    "${CMAKE_CURRENT_SOURCE_DIR}/OculusSDK/LibOVR/Lib/Linux/Release/x86_64/libovr.a")
+if (UNIX)
+    set_property(TARGET gc PROPERTY IMPORTED_LOCATION
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/libgc.so")
+    set_property(TARGET ovr PROPERTY IMPORTED_LOCATION
+        "${CMAKE_CURRENT_SOURCE_DIR}/OculusSDK/LibOVR/Lib/Linux/Release/x86_64/libovr.a")
+endif()
+if (WIN32)
+    set_property(TARGET ovr PROPERTY IMPORTED_LOCATION
+        "${CMAKE_CURRENT_SOURCE_DIR}/OculusSDK/LibOVR/Lib/Win32/VS2013/libovr.lib")
+    find_library(GLEW_LIB glew32 HINTS "./Windows/")
+endif()
 
-add_library(ph
+
+add_library(ph STATIC
     pham/ph.cc
     pham/ph_cs.cc
     pham/ph_gl.cc
     pham/ph_io.cc
     pham/ph_window.cc
     )
-set(nuwen_runtime liblua gc ph glfw ${OPENGL_LIBRARIES})
+target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
+if (WIN32)
+    target_link_libraries(ph ${GLEW_LIB})
+endif()
+set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES})
 
 #===============================================================================
 # Projects

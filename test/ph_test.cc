@@ -52,7 +52,6 @@ int main() {
         printf("Bytes used before free: %llu\n", memory::bytes_allocated());
         phree(array);
         printf("Bytes used after free : %llu\n", memory::bytes_allocated());
-        ph_assert(true);
     }
     printf("Bytes used at end: %llu\n", memory::bytes_allocated());
     ph::quit(EXIT_SUCCESS);
