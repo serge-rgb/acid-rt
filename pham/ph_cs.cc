@@ -41,7 +41,7 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
                     0, GL_RGBA, GL_FLOAT, NULL) );
 
         // Bind it to image unit
-        glBindImageTexture(0, texobj, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        GLCHK ( glBindImageTexture(0, texobj, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F) );
     }
     // Create main program
     {
@@ -58,13 +58,13 @@ GLuint init(int width, int height, const char** shader_paths, int num_shaders) {
 
         m_quad_program = glCreateProgram();
 
-        ph::gl::link_program(m_quad_program, shaders, 2); 
+        ph::gl::link_program(m_quad_program, shaders, 2);
 
         ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
         ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));
 
         GLCHK ( glUseProgram(m_quad_program) );
-        glUniform1i(Location_tex, /*GL_TEXTURE_0*/0);
+        GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
 
     }
     // Create a quad.

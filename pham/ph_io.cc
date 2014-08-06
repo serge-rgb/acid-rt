@@ -27,7 +27,7 @@ long get_microseconds() {
 #ifdef _WIN32
     LARGE_INTEGER ticks;
     LARGE_INTEGER ticks_per_sec;
-	QueryPerformanceFrequency(&ticks_per_sec);
+    QueryPerformanceFrequency(&ticks_per_sec);
     QueryPerformanceCounter(&ticks);
 
     ticks.QuadPart *= 1000000;  // Avoid precision loss;

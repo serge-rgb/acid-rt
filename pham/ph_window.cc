@@ -83,6 +83,16 @@ void init(const char* title, int width, int height, InitFlag flags) {
 
     glfwMakeContextCurrent(m_window);
 
+#ifdef _WIN32
+    glewExperimental = GL_TRUE;
+    GLenum err = glewInit();
+    if( err != GLEW_OK ) {
+        phatal_error("Couldn't init glew");
+    }
+    printf("Using GLEW %s\n", glewGetString(GLEW_VERSION));
+#endif
+
+
 }
 
 void draw_loop(WindowProc func) {

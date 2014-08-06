@@ -22,9 +22,9 @@ if (UNIX)
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 endif()
 if (WIN32)
-    set(CMAKE_CXX_FLAGS "/W4 /WX /D_CRT_SECURE_NO_WARNINGS")
-    set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od")
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2")
+    set(CMAKE_CXX_FLAGS "/MP /W4 /WX /D_CRT_SECURE_NO_WARNINGS")
+    set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od /ZI")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /ZI")
 endif()
 
 #===============================================================================
@@ -45,7 +45,7 @@ include_directories(
 if (WIN32)
     include_directories(
         "./Windows/"
-        "./cmake/third_party/lua/"
+        "./build/third_party/lua/"
         )
 endif()
 
