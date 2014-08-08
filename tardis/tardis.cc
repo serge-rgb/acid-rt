@@ -25,11 +25,12 @@ const char* str(scene::AABB b);
 // to handle rendering and so on.
 ////////////////////////////////////////
 namespace vr {
-
-static const OVR::HMDInfo* m_hmdinfo;
-static OVR::HmdRenderInfo* m_renderinfo;
-static ovrHmd              m_hmd;
-static float               m_default_eye_z;  // Getting the default FOV, calculate eye distance from plane.
+static const OVR::CAPI::HMDState* m_hmdstate;
+static const OVR::HMDInfo*        m_hmdinfo;
+static const OVR::HmdRenderInfo*  m_renderinfo;
+static ovrHmd                     m_hmd;
+static float                      m_default_eye_z;  // Getting the default FOV, calculate eye distance from plane.
+static float                      m_screen_size_m[2];  // Screen size in meters
 
 void init() {
     // Safety net.
@@ -48,35 +49,38 @@ void init() {
         ph::phatal_error("Could not initialize OVR\n");
     }
     m_hmd = ovrHmd_Create(0);
-    ovrHmdDesc desc;
-    ovrHmd_GetDesc(m_hmd, &desc);
 
-    ovrHmd_StartSensor(m_hmd, 0x1111/*all*/, ovrHmd_GetEnabledCaps(m_hmd));
+    ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, 0x1111/*all*/, ovrHmd_GetEnabledCaps(m_hmd));
+    if (!succ) {
+        phatal_error("Could not initialize OVR sensors!");
+    }
 
-    auto fovPort_l = desc.DefaultEyeFov[0];
-    auto fovPort_r = desc.DefaultEyeFov[1];
+    auto fovPort_l = m_hmd->DefaultEyeFov[0];
+    auto fovPort_r = m_hmd->DefaultEyeFov[1];
 
     ovrEyeRenderDesc rdesc[2];
 
     rdesc[0] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, fovPort_l);
     rdesc[1] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, fovPort_r);
+    m_hmd->CameraFrustumNearZInMeters;
 
-    hmdState* state = (hmdState*)m_hmd;
-    m_hmdinfo = &state->HMDInfo;
+    // Hard coded, taken from OVR source.
+    m_screen_size_m[0] = 0.12576f;
+    m_screen_size_m[1] = 0.07074f;
 
     // Default fov (looking down)
     float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;
-    float h = m_hmdinfo->ScreenSizeInMeters.h;
+    float h = m_screen_size_m[1];
 
-    // Let's get the eye distance.
+    // TODO: take relief into account.
     m_default_eye_z = h / (1 * hvfov);
 
-    *m_renderinfo = GenerateHmdRenderInfoFromHmdInfo(*m_hmdinfo);
-
+    m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
+    m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
+    m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
 }
 
 void deinit() {
-    ovrHmd_StopSensor(m_hmd);
     ovrHmd_Destroy(m_hmd);
     ovr_Shutdown();
 }
@@ -653,9 +657,13 @@ void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
     tri.normal = nm;
     append(&m_triangle_pool, tri);
 
-    ph_assert(index <= long(1) << 31);
+    ph_assert(index <= PH_MAX_int64);
     cube->index = (int)index;
-    append(&m_primitives, {cube->index, 12, MaterialType_Lambert});
+    Primitive prim;
+    prim.offset = cube->index;
+    prim.num_triangles = 12;
+    prim.material = MaterialType_Lambert;
+    append(&m_primitives, prim);
 }
 
 void submit_primitive(AABB* bbox) {
@@ -712,9 +720,9 @@ void init() {
 
     Cube thing;
     {
-        int x = 32;
-        int y = 16;
-        int z = 32;
+        int x = 2;
+        int y = 2;
+        int z = 2;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < z; ++k) {
@@ -727,7 +735,7 @@ void init() {
     }
 
     // Do this after submitting everything:
-    ph_assert(count(m_primitives) < long(1) << 31)
+    ph_assert(count(m_primitives) < PH_MAX_int64);
 
     int* indices = phalloc(int, count(m_primitives));
     for (int i = 0; i < count(m_primitives); ++i) {
@@ -781,8 +789,8 @@ void init() {
 ////////////////////////////////////////
 
 static GLuint g_program;
-/* static int g_size[] = {1920, 1080}; */
-static int g_size[] = {1280, 800};
+static int g_size[] = {1920, 1080};
+/* static int g_size[] = {1280, 800}; */
 /* static int g_size[] = {640, 400}; */
 // Note: perf is really sensitive about this. Runtime tweak?
 // Note 2: Workgroup size should be a multiple of workgroup size.
@@ -845,8 +853,8 @@ void init(GLuint prog) {
     g_viewport_size[0] = GLfloat (g_size[0]) / 2;
     g_viewport_size[1] = GLfloat (g_size[1]);
     GLfloat size_m[2] = {
-        vr::m_renderinfo->ScreenSizeInMeters.w / 2,
-        vr::m_renderinfo->ScreenSizeInMeters.h,
+        vr::m_screen_size_m[0] / 2,
+        vr::m_screen_size_m[1],
     };
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Occlude?
@@ -874,7 +882,6 @@ void init(GLuint prog) {
                 GLsizeiptr(sizeof(scene::GLlight) * scene::m_light_pool.n_elems),
                 (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, light_buffer);
-        GLCHK();
     }
 
     // Submit primitive pool.
@@ -897,19 +904,19 @@ void draw() {
     static float step_var = 0.0;
     sphere_y = 0.2f * sinf(step_var);
     glUniform1f(4, sphere_y);
-    step_var += 0.05;
+    step_var += 0.05f;
 
     static unsigned int frame_index = 1;
-    if (frame_index == 1) {
-        ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
-    }
+//    if (frame_index == 1) {
+//        ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
+//    }
 
-    ovrFrameTiming frame_timing = ovrHmd_BeginFrame(vr::m_hmd, frame_index);
+    ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
     frame_timing = ovrHmd_GetFrameTiming(vr::m_hmd, frame_index);
 
-    auto sdata = ovrHmd_GetSensorState(vr::m_hmd, frame_timing.ScanoutMidpointSeconds);
+    auto sdata = ovrHmd_GetTrackingState(vr::m_hmd, frame_timing.ScanoutMidpointSeconds);
 
-    ovrPosef pose = sdata.Predicted.Pose;
+    ovrPosef pose = sdata.HeadPose.ThePose;
 
     auto q = pose.Orientation;
     GLfloat quat[4] {
@@ -958,8 +965,7 @@ void draw() {
     // Dispatch left viewport
     {
         GLfloat lens_center[2] = {
-            (vr::m_renderinfo->ScreenSizeInMeters.w / 2) -
-                (vr::m_renderinfo->LensSeparationInMeters / 2),
+            (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2),
             vr::m_hmdinfo->CenterFromTopInMeters,
         };
         glUniform2fv(6, 1, lens_center);  // Lens center
@@ -979,7 +985,8 @@ void draw() {
                     GLuint(g_viewport_size[1] / g_warpsize[1]), 1) );
     }
     frame_index++;
-    ovrHmd_EndFrame(vr::m_hmd);
+    //ovrHmd_EndFrame(vr::m_hmd, NULL, NULL);
+    ovrHmd_EndFrameTiming(vr::m_hmd);
 
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     // Draw screen

@@ -67,6 +67,8 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwGetMonitorPos(m_rift_monitor, &x, &y);
         glfwSetWindowPos(m_window, x, y);
     }
+    // HACK
+    glfwSetWindowPos(m_window, -1920, 1600);
 
     int gl_version[] = {
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR),
@@ -114,7 +116,7 @@ void draw_loop(WindowProc func) {
         }
 
         // ---- Get end time. Measure
-        GLCHK ( glFinish() );
+        //GLCHK ( glFinish() );
         long diff = ph::io::get_microseconds() - start_ns;
         double diff_ms = double(diff) / (1000.0);
         if (diff_ms >= ms_per_frame) {

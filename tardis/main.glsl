@@ -218,7 +218,7 @@ vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 300;
+    float k1 = 250;
     float k2 = 350.0;
     float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));

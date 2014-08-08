@@ -46,13 +46,9 @@ tags
 */*.orig
 
 # Visual Studio crap
-Windows/**/Debug/*
-Windows/**/Release/*
+build/*
 *.filters
 *.user
 *.opensdf
 *.suo
 *.sdf
-
-
-

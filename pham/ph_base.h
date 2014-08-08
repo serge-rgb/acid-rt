@@ -51,6 +51,8 @@ void init();
 typedef int64_t int64;
 typedef int32_t int32;
 
+#define PH_MAX_int64 2147483648
+
 //////////////////////////
 // Memory
 //////////////////////////
