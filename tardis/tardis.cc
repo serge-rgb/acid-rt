@@ -907,12 +907,8 @@ void draw() {
     step_var += 0.05f;
 
     static unsigned int frame_index = 1;
-//    if (frame_index == 1) {
-//        ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
-//    }
 
     ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
-    frame_timing = ovrHmd_GetFrameTiming(vr::m_hmd, frame_index);
 
     auto sdata = ovrHmd_GetTrackingState(vr::m_hmd, frame_timing.ScanoutMidpointSeconds);
 
@@ -985,12 +981,12 @@ void draw() {
                     GLuint(g_viewport_size[1] / g_warpsize[1]), 1) );
     }
     frame_index++;
-    //ovrHmd_EndFrame(vr::m_hmd, NULL, NULL);
-    ovrHmd_EndFrameTiming(vr::m_hmd);
 
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
     // Draw screen
     cs::fill_screen();
+    ovrHmd_EndFrameTiming(vr::m_hmd);
 }
 
 } // ph

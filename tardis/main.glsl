@@ -185,7 +185,8 @@ float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     is_inside = t0 <= 0;
 
     float collides = float(t0 < t1);
-    return collides * t0 + (1 - collides) * (-1 << 16);
+    /* return collides * t0 + (1 - collides) * (-1 << 16); */
+    return collides * t1 + (1 - collides) * (-1 << 16);
 
     /* if (t0 < t1) { */
         /* return t0;// > 0? t0 : t1; */
@@ -264,7 +265,7 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.0016) {         // <--- Cull
+    if (occlude && radius_sq > 0.0010) {         // <--- Cull
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
