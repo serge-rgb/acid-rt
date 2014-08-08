@@ -67,7 +67,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwGetMonitorPos(m_rift_monitor, &x, &y);
         glfwSetWindowPos(m_window, x, y);
     }
-    // HACK
+    // HACK ============================================================
     glfwSetWindowPos(m_window, -1920, 1600);
 
     int gl_version[] = {

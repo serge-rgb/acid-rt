@@ -29,7 +29,7 @@ static const OVR::CAPI::HMDState* m_hmdstate;
 static const OVR::HMDInfo*        m_hmdinfo;
 static const OVR::HmdRenderInfo*  m_renderinfo;
 static ovrHmd                     m_hmd;
-static float                      m_default_eye_z;  // Getting the default FOV, calculate eye distance from plane.
+static float                      m_default_eye_z;     // Eye distance from plane.
 static float                      m_screen_size_m[2];  // Screen size in meters
 
 void init() {
@@ -42,7 +42,6 @@ void init() {
     ///////////////
     // Allocate crap
     // Not deallocated. This should only be called once or the caller is dumb and ugly.
-    m_renderinfo = new OVR::HmdRenderInfo();
     ///////////////
 
     if (!ovr_Initialize()) {
@@ -58,19 +57,20 @@ void init() {
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
     auto fovPort_r = m_hmd->DefaultEyeFov[1];
 
+
     ovrEyeRenderDesc rdesc[2];
 
     rdesc[0] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, fovPort_l);
     rdesc[1] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, fovPort_r);
-    m_hmd->CameraFrustumNearZInMeters;
 
     // Hard coded, taken from OVR source.
     m_screen_size_m[0] = 0.12576f;
     m_screen_size_m[1] = 0.07074f;
 
     // Default fov (looking down)
-    float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;
+    float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;   // 1.32928
     float h = m_screen_size_m[1];
+    h = 1;
 
     // TODO: take relief into account.
     m_default_eye_z = h / (1 * hvfov);
@@ -720,9 +720,9 @@ void init() {
 
     Cube thing;
     {
-        int x = 2;
-        int y = 2;
-        int z = 2;
+        int x = 16;
+        int y = 16;
+        int z = 16;
         for (int i = 0; i < x; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < z; ++k) {
@@ -789,10 +789,8 @@ void init() {
 ////////////////////////////////////////
 
 static GLuint g_program;
-static int g_size[] = {1920, 1080};
-/* static int g_size[] = {1280, 800}; */
-/* static int g_size[] = {640, 400}; */
-// Note: perf is really sensitive about this. Runtime tweak?
+static int g_size[] = {1920, 1080};  // DK2 res
+
 // Note 2: Workgroup size should be a multiple of workgroup size.
 static int g_warpsize[] = {16, 8};
 static GLfloat g_viewport_size[2];

@@ -219,10 +219,23 @@ vec3 lambert(vec3 point, vec3 normal, vec3 color, Light l) {
 
 float barrel(float r) {
     float k0 = 1.0;
-    float k1 = 250;
-    float k2 = 350.0;
+    float k1 = 0.22;
+    float k2 = 0.24;
     float k3 = 0.0;
     return k0 + r * (k1 + r * ( r * k2 + r * k3));
+}
+
+float recip_poly(float r) {
+    /* float k0 = 1.0; */
+    /* float k1 = -0.494165344f; */
+    /* float k2 = 0.587046423f; */
+    /* float k3 = -0.841887126f; */
+    float m = 1.32928;
+    float k0 = 1.0;
+    float k1 = m * 0.4;
+    float k2 = m * 0.8;
+    float k3 = m * 1.5;
+    return 1 / (k0 + r * (k1 + r * (r * k2 + r * k3)));
 }
 
 // (x * y) % 32 == 0
@@ -234,38 +247,50 @@ void main() {
     // The eye is a physically accurate position (in meters) of the ... ey
     vec3 eye = vec3(0, 0, eye_to_lens_m);
 
-    // Rotate eye
-    // ....
-    eye = rotate_vector_quat(eye, orientation_q);
-
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
                       (gl_GlobalInvocationID.y / screen_size.y),
                       0);
 
     // Point is in [0,1]x[0,1].
-    // We need to convert it to meters relative to the screen.
-    point.xy *= screen_size_m;
-
-    // Center the point at zero (lens center)
-    point.x -= lens_center_m.x;
-    point.y -= lens_center_m.y;
 
     // Radius squared. Used for culling and distortion correction.
     // get it before we rotate everything..
-    float radius_sq = (point.x * point.x) + (point.y * point.y);
+    vec3 centered_NDC = (vec3(2,2,0) * point) - vec3(1,1,0);
+    /* float radius_sq = (point.x * point.x) + (point.y * point.y); */
+    /* float radius_sq = (centered_NDC.x * centered_NDC.x) + (centered_NDC.y * centered_NDC.y); */
 
-    point *= barrel(radius_sq);
 
+    /* point *= barrel(radius_sq); */
+    //point *= recip_poly(radius_sq);
+
+    // Convert unit to meters
+    point.xy *= screen_size_m;
+
+    // Center the point at zero (lens center)
+    point.xy -= lens_center_m.xy;
+
+    // back to NDC
+    point.xy /= screen_size_m;
+
+    // Rotate eye
+    eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
 
+    // Distortion
+
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
+    /* point *= barrel(radius_sq); */
+    point /= recip_poly(radius_sq);
+
     // Camera movement
+
     eye.zx += camera_pos.xy;
     point.zx += camera_pos.xy;
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.0010) {         // <--- Cull
+    if (occlude && radius_sq > 0.25) {         // <--- Cull
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
