@@ -898,12 +898,6 @@ void init(GLuint prog) {
 void draw() {
     GLCHK ( glUseProgram(g_program) );
 
-    static GLfloat sphere_y = 0.0f;
-    static float step_var = 0.0;
-    sphere_y = 0.2f * sinf(step_var);
-    glUniform1f(4, sphere_y);
-    step_var += 0.05f;
-
     static unsigned int frame_index = 1;
 
     ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
@@ -916,7 +910,7 @@ void draw() {
     GLfloat quat[4] {
         q.x, q.y, q.z, q.w,
     };
-    glUniform4fv(7, 1, quat);
+    glUniform4fv(7, 1, quat);  // Camera orientation
 
     static GLfloat camera_pos[2] = {0, 0};
     static GLfloat cam_step = 0.03f;
@@ -953,7 +947,7 @@ void draw() {
         camera_pos[0] -= cam_step_x;
         camera_pos[1] -= cam_step_y;
     }
-    glUniform2fv(10, 1, camera_pos);  // update camera_pos
+    GLCHK ( glUniform2fv(10, 1, camera_pos) );  // update camera_pos
 
     GLCHK ( glUseProgram(g_program) );
     // Dispatch left viewport
