@@ -436,7 +436,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
 BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
-    assert(root->left && root->right);
+    ph_assert(root->left && root->right);
 
     auto slice = MakeSlice<BVHNode>(1024);          // Too big?
     auto ptrs  = MakeSlice<BVHTreeNode*>(1024);     // Use this to get offsets for right childs (too slow?)
