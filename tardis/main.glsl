@@ -3,18 +3,18 @@
 layout(location = 0) uniform vec2 screen_size;          // One eye! (960, 1080 for DK2)
 layout(location = 1) writeonly uniform image2D tex;     // This is the image we write to.
 layout(location = 2) uniform float x_offset;            // In pixels, for separate viewports.
-layout(location = 3) uniform float eye_to_lens_m;       //
-layout(location = 4) uniform float sphere_y;            // TEST
-layout(location = 5) uniform vec2 screen_size_m;        // In meters.
+layout(location = 3) uniform float eye_to_lens_m;
+// 4 -- unused
+layout(location = 5) uniform vec2 screen_size_m;        // Screen size in meters.
 layout(location = 6) uniform vec2 lens_center_m;        // Lens center.
 layout(location = 7) uniform vec4 orientation_q;        // Orientation quaternion.
 layout(location = 8) uniform bool occlude;              // Flag for occlusion circle
 // 9 unused
-layout(location = 10) uniform vec2 camera_pos;          //
+layout(location = 10) uniform vec2 camera_pos;
 
 float PI = 3.141526;
 float EPSILON = 0.00001;
-
+float INFINITY = 1 << 16;
 
 // Sync this with enum in C codebase.
 int MaterialType_Lambert = 0;
@@ -28,11 +28,6 @@ vec3 rotate_vector_quat(vec3 vec, vec4 quat) {
 struct Ray {
     vec3 o;
     vec3 dir;
-};
-
-struct Plane {
-    vec3 normal;
-    vec3 point;
 };
 
 struct Triangle {
@@ -84,84 +79,12 @@ layout(std430, binding = 3) buffer BVH {
     BVHNode data[];
 } bvh;
 
-struct Rect {
-    vec3 a,b,c,d;
-};
-
-struct Cube {
-    vec3 center;
-    vec3 a,b,c,d,e,f,g,h;
-};
-
-struct Sphere {
-    float r;
-    vec3 center;
-};
-
-vec3 normal_for_rect(Rect r) {
-    return normalize(cross(r.a - r.b, r.c - r.b));
-}
-
-////////////////////////////////////////
-// Collision structs
-////////////////////////////////////////
-
-struct Collision {
-    bool exists;
-};
-
-struct CollisionFull {
-    bool exists;
-    vec3 point;
-    float t;
-};
-
-Collision sphere_collision_p(Sphere s, Ray r) {
-    vec3 dir = r.dir;
-    Collision coll;
-    coll.exists = false;
-
-    float A = dot(dir, dir);
-    float B = 2 * dot(dir, s.center);
-    float C = dot(s.center, s.center) - (s.r * s.r);
-    float disc = (B*B - 4*A*C);
-    if (disc < 0.0) {
-        return coll;
-    } else { // Hit!
-        coll.exists = true;
-    }
-    return coll;
-}
-
-CollisionFull sphere_collision(Sphere s, Ray r) {
-    vec3 dir = r.dir;
-    CollisionFull coll;
-    coll.exists = false;
-    coll.t = 0;
-
-    float A = dot(dir, dir);
-    float B = 2 * dot(dir, s.center);
-    float C = dot(s.center, s.center) - (s.r * s.r);
-    float disc = (B*B - 4*A*C);
-    if (disc < 0.0) {
-        return coll;
-    }
-    float t = (B - sqrt(disc)) / (2 * A);
-    if (t <= 0) {
-        return coll;
-    }
-    coll.exists = true;
-    coll.point = r.o + (r.dir * t);
-    coll.t = t;
-    return coll;
-}
-
 float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     // Perf note:
     //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
     // vec3 inv_dir = vec3(1) / ray.dir;
     float t0 = 0;
-    float t1 = 1 << 16;
+    float t1 = INFINITY;
     float xmin, xmax, ymin, ymax, zmin, zmax;
 
     xmin = (box.xmin - ray.o.x) / ray.dir.x;
@@ -185,13 +108,13 @@ float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     is_inside = t0 <= 0;
 
     float collides = float(t0 < t1);
-    /* return collides * t0 + (1 - collides) * (-1 << 16); */
-    return collides * t1 + (1 - collides) * (-1 << 16);
+    /* return collides * t0 + (1 - collides) * (-INFINITY); */
+    return collides * t1 + (1 - collides) * (-INFINITY);
 
     /* if (t0 < t1) { */
         /* return t0;// > 0? t0 : t1; */
     /* } else { */
-    /*     return -1 << 16; */
+    /*     return -INFINITY; */
     /* } */
 }
 
@@ -205,7 +128,6 @@ vec3 barycentric(Triangle tri, Ray ray) {
     //if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
     return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
 }
-
 
 // ========================================
 // Material functions.
@@ -252,17 +174,7 @@ void main() {
                       (gl_GlobalInvocationID.y / screen_size.y),
                       0);
 
-    // Point is in [0,1]x[0,1].
-
-    // Radius squared. Used for culling and distortion correction.
-    // get it before we rotate everything..
-    vec3 centered_NDC = (vec3(2,2,0) * point) - vec3(1,1,0);
-    /* float radius_sq = (point.x * point.x) + (point.y * point.y); */
-    /* float radius_sq = (centered_NDC.x * centered_NDC.x) + (centered_NDC.y * centered_NDC.y); */
-
-
-    /* point *= barrel(radius_sq); */
-    //point *= recip_poly(radius_sq);
+    // Point is in [0,1]x[0,1]  (NDC)
 
     // Convert unit to meters
     point.xy *= screen_size_m;
@@ -273,14 +185,18 @@ void main() {
     // back to NDC
     point.xy /= screen_size_m;
 
+    // Scale by aspect ratio.
+    point.x *= screen_size.x / screen_size.y;
+
+    // Get radius squared
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
+
     // Rotate eye
     eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
 
-    // Distortion
+    // Distortion correction
 
-    float radius_sq = (point.x * point.x) + (point.y * point.y);
-    /* point *= barrel(radius_sq); */
     point /= recip_poly(radius_sq);
 
     // Camera movement
@@ -290,7 +206,7 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.25) {         // <--- Cull
+    if (occlude && radius_sq > 0.18) {         // <--- Cull
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
@@ -298,7 +214,7 @@ void main() {
         ray.dir = ray.o - eye;
 
         // Single trace against triangle pool
-        float min_t = 1 << 16;
+        float min_t = INFINITY;
         color = vec4(1);
         vec3 point;
         vec3 normal;
@@ -340,7 +256,7 @@ void main() {
         }
         // --- actual trace ends here
 
-        if (min_t < 1 << 16) {
+        if (min_t < INFINITY) {
             color = vec4(0);
             int num_lights = light_pool.data.length();
             for (int i = 0; i < num_lights; ++i) {
@@ -352,7 +268,6 @@ void main() {
             }
 
         }
-        // TODO: Deal with possible negative min_t;
     }
 
 
