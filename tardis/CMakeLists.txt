@@ -2,6 +2,8 @@
 
 set (sources
     tardis.cc
+    # Higher level
+    ../pham/scene.cc
     )
 
 add_executable(tardis ${sources})
