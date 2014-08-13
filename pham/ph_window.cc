@@ -68,7 +68,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwSetWindowPos(m_window, x, y);
     }
     // HACK ============================================================
-    glfwSetWindowPos(m_window, -1920, 1600);
+    /* glfwSetWindowPos(m_window, -1920, 1600); */
 
     int gl_version[] = {
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR),
@@ -103,7 +103,7 @@ void draw_loop(WindowProc func) {
     //=========================================
     double total_time_ms = 0;
     int64 num_frames = 1;
-    double ms_per_frame = 13.3333;
+    double ms_per_frame = 13.333333;
     while (!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
 
@@ -116,7 +116,7 @@ void draw_loop(WindowProc func) {
         }
 
         // ---- Get end time. Measure
-        //GLCHK ( glFinish() );
+        GLCHK ( glFinish() );
         long diff = ph::io::get_microseconds() - start_ns;
         double diff_ms = double(diff) / (1000.0);
         if (diff_ms >= ms_per_frame) {
@@ -135,7 +135,7 @@ void draw_loop(WindowProc func) {
 
     double avg = total_time_ms / double(num_frames);
     printf("Average frame time in ms: %f  %f%%\n",
-            avg, 100 * (avg/13.333));
+            avg, 100 * (avg/ms_per_frame));
 }
 
 void deinit() {

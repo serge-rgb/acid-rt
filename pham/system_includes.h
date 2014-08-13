@@ -18,7 +18,6 @@
 
 // I need this to get a HMDInfo
 #include "../OculusSDK/LibOVR/Src/CAPI/CAPI_HMDState.h"
-typedef OVR::CAPI::HMDState hmdState;
 
 #endif
 

@@ -10,7 +10,7 @@ layout(location = 6) uniform vec2 lens_center_m;        // Lens center.
 layout(location = 7) uniform vec4 orientation_q;        // Orientation quaternion.
 layout(location = 8) uniform bool occlude;              // Flag for occlusion circle
 // 9 unused
-layout(location = 10) uniform vec2 camera_pos;
+layout(location = 10) uniform vec3 camera_pos;
 
 float PI = 3.141526;
 float EPSILON = 0.00001;
