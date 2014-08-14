@@ -29,7 +29,7 @@ const OVR::HMDInfo*        m_hmdinfo;
 const OVR::HmdRenderInfo*  m_renderinfo;
 float                      m_screen_size_m[2];  // Screen size in meters
 
-void init() {
+void init(GLuint program) {
     // Safety net.
     static bool is_init = false;
     if (is_init) {
@@ -76,6 +76,71 @@ void init() {
     const OVR::CAPI::HMDState* m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
     m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
+
+    glUseProgram(program);
+    glUniform1f(3, vr::m_default_eye_z);
+
+    GLfloat size_m[2] = {
+        m_screen_size_m[0] / 2,
+        m_screen_size_m[1],
+    };
+    glUniform2fv(5, 1, size_m);     // screen_size_m
+    glUniform1f(8, true);           // Occlude?
+}
+
+void draw(int* resolution, int* warp_size) {
+    GLfloat viewport_resolution[2] = { GLfloat(resolution[0] / 2), GLfloat(resolution[1]) };
+    static unsigned int frame_index = 1;
+
+    /* ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index); */
+    ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
+
+    ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
+
+    // TODO -- Controls should be handled elsewhere
+    auto q = pose.Orientation;
+    GLfloat quat[4] {
+        q.x, q.y, q.z, q.w,
+    };
+    GLfloat camera_pos[3];
+    io::get_wasd_camera(quat, camera_pos);
+    glUniform4fv(7, 1, quat);  // Camera orientation
+    GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
+
+    // Dispatch left viewport
+    {
+        GLfloat lens_center[2] = {
+            (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2),
+            vr::m_hmdinfo->CenterFromTopInMeters,
+        };
+        glUniform2fv(6, 1, lens_center);  // Lens center
+        glUniform1f(2, 0);  // x_offset
+        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / warp_size[0]),
+                    GLuint(viewport_resolution[1] / warp_size[1]), 1) );
+    }
+    // Dispatch right viewport
+    {
+        GLfloat lens_center[2] = {
+            vr::m_renderinfo->LensSeparationInMeters / 2,
+            vr::m_hmdinfo->CenterFromTopInMeters,
+        };
+        glUniform2fv(6, 1, lens_center);  // Lens center
+        glUniform1f(2, ((GLfloat)viewport_resolution[0]));  // x_offset
+        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / warp_size[0]),
+                    GLuint(viewport_resolution[1] / warp_size[1]), 1) );
+    }
+    frame_index++;
+
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    // Draw screen
+    cs::fill_screen();
+
+    window::swap_buffers();
+    glFlush();
+    GLCHK ( glFinish() );
+    ovrHmd_EndFrameTiming(vr::m_hmd);
+
 }
 
 void deinit() {

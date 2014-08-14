@@ -11,7 +11,10 @@ extern const OVR::HMDInfo*       m_hmdinfo;
 extern const OVR::HmdRenderInfo* m_renderinfo;
 extern float                     m_screen_size_m[2];  // Screen size in meters
 
-void init();
+void init(GLuint program);
+
+void draw(int* resolution, int* warp_size);
+
 void deinit();
 }
 
