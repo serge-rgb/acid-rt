@@ -53,7 +53,7 @@ int main() {
                 }
             }
         }
-        printf("INFO: Submitted %d polygons.\n", (3 * 12) + x * y * z * 12);
+        printf("INFO: Submitted %d polygons.\n", x * y * z * 12);
     }
 
     scene::update_structure();

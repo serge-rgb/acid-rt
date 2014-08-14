@@ -198,9 +198,9 @@ void main() {
     point.z -= eye_to_lens_m;
 
     //  neck correction (measured my head)
-    /* vec2 neck_joint = vec2(0.20, -0.13); */
-    /* eye.yz -= neck_joint; */
-    /* point.yz -= neck_joint; */
+    vec2 neck_joint = vec2(0.20, -0.13);
+    eye.yz -= neck_joint;
+    point.yz -= neck_joint;
 
     // Rotate.
     eye = rotate_vector_quat(eye, orientation_q);
