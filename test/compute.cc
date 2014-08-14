@@ -24,7 +24,7 @@ int main() {
 
     g_program = cs::init(size[0], size[1], &path, 1);
 
-    window::draw_loop(draw);
+    window::main_loop(draw);
 
     window::deinit();
 }

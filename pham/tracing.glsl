@@ -167,7 +167,7 @@ void main() {
 
     //float ar = screen_size.y / screen_size.x;
     // The eye is a physically accurate position (in meters) of the ... ey
-    vec3 eye = vec3(0, 0, eye_to_lens_m);
+    vec3 eye = vec3(0, 0, 0);
 
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
@@ -191,13 +191,13 @@ void main() {
     // Get radius squared
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
-    // Rotate eye
-    eye = rotate_vector_quat(eye, orientation_q);
-    point = rotate_vector_quat(point, orientation_q);
-
     // Distortion correction
 
     point /= recip_poly(radius_sq);
+
+    point.z -= eye_to_lens_m;
+    // Rotate. Eye is zero, only rotate viewport.
+    point = rotate_vector_quat(point, orientation_q);
 
     // Camera movement
 
@@ -215,7 +215,7 @@ void main() {
 
         // Single trace against triangle pool
         float min_t = INFINITY;
-        color = vec4(1);
+        color = vec4(0.5);
         vec3 point;
         vec3 normal;
         vec2 uv;

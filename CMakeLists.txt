@@ -88,7 +88,3 @@ set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES})
 
 # ---- tests
 add_subdirectory(test)
-# --- project tardis
-add_subdirectory(tardis)
-# ---- budget app (top secret)
-# add_subdirectory(budget)

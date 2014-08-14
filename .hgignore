@@ -52,3 +52,7 @@ build/*
 *.opensdf
 *.suo
 *.sdf
+
+# Windows crap
+Windows/*.exe
+Windows/*.txt

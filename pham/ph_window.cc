@@ -68,7 +68,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwSetWindowPos(m_window, x, y);
     }
     // HACK ============================================================
-    /* glfwSetWindowPos(m_window, -1920, 1600); */
+    glfwSetWindowPos(m_window, -1920, 1600);
 
     int gl_version[] = {
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR),
@@ -97,7 +97,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
 
 }
 
-void draw_loop(WindowProc func) {
+void main_loop(WindowProc draw_func) {
     //=========================================
     // Main loop.
     //=========================================
@@ -112,30 +112,30 @@ void draw_loop(WindowProc func) {
 
         // Call user supplied draw function.
         {
-            func();
+            draw_func();
         }
 
         // ---- Get end time. Measure
-        GLCHK ( glFinish() );
         long diff = ph::io::get_microseconds() - start_ns;
         double diff_ms = double(diff) / (1000.0);
         if (diff_ms >= ms_per_frame) {
-            fprintf(stderr, "Overshot: %fms\n", diff_ms);
+            /* fprintf(stderr, "Overshot: %fms\n", diff_ms); */
         } else {
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
-                printf("Frame time: %fms\n", diff_ms);
+                /* printf("Frame time: %fms\n", diff_ms); */
             }
         }
-
-        // ---- Swap
-        glfwSwapBuffers(m_window);
     }
 
     double avg = total_time_ms / double(num_frames);
     printf("Average frame time in ms: %f  %f%%\n",
             avg, 100 * (avg/ms_per_frame));
+}
+
+void swap_buffers() {
+    glfwSwapBuffers(m_window);
 }
 
 void deinit() {

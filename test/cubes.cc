@@ -17,12 +17,10 @@ static int g_size[] = {1920, 1080};  // DK2 res
 static int g_warpsize[] = {16, 8};
 static GLfloat g_viewport_size[2];
 
-
 void init(GLuint prog) {
     // Eye-to-lens
     glUseProgram(prog);
-    float eye_to_lens_m = ph::vr::m_default_eye_z;  // Calculated for default FOV
-    glUniform1f(3, eye_to_lens_m);
+    glUniform1f(3, vr::m_default_eye_z);
 
     g_viewport_size[0] = GLfloat (g_size[0]) / 2;
     g_viewport_size[1] = GLfloat (g_size[1]);
@@ -39,11 +37,10 @@ void draw() {
 
     static unsigned int frame_index = 1;
 
-    ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
+    /* ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index); */
+    ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
 
-    auto sdata = ovrHmd_GetTrackingState(vr::m_hmd, frame_timing.ScanoutMidpointSeconds);
-
-    ovrPosef pose = sdata.HeadPose.ThePose;
+    ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
 
     // TODO -- Controls should be handled elsewhere
     auto q = pose.Orientation;
@@ -84,6 +81,10 @@ void draw() {
 
     // Draw screen
     cs::fill_screen();
+
+    window::swap_buffers();
+    glFlush();
+    GLCHK ( glFinish() );
     ovrHmd_EndFrameTiming(vr::m_hmd);
 }
 
@@ -92,7 +93,7 @@ int main() {
     ph::init();
     vr::init();
 
-    window::init("Project TARDIS", g_size[0], g_size[1],
+    window::init("Cube grid", g_size[0], g_size[1],
             window::InitFlag(window::InitFlag_NoDecoration |
                 window::InitFlag_OverrideKeyCallback));
 
@@ -100,16 +101,36 @@ int main() {
     glfwSetKeyCallback(ph::window::m_window, ph::io::wasd_callback);
 
     const char* paths[] = {
-        "tardis/main.glsl",
+        "pham/tracing.glsl",
     };
 
     g_program = cs::init(g_size[0], g_size[1], paths, 1);
 
-    ph::scene::init();
+    scene::init();
+
+    // Create test grid of cubes
+    scene::Cube thing;
+    {
+        int x = 8;
+        int y = 8;
+        int z = 8;
+        for (int i = 0; i < z; ++i) {
+            for (int j = 0; j < y; ++j) {
+                for (int k = 0; k < x; ++k) {
+                    thing = {{i * 1.1, j * 1.1, -2 - k * 1.1}, {0.5, 0.5, 0.5}, -1};
+                    scene::submit_primitive(&thing);
+                }
+            }
+        }
+        printf("INFO: Submitted %d polygons.\n", (3 * 12) + x * y * z * 12);
+    }
+
+    scene::update_structure();
+    scene::upload_everything();
 
     init(g_program);
 
-    window::draw_loop(draw);
+    window::main_loop(draw);
 
     window::deinit();
 

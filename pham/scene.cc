@@ -110,11 +110,11 @@ static Slice<GLtriangle>    m_triangle_pool;
 static Slice<GLlight>       m_light_pool;
 static Slice<Primitive>     m_primitives;
 static int                  m_debug_bvh_height = -1;
+static GLuint               m_bvh_buffer;
+static GLuint               m_triangle_buffer;
+static GLuint               m_light_buffer;
+static GLuint               m_prim_buffer;
 
-enum SubmitFlags {
-    SubmitFlags_None = 1 << 0,
-    SubmitFlags_FlipNormals
-};
 
 struct GLvec3 {
     float x;
@@ -138,12 +138,6 @@ struct GLlight {
 struct Light {
     GLlight data;
     int64 index;
-};
-
-struct Cube {
-    glm::vec3 center;
-    glm::vec3 sizes;
-    int index;          //  Place in triangle pool where associated triangles begin.
 };
 
 enum MaterialType {
@@ -523,7 +517,7 @@ void submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);
 }
 
-void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None) {
+void submit_primitive(Cube* cube, SubmitFlags flags) {
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -706,32 +700,18 @@ void init() {
     m_light_pool    = MakeSlice<GLlight>(8);
     m_primitives    = MakeSlice<Primitive>(1024);
 
-    /* double float_scale = 1000; */
-    /* Cube room = {{0,0,-1.5}, {float_scale, float_scale, float_scale}, -1}; */
-    /* submit_primitive(&room, SubmitFlags_FlipNormals); */
+    glGenBuffers(1, &m_bvh_buffer);
+    glGenBuffers(1, &m_triangle_buffer);
+    glGenBuffers(1, &m_light_buffer);
+    GLCHK ( glGenBuffers(1, &m_prim_buffer) );
 
-    /* Cube floor = {{0,-1.6,-2}, {2, 0.1, 2}, -1}; */
-    /* submit_primitive(&floor); */
+    // TODO: build a light system.
+    Light light;
+    light.data.position = {1, 0.5, -1, 1};
+    submit_light(&light);
+}
 
-    /* Cube top = {{0,4,-2}, {2, 0.1, 2}, -1}; */
-    /* submit_primitive(&top); */
-
-    Cube thing;
-    {
-        int x = 4;
-        int y = 4;
-        int z = 4;
-        for (int i = 0; i < x; ++i) {
-            for (int j = 0; j < y; ++j) {
-                for (int k = 0; k < z; ++k) {
-                    thing = {{i * 1.1, j * 1.1, -2 - k * 1.1}, {0.5, 0.5, 0.5}, -1};
-                    submit_primitive(&thing);
-                }
-            }
-        }
-        printf("Info: Submitted %d polygons.\n", (3 * 12) + x * y * z * 12);
-    }
-
+void update_structure() {
     // Do this after submitting everything:
     ph_assert(count(m_primitives) < PH_MAX_int64);
 
@@ -749,63 +729,45 @@ void init() {
 
     validate_flattened_bvh(flatroot, len);
 
-    // Submit flat bvh.
+    // Upload flat bvh.
     {
-        GLuint bvh_buffer;
-        glGenBuffers(1, &bvh_buffer);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvh_buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvh_buffer);
         GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER,
                     GLsizeiptr(sizeof(BVHNode) * (size_t)len),
                     (GLvoid*)flatroot, GL_DYNAMIC_COPY) );
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, bvh_buffer) );
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_bvh_buffer) );
 
     }
 
-    Light light;
-    light.data.position = {1, 0.5, -1, 1};
-    submit_light(&light);
-    /* light.data.position = {1, 1, -2, 1}; */
-    /* submit_light(&light); */
-    /* light.data.position = {-9, 0, -2, 1}; */
-    /* submit_light(&light); */
-    /* light.data.position = {0, 9, -2, 1}; */
-    /* submit_light(&light); */
+}
 
-    /* submit_light(&light); */
-
-
+void upload_everything() {
     // =========================  Upload to GPU
     // Submit triangle pool
     {
-        GLuint triangle_buffer;
-        glGenBuffers(1, &triangle_buffer);
-        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangle_buffer) );
+        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangle_buffer) );
         glBufferData(GL_SHADER_STORAGE_BUFFER,
                     GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
                     (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, triangle_buffer) );
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_triangle_buffer) );
     }
 
     // Submit light data to gpu.
     {
-        GLuint light_buffer;
-        glGenBuffers(1, &light_buffer);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, light_buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_light_buffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER,
                 GLsizeiptr(sizeof(scene::GLlight) * scene::m_light_pool.n_elems),
                 (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, light_buffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer);
     }
 
     // Submit primitive pool.
     {
-        GLuint prim_buffer;
-        GLCHK ( glGenBuffers(1, &prim_buffer) );
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, prim_buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_prim_buffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER,
                 GLsizeiptr(sizeof(scene::Primitive) * scene::m_primitives.n_elems),
                 (GLvoid*)scene::m_primitives.ptr, GL_DYNAMIC_COPY);
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, prim_buffer) );
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_prim_buffer) );
     }
 
 }

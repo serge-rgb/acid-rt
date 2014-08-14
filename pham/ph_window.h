@@ -19,7 +19,9 @@ typedef void (*WindowProc)();
 
 void init(const char* title, int width, int height, InitFlag flags);
 
-void draw_loop(WindowProc func);
+void main_loop(WindowProc draw_func);
+
+void swap_buffers();
 
 void deinit();
 
