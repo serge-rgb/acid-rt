@@ -39,35 +39,35 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
 
     glm::vec3 rotated_e = e + 2.0f * glm::cross(glm::cross(e, axis) + glm_q.w * e, axis);
 
+    GLfloat cam_step_z;
     GLfloat cam_step_x;
-    GLfloat cam_step_y;
 
-    cam_step_x = wasd_step * rotated_e.z;
-    cam_step_y = wasd_step * rotated_e.x;
+    cam_step_z = wasd_step * rotated_e.z;
+    cam_step_x = wasd_step * rotated_e.x;
 
     if (io::wasd_pressed & io::Control_W) {
+        wasd_camera[2] -= cam_step_z;
         wasd_camera[0] -= cam_step_x;
-        wasd_camera[1] -= cam_step_y;
     }
     if (io::wasd_pressed & io::Control_S) {
+        wasd_camera[2] += cam_step_z;
         wasd_camera[0] += cam_step_x;
-        wasd_camera[1] += cam_step_y;
     }
 
     e = glm::vec3(1, 0, 0);
     rotated_e = e + 2.0f * glm::cross(glm::cross(e, axis) + glm_q.w * e, axis);
-    cam_step_x = wasd_step * rotated_e.z;
-    cam_step_y = wasd_step * rotated_e.x;
+    cam_step_z = wasd_step * rotated_e.z;
+    cam_step_x = wasd_step * rotated_e.x;
 
     if (io::wasd_pressed & io::Control_A) {
+        wasd_camera[2] += cam_step_z;
         wasd_camera[0] += cam_step_x;
-        wasd_camera[1] += cam_step_y;
     }
     if (io::wasd_pressed & io::Control_D) {
+        wasd_camera[2] -= cam_step_z;
         wasd_camera[0] -= cam_step_x;
-        wasd_camera[1] -= cam_step_y;
     }
-    wasd_camera[2] = 0;
+    wasd_camera[1] = 0;
     out_xyz[0] = wasd_camera[0];
     out_xyz[1] = wasd_camera[1];
     out_xyz[2] = wasd_camera[2];

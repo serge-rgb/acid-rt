@@ -42,9 +42,9 @@ int main() {
     // Create test grid of cubes
     scene::Cube thing;
     {
-        int x = 8;
-        int y = 8;
-        int z = 16;
+        int x = 2;
+        int y = 2;
+        int z = 2;
         for (int i = 0; i < z; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < x; ++k) {

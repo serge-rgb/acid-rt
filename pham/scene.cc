@@ -46,7 +46,12 @@ void init(GLuint program) {
     }
     m_hmd = ovrHmd_Create(0);
 
-    ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, 0x1111/*all*/, ovrHmd_GetEnabledCaps(m_hmd));
+    // TODO: avoid crash here by checking for ovrHmd_Create success.
+
+    unsigned int sensor_caps =
+        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
+
+    ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, sensor_caps, sensor_caps);
     if (!succ) {
         phatal_error("Could not initialize OVR sensors!");
     }
@@ -85,7 +90,7 @@ void init(GLuint program) {
         m_screen_size_m[1],
     };
     glUniform2fv(5, 1, size_m);     // screen_size_m
-    glUniform1f(8, true);           // Occlude?
+    glUniform1f(8, false);           // Occlude?
 }
 
 void draw(int* resolution, int* warp_size) {
@@ -102,8 +107,14 @@ void draw(int* resolution, int* warp_size) {
     GLfloat quat[4] {
         q.x, q.y, q.z, q.w,
     };
+    auto p = pose.Position;
     GLfloat camera_pos[3];
     io::get_wasd_camera(quat, camera_pos);
+    // add pos
+    camera_pos[0] += p.x;
+    camera_pos[1] += p.y;
+    camera_pos[2] += p.z;
+
     glUniform4fv(7, 1, quat);  // Camera orientation
     GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
 

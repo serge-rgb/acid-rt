@@ -174,7 +174,7 @@ void main() {
                       (gl_GlobalInvocationID.y / screen_size.y),
                       0);
 
-    // Point is in [0,1]x[0,1]  (NDC)
+    // Point is in [0,1]x[0,1]
 
     // Convert unit to meters
     point.xy *= screen_size_m;
@@ -182,27 +182,33 @@ void main() {
     // Center the point at zero (lens center)
     point.xy -= lens_center_m.xy;
 
-    // back to NDC
+    // back to unit coordinates
     point.xy /= screen_size_m;
-
-    // Scale by aspect ratio.
-    point.x *= screen_size.x / screen_size.y;
 
     // Get radius squared
     float radius_sq = (point.x * point.x) + (point.y * point.y);
 
-    // Distortion correction
+    // Scale by aspect ratio.
+    point.x *= screen_size.x / screen_size.y;
 
+    // Distortion correction
     point /= recip_poly(radius_sq);
 
+    // Separate point and eye
     point.z -= eye_to_lens_m;
-    // Rotate. Eye is zero, only rotate viewport.
+
+    //  neck correction (measured my head)
+    /* vec2 neck_joint = vec2(0.20, -0.13); */
+    /* eye.yz -= neck_joint; */
+    /* point.yz -= neck_joint; */
+
+    // Rotate.
+    eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
 
     // Camera movement
-
-    eye.zx += camera_pos.xy;
-    point.zx += camera_pos.xy;
+    eye += camera_pos;
+    point += camera_pos;
 
     vec4 color;  // This ends up written to the image.
 
