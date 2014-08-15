@@ -21,10 +21,6 @@
 
 #endif
 
-#ifdef _WIN32
-    #pragma comment(lib, "Ws2_32.lib")  // For OVR
-#endif
-
 extern "C" {
     // LOCAL
 #include <gc.h>

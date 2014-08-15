@@ -37,6 +37,8 @@ int main() {
 
     vr::init(g_program);
 
+    ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
+
     scene::init();
 
     // Create test grid of cubes

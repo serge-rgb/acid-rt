@@ -78,7 +78,7 @@ add_library(ph STATIC
     )
 target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
-    target_link_libraries(ph ${GLEW_LIB})
+    target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
 set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES})
 

@@ -30,20 +30,18 @@ const OVR::HmdRenderInfo*  m_renderinfo;
 float                      m_screen_size_m[2];  // Screen size in meters
 
 void init(GLuint program) {
+
     // Safety net.
     static bool is_init = false;
     if (is_init) {
         phatal_error("vr::init called twice");
     }
     is_init = true;
-    ///////////////
-    // Allocate crap
-    // Not deallocated. This should only be called once or the caller is dumb and ugly.
-    ///////////////
 
     if (!ovr_Initialize()) {
         ph::phatal_error("Could not initialize OVR\n");
     }
+
     m_hmd = ovrHmd_Create(0);
 
     // TODO: avoid crash here by checking for ovrHmd_Create success.
@@ -58,12 +56,6 @@ void init(GLuint program) {
 
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
     auto fovPort_r = m_hmd->DefaultEyeFov[1];
-
-
-    ovrEyeRenderDesc rdesc[2];
-
-    rdesc[0] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, fovPort_l);
-    rdesc[1] = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, fovPort_r);
 
     // Hard coded, taken from OVR source.
     m_screen_size_m[0] = 0.12576f;
@@ -150,7 +142,7 @@ void draw(int* resolution, int* warp_size) {
     window::swap_buffers();
     glFlush();
     GLCHK ( glFinish() );
-    ovrHmd_EndFrameTiming(vr::m_hmd);
+    ovrHmd_EndFrameTiming(m_hmd);
 
 }
 
