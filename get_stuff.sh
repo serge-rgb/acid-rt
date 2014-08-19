@@ -51,6 +51,13 @@ if [ ! -d glm ]; then
     unzip ../glm-0.9.5.4.zip
 fi
 
+echo "========================================================================="
+echo "==== YAJL"
+echo "========================================================================="
+if [ ! -d yajl ]; then
+    git clone https://github.com/lloyd/yajl.git
+fi
+
 cd ..  # root
 
 if [ -d OculusSDK ]; then

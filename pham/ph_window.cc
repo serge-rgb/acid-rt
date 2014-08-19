@@ -39,19 +39,20 @@ void init(const char* title, int width, int height, InitFlag flags) {
 // Find rift
 ////////////////////////////////////////
     m_rift_monitor = NULL;
-    int num_monitors;
-    GLFWmonitor** monitors = glfwGetMonitors(&num_monitors);
-    for (int i = 0; i < num_monitors; ++i) {
-        GLFWmonitor* monitor = monitors[i];
-        int w;
-        int h;
-        glfwGetMonitorPhysicalSize(monitor, &w, &h);
-        if (w == 150 && h == 94) {  // Note: DK2 same size?
-            m_rift_monitor = monitor;  // We just share a screen here. Set the position.
-            break;
+    if (!(flags & InitFlag_IgnoreRift)) {
+        int num_monitors;
+        GLFWmonitor** monitors = glfwGetMonitors(&num_monitors);
+        for (int i = 0; i < num_monitors; ++i) {
+            GLFWmonitor* monitor = monitors[i];
+            auto* vidmode = glfwGetVideoMode(monitor);
+            if (vidmode->refreshRate >= 75 &&
+                    vidmode->width == 1920 &&
+                    vidmode->height == 1080) {
+                m_rift_monitor = monitor;
+                break;
+            }
         }
     }
-
 
     // if m_rift_monitor is NULL, it will just open a window.
     // Else, it will try to be fullscreen.
@@ -67,8 +68,6 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwGetMonitorPos(m_rift_monitor, &x, &y);
         glfwSetWindowPos(m_window, x, y);
     }
-    // HACK ============================================================
-    glfwSetWindowPos(m_window, -1920, 1600);
 
     int gl_version[] = {
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR),

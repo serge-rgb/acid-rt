@@ -9,6 +9,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "..")
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "..")
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
 add_subdirectory(third_party/bdwgc)
+add_subdirectory(third_party/yajl)
 
 project(nuwen)
 if (UNIX)
@@ -25,10 +26,16 @@ if (WIN32)
     set(CMAKE_CXX_FLAGS "/MP /Wall /WX /wd4514 /wd4505 /D_CRT_SECURE_NO_WARNINGS")
     set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od /ZI")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /wd4711")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/O2 /Od /wd4711")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELEASE})
 
     set(CMAKE_EXE_LINKER_FLAGS "/SAFESEH:NO")
+    set(CMAKE_EXE_LINKER_FLAGS "/SAFESEH:NO")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "/DEBUG")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG")
     set(CMAKE_SHARED_LINKER_FLAGS "/SAFESEH:NO")
+    set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG")
+    set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG")
+
 
 endif()
 
@@ -44,6 +51,7 @@ include_directories(
     "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
+    "./third_party/yajl/yajl-2.1.1/include"
     "./third_party/glm/"
     "./OculusSDK/LibOVR/Include"
     )
@@ -87,4 +95,5 @@ set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES})
 #===============================================================================
 
 # ---- tests
+add_subdirectory(chicken)
 add_subdirectory(test)

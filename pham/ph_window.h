@@ -13,6 +13,7 @@ enum InitFlag {
     InitFlag_Default             = 1 << 0,
     InitFlag_NoDecoration        = 1 << 1,
     InitFlag_OverrideKeyCallback = 1 << 2,
+    InitFlag_IgnoreRift          = 1 << 3,
 };
 
 typedef void (*WindowProc)();
