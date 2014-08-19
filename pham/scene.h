@@ -13,7 +13,7 @@ extern float                     m_screen_size_m[2];  // Screen size in meters
 
 void init(GLuint program);
 
-void draw(int* resolution, int* warp_size);
+void draw(int* resolution);
 
 void deinit();
 }

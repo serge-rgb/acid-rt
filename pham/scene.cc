@@ -1,5 +1,8 @@
 ﻿#include "scene.h"
 
+// Note 2: Workgroup size should be a multiple of workgroup size.
+static int g_warpsize[] = {16, 8};
+
 namespace ph {
 
 const char* str(const glm::vec3& v) {
@@ -29,7 +32,10 @@ const OVR::HMDInfo*        m_hmdinfo;
 const OVR::HmdRenderInfo*  m_renderinfo;
 float                      m_screen_size_m[2];  // Screen size in meters
 
+static GLuint m_program;
+
 void init(GLuint program) {
+    m_program = program;
 
     // Safety net.
     static bool is_init = false;
@@ -85,7 +91,8 @@ void init(GLuint program) {
     glUniform1f(8, false);           // Occlude?
 }
 
-void draw(int* resolution, int* warp_size) {
+void draw(int* resolution) {
+    glUseProgram(m_program);
     GLfloat viewport_resolution[2] = { GLfloat(resolution[0] / 2), GLfloat(resolution[1]) };
     static unsigned int frame_index = 1;
 
@@ -107,7 +114,7 @@ void draw(int* resolution, int* warp_size) {
     camera_pos[1] += p.y;
     camera_pos[2] += p.z;
 
-    glUniform4fv(7, 1, quat);  // Camera orientation
+    GLCHK ( glUniform4fv(7, 1, quat) );  // Camera orientation
     GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
 
     // Dispatch left viewport
@@ -117,9 +124,9 @@ void draw(int* resolution, int* warp_size) {
             vr::m_hmdinfo->CenterFromTopInMeters,
         };
         glUniform2fv(6, 1, lens_center);  // Lens center
-        glUniform1f(2, 0);  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / warp_size[0]),
-                    GLuint(viewport_resolution[1] / warp_size[1]), 1) );
+        GLCHK ( glUniform1f(2, 0) );  // x_offset
+        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
+                    GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
     }
     // Dispatch right viewport
     {
@@ -129,8 +136,8 @@ void draw(int* resolution, int* warp_size) {
         };
         glUniform2fv(6, 1, lens_center);  // Lens center
         glUniform1f(2, ((GLfloat)viewport_resolution[0]));  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / warp_size[0]),
-                    GLuint(viewport_resolution[1] / warp_size[1]), 1) );
+        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
+                    GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
     }
     frame_index++;
 

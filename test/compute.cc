@@ -18,7 +18,7 @@ void draw() {
 int main() {
     ph::init();
     int size[] = {512, 512};
-    window::init("Test", size[0], size[1], window::InitFlag_Default);
+    window::init("Test", size[0], size[1], window::InitFlag_IgnoreRift);
 
     const char* path = "test/compute.glsl";
 

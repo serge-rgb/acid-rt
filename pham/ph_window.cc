@@ -91,6 +91,8 @@ void init(const char* title, int width, int height, InitFlag flags) {
         phatal_error("Couldn't init glew");
     }
     printf("Using GLEW %s\n", glewGetString(GLEW_VERSION));
+
+    glGetError();  // glew generates an error. Not our fault
 #endif
 
 

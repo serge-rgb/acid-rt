@@ -10,8 +10,13 @@
 
 #endif
 
+// ==== glm
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+// ==== Yajl
+#include <yajl/yajl_tree.h>
+
 
 #ifdef PH_OVR
 #include <OVR.h>

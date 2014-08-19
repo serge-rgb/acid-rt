@@ -8,12 +8,8 @@ using namespace ph;
 static GLuint g_program;
 static int g_resolution[] = {1920, 1080};  // DK2 res
 
-// Note 2: Workgroup size should be a multiple of workgroup size.
-static int g_warpsize[] = {16, 8};
-
 void draw() {
-    glUseProgram(g_program);
-    vr::draw(g_resolution, g_warpsize);
+    vr::draw(g_resolution);
 }
 
 using namespace ph;

@@ -47,18 +47,21 @@ find_package(OpenGL)
 
 include_directories(
     "pham/"
+
     "./third_party/lua/"
     "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
-    "./third_party/yajl/yajl-2.1.1/include"
+    "./third_party/yajl/src/api"
     "./third_party/glm/"
+
     "./OculusSDK/LibOVR/Include"
     )
 if (WIN32)
     include_directories(
         "./Windows/"
         "./build/third_party/lua/"
+        "./build/third_party/yajl/yajl-2.1.1/include"
         )
 endif()
 
@@ -88,7 +91,7 @@ target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
     target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
-set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES})
+set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
 #===============================================================================
 # Projects
