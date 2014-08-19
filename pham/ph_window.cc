@@ -98,7 +98,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
 
 }
 
-void main_loop(WindowProc draw_func) {
+void main_loop(WindowProc step_func) {
     //=========================================
     // Main loop.
     //=========================================
@@ -111,9 +111,9 @@ void main_loop(WindowProc draw_func) {
         // ---- Get start time
         long start_ns = ph::io::get_microseconds();
 
-        // Call user supplied draw function.
+        // Call user supplied step function.
         {
-            draw_func();
+            step_func();
         }
 
         // ---- Get end time. Measure

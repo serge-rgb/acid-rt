@@ -20,7 +20,7 @@ typedef void (*WindowProc)();
 
 void init(const char* title, int width, int height, InitFlag flags);
 
-void main_loop(WindowProc draw_func);
+void main_loop(WindowProc step_func);
 
 void swap_buffers();
 

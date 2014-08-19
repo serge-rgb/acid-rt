@@ -26,13 +26,13 @@ const char* str(scene::AABB b);
 ////////////////////////////////////////
 namespace vr {
 
-float                      m_default_eye_z;     // Eye distance from plane.
-ovrHmd                     m_hmd;
-const OVR::HMDInfo*        m_hmdinfo;
-const OVR::HmdRenderInfo*  m_renderinfo;
-float                      m_screen_size_m[2];  // Screen size in meters
+static float                     m_default_eye_z;     // Eye distance from plane.
+static const OVR::HMDInfo*       m_hmdinfo;
+static const OVR::HmdRenderInfo* m_renderinfo;
+static float                     m_screen_size_m[2];  // Screen size in meters
+static GLuint                    m_program = 0;
 
-static GLuint m_program;
+ovrHmd m_hmd;
 
 void init(GLuint program) {
     m_program = program;
@@ -497,7 +497,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     }
 
     phree (checks);
-    printf("BVH valid.\n");
+    /* printf("BVH valid.\n"); */
     return true;
 }
 
@@ -577,7 +577,7 @@ bool validate_flattened_bvh(BVHNode* node, int64 len) {
         }
     }
     phree(check);
-    printf("Flat tree valid.\n");
+    /* printf("Flat tree valid.\n"); */
     return true;
 }
 
