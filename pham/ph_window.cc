@@ -56,7 +56,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
 
     // if m_rift_monitor is NULL, it will just open a window.
     // Else, it will try to be fullscreen.
-    m_window = glfwCreateWindow(width, height, title, /*m_rift_monitor*/NULL, NULL);
+    m_window = glfwCreateWindow(width, height, title, m_rift_monitor, NULL);
 
     if (!m_window) {
         ph::quit(EXIT_FAILURE);

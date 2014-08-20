@@ -37,7 +37,7 @@ Slice<scene::Cube> load(const char* path) {
         float position[3];
         float size[3];
 
-        position[2] = -4;
+        position[2] = -8;
         size[1] = 0.25;
         size[2] = 2;
 
@@ -84,6 +84,8 @@ void chicken_idle() {
 
     scene::update_structure();
     scene::upload_everything();
+    //window::swap_buffers(); 
+    //glFinish();
 }
 
 int main() {
@@ -110,6 +112,8 @@ int main() {
         scene::Cube cube = cube_list[i];
         scene::submit_primitive(&cube);
     }
+    scene::update_structure();
+    scene::upload_everything();
 
     window::main_loop(chicken_idle);
 

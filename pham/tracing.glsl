@@ -212,7 +212,7 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.18) {         // <--- Cull
+    if (occlude && radius_sq > 0.20) {         // <--- Cull
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;

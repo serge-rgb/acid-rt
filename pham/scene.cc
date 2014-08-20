@@ -88,7 +88,7 @@ void init(GLuint program) {
         m_screen_size_m[1],
     };
     glUniform2fv(5, 1, size_m);     // screen_size_m
-    glUniform1f(8, false);           // Occlude?
+    glUniform1f(8, true);           // Cull?
 }
 
 void draw(int* resolution) {
