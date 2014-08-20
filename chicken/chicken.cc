@@ -5,6 +5,7 @@ namespace ph {
 namespace level {
 
 static const float kLevelOffsetY = 1.0f;
+static scene::Cube avatar_cube;
 
 Slice<scene::Cube> load(const char* path) {
     auto cube_list = MakeSlice<scene::Cube>(16);
@@ -13,12 +14,13 @@ Slice<scene::Cube> load(const char* path) {
     printf("level str\n%s\n", str);
 
     char errorbuf[1024];
-    yajl_val val = yajl_tree_parse(str, errorbuf, sizeof(errorbuf));
-    if (!val) {
+    yajl_val root = yajl_tree_parse(str, errorbuf, sizeof(errorbuf));
+    yajl_val val = root;
+    if (!root) {
         printf("%s", errorbuf);
     }
-    ph_assert(val != NULL);
-    ph_assert(val->type == yajl_t_object);
+    ph_assert(root != NULL);
+    ph_assert(root->type == yajl_t_object);
 
     const char * paths[] = {"platforms", (const char*)0};
 
@@ -28,7 +30,6 @@ Slice<scene::Cube> load(const char* path) {
 
     size_t num_platforms = array->u.array.len;
 
-    printf("nelems %Iu\n", num_platforms);
 
     for (size_t i = 0; i < num_platforms; ++i) {
         auto* plat_array = array->u.array.values[i];
@@ -39,12 +40,10 @@ Slice<scene::Cube> load(const char* path) {
 
         position[2] = -8;
         size[1] = 0.25;
-        size[2] = 2;
+        size[2] = 1;
 
-        printf("[ ");
         for (int j = 0; j < 3; j++) {
             long long i = YAJL_GET_INTEGER(plat_array->u.array.values[j]);
-            printf("%d ", i);
             switch (j) {
             case 0:
                 position[0] = (float) i;
@@ -57,7 +56,6 @@ Slice<scene::Cube> load(const char* path) {
                 break;
             }
         }
-        printf("]\n");
         scene::Cube cube;
         cube.center.x = position[0];
         cube.center.y = position[1] - kLevelOffsetY;
@@ -69,9 +67,98 @@ Slice<scene::Cube> load(const char* path) {
 
         append(&cube_list, cube);
     }
+
+    // ========================================
+    // Avatar start point
+    // ========================================
+    {
+        double x, y, max;
+
+        const char* x_paths[] = { "start", "x", NULL };
+        auto obj = yajl_tree_get(val, x_paths, yajl_t_number);
+        x = YAJL_GET_DOUBLE(obj);
+
+        const char* below_paths[] = { "start", "below", NULL };
+        obj = yajl_tree_get(val, below_paths, yajl_t_number);
+        max = YAJL_GET_DOUBLE(obj);
+
+        y = 1000;
+        for (int64 i = 0; i < count(cube_list); ++i) {
+            float maybe_y = cube_list[i].center.y + 2 * cube_list[i].sizes.y;
+            if (maybe_y <= max && cube_list[i].center.x <= x) {
+                y = maybe_y;
+            }
+        }
+
+        avatar_cube.center.x = (float)x;
+        avatar_cube.center.y = (float)y;
+        avatar_cube.center.z = -7.5;
+
+        avatar_cube.sizes.x = 0.25;
+        avatar_cube.sizes.y = 0.25;
+        avatar_cube.sizes.z = 0.25;
+    }
     return cube_list;
 }
 }  // ns level
+
+namespace gameplay {
+
+struct Avatar {
+    scene::Cube cube;
+};
+
+enum Control {
+    Control_none,
+    Control_left,
+    Control_right,
+};
+
+static Avatar m_avatar;
+static float m_avatar_step = 0.1f;
+static int64 m_avatar_prim_index = -1;
+static int m_pressed = Control_none;
+
+void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int/*mods*/) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+        m_pressed |= Control_left;
+    }
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+        m_pressed |= Control_right;
+    }
+    if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) {
+        m_pressed &= ~Control_right;
+    }
+    if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
+        m_pressed &= ~Control_left;
+    }
+}
+
+void init(scene::Cube avatar_cube) {
+    m_avatar.cube = avatar_cube;
+    m_avatar_prim_index = scene::submit_primitive(&m_avatar.cube);
+}
+
+void step() {
+    ph_assert(m_avatar_prim_index > 0);
+    submit_primitive(&m_avatar.cube, scene::SubmitFlags_Update, m_avatar_prim_index);
+    switch (m_pressed) {
+    case Control_left:
+        m_avatar.cube.center.x -= m_avatar_step;
+        break;
+    case Control_right:
+        m_avatar.cube.center.x += m_avatar_step;
+        break;
+    default:
+        break;
+    }
+}
+
+}  // ns gameplay
+
 }  // ns ph
 
 using namespace ph;
@@ -82,9 +169,12 @@ static GLuint g_program = 0;
 void chicken_idle() {
     vr::draw(g_resolution);
 
+    gameplay::step();
+
     scene::update_structure();
     scene::upload_everything();
-    //window::swap_buffers(); 
+
+    //window::swap_buffers();
     //glFinish();
 }
 
@@ -92,11 +182,11 @@ int main() {
     ph::init();
     window::init("Chicken", g_resolution[0], g_resolution[1],
         window::InitFlag(window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback
-            | window::InitFlag_IgnoreRift
+            //| window::InitFlag_IgnoreRift
             ));
     io::set_wasd_step(0.03f);
 
-    glfwSetKeyCallback(ph::window::m_window, ph::io::wasd_callback);
+    glfwSetKeyCallback(ph::window::m_window, gameplay::key_callback);
 
     static const char* tracing = "pham/tracing.glsl";
     g_program = cs::init(g_resolution[0], g_resolution[1], &tracing, 1);
@@ -112,6 +202,9 @@ int main() {
         scene::Cube cube = cube_list[i];
         scene::submit_primitive(&cube);
     }
+
+    gameplay::init(level::avatar_cube);
+
     scene::update_structure();
     scene::upload_everything();
 

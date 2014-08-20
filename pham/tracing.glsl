@@ -234,7 +234,7 @@ void main() {
             BVHNode node = bvh.data[i];
             bool is_inside; // is inside bbox?
             float bbox_t = bbox_collision(node.bbox, ray, is_inside);
-            bool ditch_node = !is_inside && bbox_t > min_t;
+            bool ditch_node = !is_inside && bbox_t > min_t;    // TODO: fix this
             if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
                 Primitive p = primitive_pool.data[node.primitive_offset];
                 for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {

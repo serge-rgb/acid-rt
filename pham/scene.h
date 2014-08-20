@@ -17,8 +17,9 @@ void deinit();
 namespace scene {
 
 enum SubmitFlags {
-    SubmitFlags_None = 1 << 0,
-    SubmitFlags_FlipNormals
+    SubmitFlags_None        = 1 << 0,
+    SubmitFlags_FlipNormals = 1 << 1,
+    SubmitFlags_Update      = 1 << 2,
 };
 
 struct Cube {
@@ -32,7 +33,7 @@ void init();
 // ---- submit_primitive
 // Add primitives to scene.
 
-void submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None);
+int64 submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None, int64 flag_params = 0);
 
 // ----------------------
 

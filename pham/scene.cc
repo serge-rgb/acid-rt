@@ -588,11 +588,12 @@ static GLvec3 to_gl(glm::vec3 in) {
     return out;
 }
 
-void submit_light(Light* light) {
+int64 submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);
+    return light->index;
 }
 
-void submit_primitive(Cube* cube, SubmitFlags flags) {
+int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -615,6 +616,15 @@ void submit_primitive(Cube* cube, SubmitFlags flags) {
 
     // Return index to the first appended triangle.
     int64 index = -1;
+    if (flags & SubmitFlags_Update) {
+        index = cube->index;
+    } else {  // Append 12 new triangles
+        tri.p0.x = 0;  // Initialize garbage
+        index = append(&m_triangle_pool, tri);
+        for (int i = 0; i < 11; ++i) {
+            append(&m_triangle_pool, tri);
+        }
+    }
 
     _a = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, cube->sizes.y, cube->sizes.z));
     _b = glm::vec3(cube->center + glm::vec3(cube->sizes.x, cube->sizes.y, cube->sizes.z));
@@ -657,72 +667,74 @@ void submit_primitive(Cube* cube, SubmitFlags flags) {
     tri.p1 = b;
     tri.p2 = a;
     tri.normal = nf;
-    index = append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 0] = tri;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = b;
     tri.normal = nf;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 1] = tri;
 
     // Right
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = b;
     tri.normal = nr;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 2] = tri;
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = f;
     tri.normal = nr;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 3] = tri;
 
     // Back
     tri.p0 = d;
     tri.p1 = c;
     tri.p2 = g;
     tri.normal = nb;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 4] = tri;
     tri.p0 = c;
     tri.p1 = f;
     tri.p2 = g;
     tri.normal = nb;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 5] = tri;
 
     // Left
     tri.p0 = a;
     tri.p1 = h;
     tri.p2 = d;
     tri.normal = nl;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 6] = tri;
     tri.p0 = h;
     tri.p1 = d;
     tri.p2 = g;
     tri.normal = nl;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 7] = tri;
+    tri.p0 = h;
 
     // Top
     tri.p0 = a;
     tri.p1 = c;
     tri.p2 = d;
     tri.normal = nt;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 8] = tri;
+    tri.p0 = h;
     tri.p0 = a;
     tri.p1 = b;
     tri.p2 = c;
     tri.normal = nt;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 9] = tri;
 
     // Bottom
     tri.p0 = h;
     tri.p1 = f;
     tri.p2 = g;
     tri.normal = nm;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 10] = tri;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = f;
     tri.normal = nm;
-    append(&m_triangle_pool, tri);
+    m_triangle_pool[index + 11] = tri;
 
     ph_assert(index <= PH_MAX_int64);
     cube->index = (int)index;
@@ -730,14 +742,20 @@ void submit_primitive(Cube* cube, SubmitFlags flags) {
     prim.offset = cube->index;
     prim.num_triangles = 12;
     prim.material = MaterialType_Lambert;
-    append(&m_primitives, prim);
+    if (flags & SubmitFlags_Update) {
+        ph_assert(flag_params >= 0 && flag_params < count(m_primitives));
+        m_primitives[flag_params] = prim;
+        return flag_params;
+    } else {
+        return append(&m_primitives, prim);
+    }
 }
 
-void submit_primitive(AABB* bbox) {
+int64 submit_primitive(AABB* bbox) {
     glm::vec3 center = {(bbox->xmax + bbox->xmin) / 2,
         (bbox->ymax + bbox->ymin) / 2, (bbox->zmax + bbox->zmin) / 2};
     Cube cube = {center, {bbox->xmax - center.x, bbox->ymax - center.y, bbox->zmax - center.y}, -1};
-    submit_primitive(&cube);
+    return submit_primitive(&cube);
 }
 
 // For debugging purposes.
