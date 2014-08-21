@@ -243,6 +243,22 @@ const char* str(AABB b) {
     return out;
 }
 
+bool collision_p(Rect a, Rect b) {
+    bool not_collides =
+        ((b.x > a.x + a.w) || (b.x + b.w < a.x)) ||
+        ((b.y > a.y + a.h) || (b.y + b.h < a.y));
+    return !not_collides;
+}
+
+Rect cube_to_rect(scene::Cube cube) {
+    scene::Rect rect;
+    rect.x = cube.center.x - cube.sizes.x;
+    rect.y = cube.center.y - cube.sizes.y;
+    rect.w = cube.sizes.x * 2;
+    rect.h = cube.sizes.y * 2;
+    return rect;
+}
+
 static glm::vec3 get_centroid(AABB b) {
     return glm::vec3((b.xmax + b.xmin) / 2, (b.ymax + b.ymin) / 2, (b.zmax + b.zmin) / 2);
 }

@@ -12,14 +12,12 @@
 namespace ph {
 
 // === Slice
-// Conforms:   release, append, count
-// Operators:  []
 template<typename T>
 struct Slice {
     T* ptr;
     size_t n_elems;
     size_t n_capacity;
-    const T& operator[](const int64 i) {
+    T& operator[](const int64 i) {
         ph_assert(i >= 0);
         ph_assert((size_t )i < n_elems);
         return ptr[i];
@@ -123,6 +121,11 @@ int64 find(Slice<T> slice, T to_find, T* out = NULL) {
         }
     }
     return -1;
+}
+
+template<typename T>
+void clear(Slice<T>* slice) {
+    slice->n_elems = 0;
 }
 
 }  // ns ph

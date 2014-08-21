@@ -6,6 +6,11 @@ namespace level {
 
 static const float kLevelOffsetY = 1.0f;
 static scene::Cube avatar_cube;
+static Slice<scene::Rect> m_rects;
+
+void init() {
+    m_rects = MakeSlice<scene::Rect>(32);
+}
 
 Slice<scene::Cube> load(const char* path) {
     auto cube_list = MakeSlice<scene::Cube>(16);
@@ -30,7 +35,6 @@ Slice<scene::Cube> load(const char* path) {
 
     size_t num_platforms = array->u.array.len;
 
-
     for (size_t i = 0; i < num_platforms; ++i) {
         auto* plat_array = array->u.array.values[i];
         ph_assert(plat_array->u.array.len == 3);
@@ -39,7 +43,7 @@ Slice<scene::Cube> load(const char* path) {
         float size[3];
 
         position[2] = -8;
-        size[1] = 0.25;
+        size[1] = 0.125;
         size[2] = 1;
 
         for (int j = 0; j < 3; j++) {
@@ -52,7 +56,7 @@ Slice<scene::Cube> load(const char* path) {
                 position[1] = (float) i;
                 break;
             case 2:
-                size[0] = (float) i;
+                size[0] = (float) i / 2;
                 break;
             }
         }
@@ -84,7 +88,7 @@ Slice<scene::Cube> load(const char* path) {
 
         y = 1000;
         for (int64 i = 0; i < count(cube_list); ++i) {
-            float maybe_y = cube_list[i].center.y + 2 * cube_list[i].sizes.y;
+            float maybe_y = cube_list[i].center.y + 2 * cube_list[i].sizes.y + 0.01f;
             if (maybe_y <= max && cube_list[i].center.x <= x) {
                 y = maybe_y;
             }
@@ -94,19 +98,27 @@ Slice<scene::Cube> load(const char* path) {
         avatar_cube.center.y = (float)y;
         avatar_cube.center.z = -7.5;
 
-        avatar_cube.sizes.x = 0.25;
-        avatar_cube.sizes.y = 0.25;
-        avatar_cube.sizes.z = 0.25;
+        avatar_cube.sizes.x = 0.125;
+        avatar_cube.sizes.y = 0.125;
+        avatar_cube.sizes.z = 0.125;
+    }
+    // ==================
+    // Keep cube list as current m_rects
+    // ==================
+    if (count(m_rects) > 0) {
+        clear(&m_rects);
+    }
+    for(int64 i = 0; i < count(cube_list); ++i) {
+        append(&m_rects, cube_to_rect(cube_list[i]));
     }
     return cube_list;
 }
+
 }  // ns level
 
 namespace gameplay {
 
-struct Avatar {
-    scene::Cube cube;
-};
+using namespace glm;
 
 enum Control {
     Control_none,
@@ -114,12 +126,30 @@ enum Control {
     Control_right,
 };
 
-static Avatar m_avatar;
-static float m_avatar_step = 0.1f;
-static int64 m_avatar_prim_index = -1;
-static int m_pressed = Control_none;
+enum AvatarState {
+    AvatarState_Idle,
+    AvatarState_Jumping,
+    AvatarState_Dead,
+};
 
-void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int/*mods*/) {
+struct Avatar {
+    // TODO: I really should be storing a rect here..
+    scene::Cube cube;
+    AvatarState state;
+    vec3 velocity;
+};
+
+static Avatar m_avatar;
+static float  m_avatar_step = 0.1f;
+static int64  m_avatar_prim_index = -1;
+static int    m_pressed = Control_none;
+
+void init(scene::Cube avatar_cube) {
+    m_avatar.cube = avatar_cube;
+    m_avatar_prim_index = scene::submit_primitive(&m_avatar.cube);
+}
+
+static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int/*mods*/) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
@@ -135,11 +165,24 @@ void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int
     if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
         m_pressed &= ~Control_left;
     }
+    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+        m_avatar.cube.center.y -= 0.3f;
+    }
+    if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
+        m_avatar.cube.center.y += 0.3f;
+    }
 }
 
-void init(scene::Cube avatar_cube) {
-    m_avatar.cube = avatar_cube;
-    m_avatar_prim_index = scene::submit_primitive(&m_avatar.cube);
+bool is_on_top(Avatar avatar) {
+    for (int64 i = 0; i < count(level::m_rects); ++i) {
+        auto platform = level::m_rects[i];
+        auto rect = cube_to_rect(avatar.cube);
+        rect.y -= 0.03f;  // Make it collide
+        if (collision_p(platform, rect)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void step() {
@@ -154,6 +197,11 @@ void step() {
         break;
     default:
         break;
+    }
+    if (is_on_top(m_avatar)) {
+        puts("Not falling! :)");
+    } else {
+        puts("Falling :(");
     }
 }
 
@@ -182,7 +230,7 @@ int main() {
     ph::init();
     window::init("Chicken", g_resolution[0], g_resolution[1],
         window::InitFlag(window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback
-            //| window::InitFlag_IgnoreRift
+            | window::InitFlag_IgnoreRift
             ));
     io::set_wasd_step(0.03f);
 
@@ -196,6 +244,7 @@ int main() {
     ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
 
     scene::init();
+    level::init();
 
     auto cube_list = level::load("chicken/test.json");
     for(int64 i = 0; i < count(cube_list); ++i) {
@@ -214,4 +263,3 @@ int main() {
     vr::deinit();
     return 0;
 }
-

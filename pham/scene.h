@@ -28,6 +28,17 @@ struct Cube {
     int index;          //  Place in triangle pool where associated triangles begin.
 };
 
+struct Rect {
+    float x;
+    float y;
+    float w;
+    float h;
+};
+
+Rect cube_to_rect(scene::Cube cube);
+
+bool collision_p(Rect a, Rect b);
+
 void init();
 
 // ---- submit_primitive
