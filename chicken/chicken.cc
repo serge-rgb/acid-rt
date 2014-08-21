@@ -7,6 +7,7 @@ namespace level {
 static const float kLevelOffsetY = 1.0f;
 static scene::Cube avatar_cube;
 static Slice<scene::Rect> m_rects;
+static int64  m_avatar_prim_index = -1;
 
 void init() {
     m_rects = MakeSlice<scene::Rect>(32);
@@ -114,6 +115,12 @@ Slice<scene::Cube> load(const char* path) {
     return cube_list;
 }
 
+void step(scene::Rect rect) {
+    avatar_cube.center.x = rect.x + rect.w / 2;
+    avatar_cube.center.y = rect.y + rect.h / 2;
+    submit_primitive(&avatar_cube, scene::SubmitFlags_Update, m_avatar_prim_index);
+}
+
 }  // ns level
 
 namespace gameplay {
@@ -133,20 +140,21 @@ enum AvatarState {
 };
 
 struct Avatar {
-    // TODO: I really should be storing a rect here..
-    scene::Cube cube;
+    scene::Rect rect;
     AvatarState state;
     vec3 velocity;
 };
 
 static Avatar m_avatar;
 static float  m_avatar_step = 0.1f;
-static int64  m_avatar_prim_index = -1;
 static int    m_pressed = Control_none;
 
-void init(scene::Cube avatar_cube) {
-    m_avatar.cube = avatar_cube;
-    m_avatar_prim_index = scene::submit_primitive(&m_avatar.cube);
+void init(scene::Cube* avatar_cube) {
+    m_avatar.rect.x = avatar_cube->center.x - avatar_cube->sizes.x;
+    m_avatar.rect.y = avatar_cube->center.y - avatar_cube->sizes.y;
+    m_avatar.rect.w = 2 * avatar_cube->sizes.x;
+    m_avatar.rect.h = 2 * avatar_cube->sizes.y;
+    level::m_avatar_prim_index = scene::submit_primitive(avatar_cube);
 }
 
 static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int/*mods*/) {
@@ -165,18 +173,12 @@ static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int acti
     if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
         m_pressed &= ~Control_left;
     }
-    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
-        m_avatar.cube.center.y -= 0.3f;
-    }
-    if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
-        m_avatar.cube.center.y += 0.3f;
-    }
 }
 
 bool is_on_top(Avatar avatar) {
     for (int64 i = 0; i < count(level::m_rects); ++i) {
         auto platform = level::m_rects[i];
-        auto rect = cube_to_rect(avatar.cube);
+        auto rect = avatar.rect;
         rect.y -= 0.03f;  // Make it collide
         if (collision_p(platform, rect)) {
             return true;
@@ -186,14 +188,14 @@ bool is_on_top(Avatar avatar) {
 }
 
 void step() {
-    ph_assert(m_avatar_prim_index > 0);
-    submit_primitive(&m_avatar.cube, scene::SubmitFlags_Update, m_avatar_prim_index);
+    level::step(m_avatar.rect);
+
     switch (m_pressed) {
     case Control_left:
-        m_avatar.cube.center.x -= m_avatar_step;
+        m_avatar.rect.x -= m_avatar_step;
         break;
     case Control_right:
-        m_avatar.cube.center.x += m_avatar_step;
+        m_avatar.rect.x += m_avatar_step;
         break;
     default:
         break;
@@ -230,7 +232,7 @@ int main() {
     ph::init();
     window::init("Chicken", g_resolution[0], g_resolution[1],
         window::InitFlag(window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback
-            | window::InitFlag_IgnoreRift
+            //| window::InitFlag_IgnoreRift
             ));
     io::set_wasd_step(0.03f);
 
@@ -252,7 +254,7 @@ int main() {
         scene::submit_primitive(&cube);
     }
 
-    gameplay::init(level::avatar_cube);
+    gameplay::init(&level::avatar_cube);
 
     scene::update_structure();
     scene::upload_everything();
