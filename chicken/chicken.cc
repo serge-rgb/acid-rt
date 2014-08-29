@@ -217,12 +217,14 @@ static int g_resolution[2] = { 1920, 1080 };
 static GLuint g_program = 0;
 
 void chicken_idle() {
-    vr::draw(g_resolution);
+    scene::update_structure();
+    scene::upload_everything();
 
     gameplay::step();
 
-    scene::update_structure();
-    scene::upload_everything();
+    vr::draw(g_resolution);
+
+
 
     //window::swap_buffers();
     //glFinish();
