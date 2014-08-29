@@ -4,6 +4,7 @@ build
 # Non-local code
 third_party
 OculusSDK
+chicken
 
 ###SublimeText###
 

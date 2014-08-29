@@ -82,7 +82,6 @@ endif()
 
 add_library(ph STATIC
     pham/ph.cc
-    pham/ph_cs.cc
     pham/ph_gl.cc
     pham/ph_io.cc
     pham/ph_window.cc
@@ -93,10 +92,14 @@ if (WIN32)
 endif()
 set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
+set (engine_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/pham/scene.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/pham/vr.cc
+    )
 #===============================================================================
 # Projects
 #===============================================================================
 
 # ---- tests
-# add_subdirectory(chicken)
+add_subdirectory(chicken)
 add_subdirectory(test)

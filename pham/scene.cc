@@ -1,8 +1,5 @@
 ﻿#include "scene.h"
 
-// Note 2: Workgroup size should be a multiple of workgroup size.
-static int g_warpsize[] = {16, 8};
-
 namespace ph {
 
 const char* str(const glm::vec3& v) {
@@ -16,161 +13,7 @@ struct AABB;
 const char* str(scene::AABB b);
 }
 
-////////////////////////////////////////
-//          -- ph::vr --
-// Handle the creation / destruction
-// of Oculus resources.
-// Members should provide everything
-// needed by higher level abstractions
-// to handle rendering and so on.
-////////////////////////////////////////
-namespace vr {
 
-static float                     m_default_eye_z;     // Eye distance from plane.
-static const OVR::HMDInfo*       m_hmdinfo;
-static const OVR::HmdRenderInfo* m_renderinfo;
-static float                     m_screen_size_m[2];  // Screen size in meters
-static GLuint                    m_program = 0;
-
-ovrHmd m_hmd;
-
-void init(GLuint program) {
-    m_program = program;
-
-    // Safety net.
-    static bool is_init = false;
-    if (is_init) {
-        phatal_error("vr::init called twice");
-    }
-    is_init = true;
-
-    if (!ovr_Initialize()) {
-        ph::phatal_error("Could not initialize OVR\n");
-    }
-
-    m_hmd = ovrHmd_Create(0);
-
-    // TODO: avoid crash here by checking for ovrHmd_Create success.
-
-    unsigned int sensor_caps =
-        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
-
-    ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, sensor_caps, sensor_caps);
-    if (!succ) {
-        phatal_error("Could not initialize OVR sensors!");
-    }
-
-    auto fovPort_l = m_hmd->DefaultEyeFov[0];
-    auto fovPort_r = m_hmd->DefaultEyeFov[1];
-
-    // Hard coded, taken from OVR source.
-    m_screen_size_m[0] = 0.12576f;
-    m_screen_size_m[1] = 0.07074f;
-
-    // Default fov (looking down)
-    float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;   // 1.32928
-    float h = m_screen_size_m[1];
-    h = 1;
-
-    // TODO: take relief into account.
-    m_default_eye_z = h / (1 * hvfov);
-
-
-    const OVR::CAPI::HMDState* m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
-    m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
-    m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
-
-    glUseProgram(program);
-    glUniform1f(3, vr::m_default_eye_z);
-
-    GLfloat size_m[2] = {
-        m_screen_size_m[0] / 2,
-        m_screen_size_m[1],
-    };
-    glUniform2fv(5, 1, size_m);     // screen_size_m
-    glUniform1f(8, true);           // Cull?
-}
-
-void draw(int* resolution) {
-    glUseProgram(m_program);
-    GLfloat viewport_resolution[2] = { GLfloat(resolution[0] / 2), GLfloat(resolution[1]) };
-    static unsigned int frame_index = 1;
-
-    /* ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index); */
-    ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
-
-    ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
-
-    // TODO -- Controls should be handled elsewhere
-    auto q = pose.Orientation;
-    GLfloat quat[4] {
-        q.x, q.y, q.z, q.w,
-    };
-    auto p = pose.Position;
-    GLfloat camera_pos[3];
-    io::get_wasd_camera(quat, camera_pos);
-    // add pos
-    camera_pos[0] += p.x;
-    camera_pos[1] += p.y;
-    camera_pos[2] += p.z;
-
-    GLCHK ( glUniform4fv(7, 1, quat) );  // Camera orientation
-    GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
-
-    // Dispatch left viewport
-    {
-        GLfloat lens_center[2] = {
-            (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2),
-            vr::m_hmdinfo->CenterFromTopInMeters,
-        };
-        glUniform2fv(6, 1, lens_center);  // Lens center
-        GLCHK ( glUniform1f(2, 0) );  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
-                    GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
-    }
-    // Dispatch right viewport
-    {
-        GLfloat lens_center[2] = {
-            vr::m_renderinfo->LensSeparationInMeters / 2,
-            vr::m_hmdinfo->CenterFromTopInMeters,
-        };
-        glUniform2fv(6, 1, lens_center);  // Lens center
-        glUniform1f(2, ((GLfloat)viewport_resolution[0]));  // x_offset
-        GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
-                    GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
-    }
-    frame_index++;
-
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-    // Draw screen
-    cs::fill_screen();
-
-    window::swap_buffers();
-    glFlush();
-    GLCHK ( glFinish() );
-    ovrHmd_EndFrameTiming(m_hmd);
-
-}
-
-void deinit() {
-    ovrHmd_Destroy(m_hmd);
-    ovr_Shutdown();
-}
-
-}  // ns vr
-
-
-////////////////////////////////////////
-//          -- ph::scene --
-// Handle the creation of primitives
-//  (triangle meshes, essentially)
-// Handle the description of primitives
-//  (i.e. material data)
-// Handle submitting primitives to the
-// GPU program.
-//  (i.e. Acceleration structures)
-////////////////////////////////////////
 namespace scene {
 
 // For DFS buffers.
@@ -650,6 +493,7 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     _f = glm::vec3(cube->center + glm::vec3(cube->sizes.x, -cube->sizes.y, -cube->sizes.z));
     _g = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, -cube->sizes.y, -cube->sizes.z));
     _h = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, -cube->sizes.y, cube->sizes.z));
+
 
     a = to_gl(_a);
     b = to_gl(_b);

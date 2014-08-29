@@ -2,6 +2,7 @@
 
 #include <ph.h>
 #include <scene.h>
+#include <vr.h>
 
 using namespace ph;
 
@@ -25,13 +26,7 @@ int main() {
 
     glfwSetKeyCallback(ph::window::m_window, ph::io::wasd_callback);
 
-    const char* paths[] = {
-        "pham/tracing.glsl",
-    };
-
-    g_program = cs::init(g_resolution[0], g_resolution[1], paths, 1);
-
-    vr::init(g_program);
+    vr::init(g_resolution[0], g_resolution[1]);
 
     ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
 
@@ -62,7 +57,6 @@ int main() {
     window::main_loop(draw);
 
     window::deinit();
-
     vr::deinit();
     return 0;
 }

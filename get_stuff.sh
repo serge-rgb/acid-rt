@@ -13,6 +13,11 @@ if [ ! -d third_party ]; then
     mkdir third_party
 fi
 
+if [ ! -d chicken ]; then
+    mkdir chicken
+    touch chicken/CMakeLists.txt
+fi
+
 cd third_party
 
 echo "========================================================================="

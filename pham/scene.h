@@ -2,18 +2,17 @@
 
 #include <ph.h>
 
+////////////////////////////////////////
+//          -- ph::scene --
+// Handle the creation of primitives
+//  (triangle meshes, essentially)
+// Handle the description of primitives
+//  (i.e. material data)
+// Handle submitting primitives to the
+// GPU program.
+//  (i.e. Acceleration structures)
+////////////////////////////////////////
 namespace ph {
-namespace vr {
-
-extern ovrHmd  m_hmd;
-
-void init(GLuint program);
-
-void draw(int* resolution);
-
-void deinit();
-}
-
 namespace scene {
 
 enum SubmitFlags {
@@ -68,5 +67,5 @@ void upload_everything();
 
 // ----------------------
 
-}
-}
+}  // ns scene
+}  // ns ph
