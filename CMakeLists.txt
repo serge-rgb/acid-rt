@@ -98,5 +98,5 @@ set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 #===============================================================================
 
 # ---- tests
-add_subdirectory(chicken)
+# add_subdirectory(chicken)
 add_subdirectory(test)
