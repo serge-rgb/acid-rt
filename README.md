@@ -4,6 +4,8 @@
 
 I'm writing a game with the Oculus Rift in mind, and I decided to make the guts open source.
 
+![old screenshot](http://bigmonachus.org/img/c_log_6_1.png)
+
 ## Features / Requirements:
 
 * Not for general consumption at the moment :)
