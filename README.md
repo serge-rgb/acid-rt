@@ -53,7 +53,7 @@ Build the 'cubes' project to test the ray tracer.
 
 ## What can I use this for???
 
-Nothing! It you be great if you tell me the ways in which my ray tracer sucks and how to make it faster. 
+Nothing! It would be great if you tell me the ways in which my ray tracer sucks and how to make it faster. 
 Eventually it should be a nice, lightweight, library for interactive software.
 
 ## Why write everything from scratch?

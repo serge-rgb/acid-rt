@@ -150,9 +150,6 @@ struct BVHNode {
     int primitive_offset;       // >0 when leaf. -1 when not.
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
-    // Alignment of box: 6*32 bits, which aligns to 8 * 32 bits.
-    // With two extra ints, we need 6 bytes of padding for GL alignment.
-    //int _padding[6];
 };
 
 // Big fat struct for tree construction
