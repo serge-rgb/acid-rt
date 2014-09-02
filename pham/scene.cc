@@ -1,19 +1,6 @@
 ﻿#include "scene.h"
 
 namespace ph {
-
-const char* str(const glm::vec3& v) {
-    char* out = phanaged(char, 16);
-    sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
-    return out;
-}
-
-namespace scene {
-struct AABB;
-const char* str(scene::AABB b);
-}
-
-
 namespace scene {
 
 // For DFS buffers.
@@ -80,26 +67,16 @@ struct AABB {
     float zmax;
 };
 
-const char* str(AABB b) {
+static const char* str(const glm::vec3& v) {
     char* out = phanaged(char, 16);
-    sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
+    sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
     return out;
 }
 
-bool collision_p(Rect a, Rect b) {
-    bool not_collides =
-        ((b.x > a.x + a.w) || (b.x + b.w < a.x)) ||
-        ((b.y > a.y + a.h) || (b.y + b.h < a.y));
-    return !not_collides;
-}
-
-Rect cube_to_rect(scene::Cube cube) {
-    scene::Rect rect;
-    rect.x = cube.center.x - cube.sizes.x;
-    rect.y = cube.center.y - cube.sizes.y;
-    rect.w = cube.sizes.x * 2;
-    rect.h = cube.sizes.y * 2;
-    return rect;
+static const char* str(AABB b) {
+    char* out = phanaged(char, 16);
+    sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
+    return out;
 }
 
 static glm::vec3 get_centroid(AABB b) {
@@ -358,11 +335,11 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
 }
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
-BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
+static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     ph_assert(root->left && root->right);
 
-    auto slice = MakeSlice<BVHNode>(1024);          // Too big?
-    auto ptrs  = MakeSlice<BVHTreeNode*>(1024);     // Use this to get offsets for right childs (too slow?)
+    auto slice = MakeSlice<BVHNode>(1024);       // Too big?
+    auto ptrs  = MakeSlice<BVHTreeNode*>(1024);  // Use this to get offsets for right childs (too slow?)
 
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
@@ -404,7 +381,7 @@ BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     return slice.ptr;
 }
 
-bool validate_flattened_bvh(BVHNode* node, int64 len) {
+static bool validate_flattened_bvh(BVHNode* node, int64 len) {
     bool* check = phalloc(bool, len);
     for (int64 i = 0; i < len; ++i) {
         check[i] = false;
@@ -443,6 +420,23 @@ static GLvec3 to_gl(glm::vec3 in) {
     GLvec3 out = {in.x, in.y, in.z, 0};
     return out;
 }
+
+bool collision_p(Rect a, Rect b) {
+    bool not_collides =
+        ((b.x > a.x + a.w) || (b.x + b.w < a.x)) ||
+        ((b.y > a.y + a.h) || (b.y + b.h < a.y));
+    return !not_collides;
+}
+
+Rect cube_to_rect(scene::Cube cube) {
+    scene::Rect rect;
+    rect.x = cube.center.x - cube.sizes.x;
+    rect.y = cube.center.y - cube.sizes.y;
+    rect.w = cube.sizes.x * 2;
+    rect.h = cube.sizes.y * 2;
+    return rect;
+}
+
 
 int64 submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);
