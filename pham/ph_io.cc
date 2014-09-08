@@ -103,8 +103,6 @@ void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, in
     }
 }
 
-
-
 long get_microseconds() {
 #ifdef _WIN32
     LARGE_INTEGER ticks;

@@ -268,7 +268,7 @@ void main() {
             for (int i = 0; i < num_lights; ++i) {
                 Light light = light_pool.data[i];
                 /* light.position = vec3(0,100,0); */
-                vec3 rgb = (1.0 / num_lights) * lambert(point, normal, vec3(1), light);
+                vec3 rgb = (1.0 / num_lights) * lambert(point, normal, vec3(0.9, 0.9, 0.9), light);
                 /* vec3 rgb = point; */
                 color += vec4(rgb, 1);
             }

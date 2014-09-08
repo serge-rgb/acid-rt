@@ -6,6 +6,10 @@ third_party
 OculusSDK
 chicken
 
+# Dev tools
+tags
+*.taghl
+
 ###SublimeText###
 
 # workspace files are user-specific

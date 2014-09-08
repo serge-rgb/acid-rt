@@ -1,5 +1,10 @@
 #include "vr.h"
 
+/**
+ * GL_TEXTURE0 -- quad
+ * GL_TEXTURE1 -- post-process
+ */
+
 // Note 2: Workgroup size should be a multiple of workgroup size.
 static int g_warpsize[] = {16, 8};
 
@@ -10,12 +15,14 @@ static GLuint m_quad_vao;
 static GLuint m_quad_program;
 static GLuint m_compute_program;
 
-static GLuint m_size[2];
+static GLuint                    m_size[2];
 static float                     m_default_eye_z;     // Eye distance from plane.
 static const OVR::HMDInfo*       m_hmdinfo;
 static const OVR::HmdRenderInfo* m_renderinfo;
 static float                     m_screen_size_m[2];  // Screen size in meters
 static GLuint                    m_program = 0;
+static GLuint                    m_postprocess_program = 0;
+static GLuint                    m_screen_tex;
 
 ovrHmd m_hmd;
 
@@ -39,14 +46,13 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     // Create / fill texture
     {
         // Create texture
-        GLuint texobj;
         GLCHK (glActiveTexture (GL_TEXTURE0) );
-        GLCHK (glGenTextures   (1, &texobj) );
-        GLCHK (glBindTexture   (GL_TEXTURE_2D, texobj) );
+        GLCHK (glGenTextures   (1, &m_screen_tex) );
+        GLCHK (glBindTexture   (GL_TEXTURE_2D, m_screen_tex) );
 
         // Note for the future: These are needed.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -56,16 +62,17 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
                     0, GL_RGBA, GL_FLOAT, NULL) );
 
         // Bind it to image unit
-        GLCHK ( glBindImageTexture(0, texobj, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F) );
+        GLCHK ( glBindImageTexture(0, m_screen_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F) );
     }
     // Create main program
     {
         enum {
             vert,
             frag,
+            shader_count,
         };
-        GLuint shaders[2];
-        const char* path[2];
+        GLuint shaders[shader_count];
+        const char* path[shader_count];
         path[vert] = "pham/quad.v.glsl";
         path[frag] = "pham/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
@@ -73,7 +80,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
         m_quad_program = glCreateProgram();
 
-        ph::gl::link_program(m_quad_program, shaders, 2);
+        ph::gl::link_program(m_quad_program, shaders, shader_count);
 
         ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
         ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));
@@ -81,6 +88,35 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         GLCHK ( glUseProgram(m_quad_program) );
         GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
 
+    }
+    // Create post pocessing program.
+    {
+        enum {
+            vert,
+            frag,
+            fxaa,
+            shader_count,
+        };
+        GLuint shaders[shader_count];
+        const char* paths[shader_count];
+        paths[vert] = "pham/quad.v.glsl";
+        paths[frag] = "pham/postproc.f.glsl";
+        paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
+
+        shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);
+        shaders[frag] = ph::gl::compile_shader(paths[frag], GL_FRAGMENT_SHADER);
+        shaders[fxaa] = ph::gl::compile_shader(paths[fxaa], GL_FRAGMENT_SHADER);
+
+        m_postprocess_program = glCreateProgram();
+        ph::gl::link_program(m_postprocess_program, shaders, shader_count);
+
+        glUseProgram(m_postprocess_program);
+        ph_expect(Location_pos == glGetAttribLocation(m_postprocess_program, "position"));
+        ph_expect(1 == glGetUniformLocation(m_postprocess_program, "fbo_texture"));
+        ph_expect(2 == glGetUniformLocation(m_postprocess_program, "rcp_frame"));
+        glUniform1i(1, /*GL_TEXTURE*/0);  // Get color from the ray traced texture.
+        float fsize[2] = { 1.0f/((float)width), 1.0f/((float)height) };
+        GLCHK ( glUniform2fv(2, 1, &fsize[0]) );
     }
     // Create a quad.
     {
@@ -231,11 +267,16 @@ void draw(int* resolution) {
     }
     frame_index++;
 
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
+    GLCHK ( glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT) );
+
+    //////////////////////////////////////////////////////////////
 
     // Fill screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     {
-        GLCHK (glUseProgram      (m_quad_program) );
+        glUseProgram(m_postprocess_program);
         GLCHK (glBindVertexArray (m_quad_vao) );
         GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
     }
