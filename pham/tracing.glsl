@@ -63,6 +63,12 @@ struct Light {
     vec3 color;
 };
 
+struct TraceIntersection {
+    float t;
+    vec3 point;
+    vec3 normal;
+};
+
 layout(std430, binding = 0) buffer TrianglePool {
     Triangle data[];
 } triangle_pool;
@@ -127,6 +133,53 @@ vec3 barycentric(Triangle tri, Ray ray) {
     float det = dot(-n, ray.dir);
     //if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
     return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
+}
+
+TraceIntersection trace(Ray ray) {
+    TraceIntersection intersection;
+    float min_t = INFINITY;
+    vec3 point;
+    vec3 normal;
+    vec2 uv;
+
+    int stack[16];
+    int stack_offset = 0;
+    stack[stack_offset++] = 0;
+    while (stack_offset > 0) {
+        int i = stack[--stack_offset];
+        BVHNode node = bvh.data[i];
+        bool is_inside; // is inside bbox?
+        float bbox_t = bbox_collision(node.bbox, ray, is_inside);
+        bool ditch_node = !is_inside && bbox_t > min_t;    // TODO: fix this
+        if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
+            Primitive p = primitive_pool.data[node.primitive_offset];
+            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
+                Triangle t = triangle_pool.data[j];
+                vec3 bar = barycentric(t, ray);
+                if (bar.x > 0 &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1) {
+                    if (bar.x < min_t) {
+                        min_t = bar.x;
+                        float u = bar.y;
+                        float v = bar.z;
+                        point = ray.o + bar.x * ray.dir;
+                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                        normal = t.normal;
+                        uv = vec2(u,v);
+                    }
+                }
+            }
+        } else if (bbox_t > 0 && !ditch_node) {                              // INNER NODE
+            stack[stack_offset++] = i + 1;
+            stack[stack_offset++] = node.r_child_offset;
+        }
+    }
+    intersection.t = min_t;
+    intersection.point = point;
+    intersection.normal = normal;
+    return intersection;
 }
 
 // ========================================
@@ -219,56 +272,19 @@ void main() {
         ray.o = point;
         ray.dir = ray.o - eye;
 
-        // Single trace against triangle pool
-        float min_t = INFINITY;
         color = vec4(0.5);
-        vec3 point;
-        vec3 normal;
-        vec2 uv;
-
-        int stack[16];
-        int stack_offset = 0;
-        stack[stack_offset++] = 0;
-        while (stack_offset > 0) {
-            int i = stack[--stack_offset];
-            BVHNode node = bvh.data[i];
-            bool is_inside; // is inside bbox?
-            float bbox_t = bbox_collision(node.bbox, ray, is_inside);
-            bool ditch_node = !is_inside && bbox_t > min_t;    // TODO: fix this
-            if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
-                Primitive p = primitive_pool.data[node.primitive_offset];
-                for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
-                    Triangle t = triangle_pool.data[j];
-                    vec3 bar = barycentric(t, ray);
-                    if (bar.x > 0 &&
-                            bar.y < 1 && bar.y > 0 &&
-                            bar.z < 1 && bar.z > 0 &&
-                            (bar.y + bar.z) < 1) {
-                        if (bar.x < min_t) {
-                            min_t = bar.x;
-                            float u = bar.y;
-                            float v = bar.z;
-                            point = ray.o + bar.x * ray.dir;
-                            //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                            normal = t.normal;
-                            uv = vec2(u,v);
-                        }
-                    }
-                }
-            } else if (bbox_t > 0 && !ditch_node) {                              // INNER NODE
-                    stack[stack_offset++] = i + 1;
-                    stack[stack_offset++] = node.r_child_offset;
-            }
-        }
+        color.a = 1;
+        TraceIntersection intersection = trace(ray);
+        float t = intersection.t;
         // --- actual trace ends here
 
-        if (min_t < INFINITY) {
+        if (t < INFINITY) {
             color = vec4(0);
             int num_lights = light_pool.data.length();
             for (int i = 0; i < num_lights; ++i) {
                 Light light = light_pool.data[i];
                 /* light.position = vec3(0,100,0); */
-                vec3 rgb = (1.0 / num_lights) * lambert(point, normal, vec3(0.9, 0.9, 0.9), light);
+                vec3 rgb = (1.0 / num_lights) * lambert(intersection.point, intersection.normal, vec3(0.9, 0.9, 0.9), light);
                 /* vec3 rgb = point; */
                 color += vec4(rgb, 1);
             }
