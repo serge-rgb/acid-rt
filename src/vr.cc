@@ -28,7 +28,7 @@ ovrHmd m_hmd;
 
 void init(int width, int height) {
     const char* paths[] = {
-        "pham/tracing.glsl",
+        "src/tracing.glsl",
     };
     init_with_shaders(width, height, paths, 1);
 }
@@ -73,8 +73,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         };
         GLuint shaders[shader_count];
         const char* path[shader_count];
-        path[vert] = "pham/quad.v.glsl";
-        path[frag] = "pham/quad.f.glsl";
+        path[vert] = "src/quad.v.glsl";
+        path[frag] = "src/quad.f.glsl";
         shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
         shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
 
@@ -99,8 +99,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         };
         GLuint shaders[shader_count];
         const char* paths[shader_count];
-        paths[vert] = "pham/quad.v.glsl";
-        paths[frag] = "pham/postproc.f.glsl";
+        paths[vert] = "src/quad.v.glsl";
+        paths[frag] = "src/postproc.f.glsl";
         paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
 
         shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);

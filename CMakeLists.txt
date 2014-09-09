@@ -46,7 +46,7 @@ endif()
 find_package(OpenGL)
 
 include_directories(
-    "pham/"
+    "src/"
 
     "./third_party/lua/"
     "./third_party/lua/src/"
@@ -81,10 +81,10 @@ endif()
 
 
 add_library(ph STATIC
-    pham/ph.cc
-    pham/ph_gl.cc
-    pham/ph_io.cc
-    pham/ph_window.cc
+    src/ph.cc
+    src/ph_gl.cc
+    src/ph_io.cc
+    src/ph_window.cc
     )
 target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
@@ -93,8 +93,8 @@ endif()
 set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
 set (engine_sources
-    ${CMAKE_CURRENT_SOURCE_DIR}/pham/scene.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/pham/vr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vr.cc
     )
 #===============================================================================
 # Projects
