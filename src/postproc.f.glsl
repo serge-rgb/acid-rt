@@ -1,7 +1,5 @@
 #version 430
 
-#define FXAA_EDGE_DEBUG 1
-
 layout(location = 1) uniform sampler2D fbo_texture;
 layout(location = 2) uniform vec2 rcp_frame;
 
@@ -28,8 +26,6 @@ vec4 FxaaPixelShader(
      vec4 fxaaConsole360ConstDir
     );
 
-
-
 void main() {
     vec4 aa_color = FxaaPixelShader(
         coord, //pos
@@ -41,7 +37,7 @@ void main() {
         vec4(0), //fxaaConsoleRcpFrameOpt
         vec4(0), //fxaaConsoleRcpFrameOpt2
         vec4(0), //fxaaConsole360RcpFrameOpt2
-        0.750, //fxaaQualitySubpix (default: 0.75)
+        1.000, //fxaaQualitySubpix (default: 0.75)
         0.166, //fxaaQualityEdgeThreshold
         0.000, //fxaaQualityEdgeThresholdMin
         -1, //fxaaConsoleEdgeSharpness
