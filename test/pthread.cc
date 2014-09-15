@@ -78,6 +78,79 @@ void* philosopher(void* _arg) {
     pthread_exit(NULL);
 }
 
+//==============================================================================
+// Peterson's algorithm
+//==============================================================================
+
+struct Peterson {
+    int turn;
+    int flags[2];
+};
+
+static Peterson peterson;
+
+const static int kPetersonMax = 12500;
+
+pthread_mutex_t stupid_lock = PTHREAD_MUTEX_INITIALIZER;
+
+int sum = 0;
+
+void critical() {
+    // Make a very non-atomic increment
+    int tmp = sum;
+    tmp = tmp + 1;
+    sum = tmp;
+}
+
+#define IGNORE_PETERSON 1  // Sum will be incorrect if set to 0 (non atomic increments)
+
+void* peterson_0(void*) {
+    int id = 0;
+    for (int i = 0; i < kPetersonMax; ++i) {
+#if IGNORE_PETERSON
+        pthread_mutex_lock(&stupid_lock);
+        peterson.flags[id] = true;  // I want to go.
+        peterson.turn = 1;          // ... but you can go first.
+        pthread_mutex_unlock(&stupid_lock);
+
+        while (peterson.flags[1] && peterson.turn == 0) {}  // Busy wait
+#endif
+
+        critical();
+
+#if IGNORE_PETERSON
+        pthread_mutex_lock(&stupid_lock);
+        peterson.flags[id] = false;  // I'm done!
+        pthread_mutex_unlock(&stupid_lock);
+#endif
+    }
+    pthread_exit(NULL);
+}
+
+void* peterson_1(void*) {
+    int id = 1;
+    for (int i = 0; i < kPetersonMax; ++i) {
+#if IGNORE_PETERSON
+        pthread_mutex_lock(&stupid_lock);
+        peterson.flags[id] = true;  // I want to go.
+        peterson.turn = 0;          // ... but you can go first.
+        pthread_mutex_unlock(&stupid_lock);
+
+        while (peterson.flags[0] && peterson.turn == 1) {}  // Busy wait
+#endif
+
+        critical();
+
+#if IGNORE_PETERSON
+        pthread_mutex_lock(&stupid_lock);
+        peterson.flags[id] = false;  // I'm done!
+        pthread_mutex_unlock(&stupid_lock);
+#endif
+    }
+
+    pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[]) {
     pthread_t threads[43];
     int err;
@@ -104,5 +177,14 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
+
+    // Test peterson
+    pthread_t peterson_threads[2];
+    pthread_create(&peterson_threads[0], NULL, peterson_0, NULL);
+    pthread_create(&peterson_threads[1], NULL, peterson_1, NULL);
+
+    usleep (4 * 1000 * 1000);  // This is extra stupid.
+
+    printf("Sum is %d and should be %d\n", sum, 2 * kPetersonMax);
     pthread_exit(NULL);
 }
