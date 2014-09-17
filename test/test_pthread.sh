@@ -1,4 +1,4 @@
-clang++ pthread.cc -pthread -o pthread
+clang++ pthread.cc -O0 -pthread -o pthread
 
 if [ $? -ne 0 ]; then
     exit $?

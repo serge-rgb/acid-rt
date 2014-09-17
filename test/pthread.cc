@@ -85,15 +85,16 @@ void* philosopher(void* _arg) {
 struct Peterson {
     int turn;
     int flags[2];
+    bool done[2];
 };
 
 static Peterson peterson;
 
-const static int kPetersonMax = 12500;
+const static int kPetersonMax = 10000;
 
 pthread_mutex_t stupid_lock = PTHREAD_MUTEX_INITIALIZER;
 
-int sum = 0;
+int sum = 0;  // Volatile to avoid optimization.
 
 void critical() {
     // Make a very non-atomic increment
@@ -102,52 +103,51 @@ void critical() {
     sum = tmp;
 }
 
-#define IGNORE_PETERSON 1  // Sum will be incorrect if set to 0 (non atomic increments)
+#define USE_PETERSON 1  // Sum will be incorrect if set to 0 (non atomic increments)
+
+void peterson_lock(int id) {
+    peterson.flags[id] = true;  // I want to go.
+    peterson.turn = 1 - id;     // ... but you can go first.
+    __asm__ __volatile__("mfence");
+    do {
+        __asm__ __volatile__("":::"memory");  // Busy wait
+    } while (peterson.flags[1 - id] && peterson.turn == id);
+}
+
+void peterson_unlock (int id) {
+    __asm__ __volatile__("mfence");
+    peterson.flags[id] = false;  // I'm done!
+}
 
 void* peterson_0(void*) {
     int id = 0;
     for (int i = 0; i < kPetersonMax; ++i) {
-#if IGNORE_PETERSON
-        pthread_mutex_lock(&stupid_lock);
-        peterson.flags[id] = true;  // I want to go.
-        peterson.turn = 1;          // ... but you can go first.
-        pthread_mutex_unlock(&stupid_lock);
-
-        while (peterson.flags[1] && peterson.turn == 0) {}  // Busy wait
+#if USE_PETERSON
+        peterson_lock(id);
 #endif
 
         critical();
 
-#if IGNORE_PETERSON
-        pthread_mutex_lock(&stupid_lock);
-        peterson.flags[id] = false;  // I'm done!
-        pthread_mutex_unlock(&stupid_lock);
-#endif
+        peterson_unlock(id);
     }
+
+    peterson.done[0] = true;
     pthread_exit(NULL);
 }
 
 void* peterson_1(void*) {
     int id = 1;
     for (int i = 0; i < kPetersonMax; ++i) {
-#if IGNORE_PETERSON
-        pthread_mutex_lock(&stupid_lock);
-        peterson.flags[id] = true;  // I want to go.
-        peterson.turn = 0;          // ... but you can go first.
-        pthread_mutex_unlock(&stupid_lock);
-
-        while (peterson.flags[0] && peterson.turn == 1) {}  // Busy wait
+#if USE_PETERSON
+        peterson_lock(id);
 #endif
 
         critical();
 
-#if IGNORE_PETERSON
-        pthread_mutex_lock(&stupid_lock);
-        peterson.flags[id] = false;  // I'm done!
-        pthread_mutex_unlock(&stupid_lock);
-#endif
+        peterson_unlock(id);
     }
 
+    peterson.done[1] = true;
     pthread_exit(NULL);
 }
 
@@ -179,12 +179,14 @@ int main(int argc, char *argv[]) {
     }
 
     // Test peterson
+    peterson.done[0] = false;
+    peterson.done[1] = false;
     pthread_t peterson_threads[2];
     pthread_create(&peterson_threads[0], NULL, peterson_0, NULL);
     pthread_create(&peterson_threads[1], NULL, peterson_1, NULL);
 
-    usleep (4 * 1000 * 1000);  // This is extra stupid.
+    while (!(peterson.done[0] && peterson.done[1])) {}
+    printf("=== Peterson === Sum is %d and should be %d\n", sum, 2 * kPetersonMax);
 
-    printf("Sum is %d and should be %d\n", sum, 2 * kPetersonMax);
     pthread_exit(NULL);
 }
