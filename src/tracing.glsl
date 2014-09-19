@@ -250,11 +250,6 @@ void main() {
     // Separate point and eye
     point.z -= eye_to_lens_m;
 
-    //  neck correction (measured my head)
-    vec2 neck_joint = vec2(0.20, -0.13);
-    eye.yz -= neck_joint;
-    point.yz -= neck_joint;
-
     // Rotate.
     eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
@@ -265,7 +260,9 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.20) {         // <--- Cull
+    if (occlude && radius_sq > 0.25) {         // <--- Cull
+        // Green is great for checking appropiate radius.
+        /* color = vec4(0,1,0,1); */
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
@@ -284,7 +281,8 @@ void main() {
             for (int i = 0; i < num_lights; ++i) {
                 Light light = light_pool.data[i];
                 /* light.position = vec3(0,100,0); */
-                vec3 rgb = (1.0 / num_lights) * lambert(intersection.point, intersection.normal, vec3(0.9, 0.9, 0.9), light);
+                vec3 rgb = (1.0 / num_lights) *
+                    lambert(intersection.point, intersection.normal, vec3(0.9, 0.9, 0.9), light);
                 /* vec3 rgb = point; */
                 color += vec4(rgb, 1);
             }
