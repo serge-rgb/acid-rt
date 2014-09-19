@@ -4,41 +4,23 @@
 #include <scene.h>
 #include <vr.h>
 
+#include "samples.h"
+
 using namespace ph;
 
-static GLuint g_program;
-static int g_resolution[] = {1920, 1080};  // DK2 res
-
-void draw() {
-    vr::draw(g_resolution);
+static void cubes_idle() {
+    vr::draw(g_resolution);  // defined in samples.cc
 }
 
-using namespace ph;
-int main() {
-    ph::init();
-
-    window::init("Cube grid", g_resolution[0], g_resolution[1],
-                 window::InitFlag(
-                 window::InitFlag_IgnoreRift |
-                 window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
-
-
-    io::set_wasd_step(0.03f);
-
-    glfwSetKeyCallback(ph::window::m_window, ph::io::wasd_callback);
-
-    vr::init(g_resolution[0], g_resolution[1]);
-
-    ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
-
+void cubes_sample() {
     scene::init();
 
     // Create test grid of cubes
     scene::Cube thing;
     {
         int x = 16;
-        int y = 16;
-        int z = 16;
+        int y = 32;
+        int z = 20;
         for (int i = 0; i < z; ++i) {
             for (int j = 0; j < y; ++j) {
                 for (int k = 0; k < x; ++k) {
@@ -53,11 +35,5 @@ int main() {
     scene::update_structure();
     scene::upload_everything();
 
-    init();
-
-    window::main_loop(draw);
-
-    window::deinit();
-    vr::deinit();
-    return 0;
+    window::main_loop(cubes_idle);
 }

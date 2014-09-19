@@ -4,7 +4,8 @@ layout(location = 0) uniform vec2 screen_size;          // One eye! (960, 1080 f
 layout(location = 1) writeonly uniform image2D tex;     // This is the image we write to.
 layout(location = 2) uniform float x_offset;            // In pixels, for separate viewports.
 layout(location = 3) uniform float eye_to_lens_m;
-// 4 -- unused
+// Not going to use this while it is 1.0
+//layout(location = 4) uniform float max_r_sq;            // Max radius squared (for catmull spline).
 layout(location = 5) uniform vec2 screen_size_m;        // Screen size in meters.
 layout(location = 6) uniform vec2 lens_center_m;        // Lens center.
 layout(location = 7) uniform vec4 orientation_q;        // Orientation quaternion.
@@ -213,6 +214,63 @@ float recip_poly(float r) {
     return 1 / (k0 + r * (k1 + r * (r * k2 + r * k3)));
 }
 
+    const float K[11] = {
+        1.003000,
+        1.020000,
+        1.042000,
+        1.066000,
+        1.094000,
+        1.126000,
+        1.162000,
+        1.203000,
+        1.250000,
+        1.310000,
+        1.380000,
+    };  // TODO: Hard coded, because Oculus hard codes it ATM (0.4.2)
+
+float catmull(float r) {
+    int num_segments = 11;
+
+    /* float scaled_val = 10 * r / (max_r_sq); */
+    float scaled_val = 10 * r * 2;
+    float scaled_val_floor = max(0.0f, min(10, floor(scaled_val)));
+
+    int k = int(scaled_val_floor);
+    float p0, p1, k0p0, k0p1;
+    float m0, m1, k0m0, k0m1;
+
+    //==== k == 0
+    k0p0 = 1.0f;
+    k0m0 = K[1] - K[0];
+    k0p1 = K[1];
+    k0m1 = 0.5f * (K[2] - K[0]);
+    //====
+
+    //==== 0 < k < 9
+    p0 = K[k];
+    m0 = 0.5 * (K[k + 1] - K[k - 1]);
+    p1 = K[k + 1];
+    m1 = 0.5 * (K[k + 2] - K[k]);
+    //====
+
+    // k >= 9 does not happen for DK2 and would be expensive. Ignore it
+
+    // Pseudo if
+    float k0 = float(k == 0);
+
+    p0 = k0 * k0p0 + (1 - k0) * p0;
+    p1 = k0 * k0p1 + (1 - k0) * p1;
+    m0 = k0 * k0m0 + (1 - k0) * m0;
+    m1 = k0 * k0m1 + (1 - k0) * m1;
+
+    float t = scaled_val - scaled_val_floor;
+    float omt = 1 - t;
+    float res  = ( p0 * ( 1.0f + 2.0f * t ) + m0 *   t ) * omt * omt +
+        ( p1 * ( 1.0f + 2.0f * omt ) - m1 * omt ) *   t *   t;
+    return res;
+
+}
+
 // (x * y) % 32 == 0
 layout(local_size_x = 16, local_size_y = 8) in;
 void main() {
@@ -245,7 +303,7 @@ void main() {
     point.x *= screen_size.x / screen_size.y;
 
     // Distortion correction
-    point /= recip_poly(radius_sq);
+    point *= catmull(radius_sq);
 
     // Separate point and eye
     point.z -= eye_to_lens_m;

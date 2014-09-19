@@ -206,8 +206,19 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
 
+    // Get as much from the OVR config util as possible. (i.e. some unnecessary work done by libOVR)
+    auto render_desc = CalculateDistortionRenderDesc(OVR::StereoEye(OVR::StereoEye_Left), *m_renderinfo);
+    /* auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo); */
+
+    /* for (int i = 0; i < OVR::LensConfig::NumCoefficients; ++i) { */
+    /*     printf("K[%d] = %f\n", i, lens_config.K[i]); */
+    /* } */
+
+
     glUseProgram(m_program);
     glUniform1f(3, vr::m_default_eye_z);
+    /* printf("MaxR is %f\n", lens_config.MaxR); */
+    /* glUniform1f(4, lens_config.MaxR * lens_config.MaxR); */ // TODO: Change this, should it change from one...
 
     GLfloat size_m[2] = {
         m_screen_size_m[0] / 2,

@@ -9,4 +9,4 @@ static SampleFunc g_samples[] {
     cubes_sample,
 };
 
-static size_t g_num_samples = sizeof(SampleFunc) / sizeof(SampleFunc);
+static size_t g_num_samples = sizeof(g_samples) / sizeof(SampleFunc);
