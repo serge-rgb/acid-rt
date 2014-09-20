@@ -12,6 +12,12 @@ static GLuint g_program;
 
 int g_resolution[] = {1920, 1080};  // DK2 res
 
+void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    ph::io::wasd_callback(window, key, scancode, action, mods);
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+        vr::toggle_postproc();
+    }
+}
 int main() {
     ph_assert(g_num_samples >= 1);
     ph::init();
@@ -22,9 +28,9 @@ int main() {
                  window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
 
 
-    io::set_wasd_step(0.03f);
+    io::set_wasd_step(0.06f);
 
-    glfwSetKeyCallback(ph::window::m_window, ph::io::wasd_callback);
+    glfwSetKeyCallback(ph::window::m_window, sample_callback);
 
     vr::init(g_resolution[0], g_resolution[1]);
 

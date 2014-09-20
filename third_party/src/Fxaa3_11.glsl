@@ -3,8 +3,9 @@
 #extension GL_ARB_gpu_shader5 : enable
 #define FXAA_PC 1
 #define FXAA_GLSL_130 1
-#define FXAA_QUALITY__PRESET 39
+#define FXAA_QUALITY__PRESET 20
 #define FXAA_GREEN_AS_LUMA 1
+#define FXAA_DISCARD 0
 
 /*============================================================================
 
@@ -730,7 +731,11 @@ FxaaFloat4 FxaaPixelShader(
     //
     // Use noperspective interpolation here (turn off perspective interpolation).
     // {xy} = center of pixel
-    FxaaFloat2 pos,
+    FxaaFloat2 pos_g,
+    // ==== Modification to original:
+    // ==== Algorithm stays the same. Final offset and lookup is three offsets and lookups.
+    FxaaFloat2 pos_r,
+    FxaaFloat2 pos_b,
     //
     // Used only for FXAA Console, and not used on the 360 version.
     // Use noperspective interpolation here (turn off perspective interpolation).
@@ -886,11 +891,17 @@ FxaaFloat4 FxaaPixelShader(
 ) {
 /*--------------------------------------------------------------------------*/
     FxaaFloat2 posM;
-    posM.x = pos.x;
-    posM.y = pos.y;
+    posM.x = pos_g.x;
+    posM.y = pos_g.y;
     #if (FXAA_GATHER4_ALPHA == 1)
         #if (FXAA_DISCARD == 0)
-            FxaaFloat4 rgbyM = FxaaTexTop(tex, posM);
+            //FxaaFloat4 rgbyM = FxaaTexTop(tex, posM);
+            FxaaFloat4 rgbyM = FxaaFloat4(
+                    FxaaTexTop(tex, pos_r).r,
+                    FxaaTexTop(tex, pos_g).g,
+                    FxaaTexTop(tex, pos_b).b,
+                    1.0
+                    );
             #if (FXAA_GREEN_AS_LUMA == 0)
                 #define lumaM rgbyM.w
             #else
@@ -914,7 +925,11 @@ FxaaFloat4 FxaaPixelShader(
         #define lumaN luma4B.z
         #define lumaW luma4B.x
     #else
-        FxaaFloat4 rgbyM = FxaaTexTop(tex, posM);
+            FxaaFloat4 rgbyM = FxaaFloat4(
+                    FxaaTexTop(tex, pos_r).r,
+                    FxaaTexTop(tex, pos_g).g,
+                    FxaaTexTop(tex, pos_b).b
+                    );
         #if (FXAA_GREEN_AS_LUMA == 0)
             #define lumaM rgbyM.w
         #else
@@ -1236,12 +1251,27 @@ FxaaFloat4 FxaaPixelShader(
 /*--------------------------------------------------------------------------*/
     FxaaFloat pixelOffsetGood = goodSpan ? pixelOffset : 0.0;
     FxaaFloat pixelOffsetSubpix = max(pixelOffsetGood, subpixH);
-    if(!horzSpan) posM.x += pixelOffsetSubpix * lengthSign;
-    if( horzSpan) posM.y += pixelOffsetSubpix * lengthSign;
+    // TODO: change it here
+    FxaaFloat final_offset = pixelOffsetSubpix * lengthSign;
+    if(!horzSpan) {
+        pos_r.x += final_offset;
+        pos_g.x += final_offset;
+        pos_b.x += final_offset;
+    }
+    if( horzSpan) {
+        pos_r.y += final_offset;
+        pos_g.y += final_offset;
+        pos_b.y += final_offset;
+    }
     #if (FXAA_DISCARD == 1)
         return FxaaTexTop(tex, posM);
     #else
-        return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+        return FxaaFloat4(
+                FxaaFloat3(
+                    FxaaTexTop(tex, pos_r).r,
+                    FxaaTexTop(tex, pos_g).g,
+                    FxaaTexTop(tex, pos_b).b),
+                lumaM);
     #endif
 }
 /*==========================================================================*/

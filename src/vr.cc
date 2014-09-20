@@ -23,6 +23,10 @@ static float                     m_screen_size_m[2];  // Screen size in meters
 static GLuint                    m_program = 0;
 static GLuint                    m_postprocess_program = 0;
 static GLuint                    m_screen_tex;
+static float                     m_lens_center_l[2];
+static float                     m_lens_center_r[2];
+static bool                      m_do_postprocessing = true;
+
 
 ovrHmd m_hmd;
 
@@ -34,6 +38,7 @@ void init(int width, int height) {
 }
 
 void init_with_shaders(int width, int height, const char** shader_paths, int num_shaders) {
+
     enum Location {
         Location_pos = 0,
         Location_screen_size = 0,
@@ -201,10 +206,15 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     // TODO: take relief into account.
     m_default_eye_z = h / (1 * hvfov);
 
-
     const OVR::CAPI::HMDState* m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
     m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
+
+    m_lens_center_l[0] = (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2);
+    m_lens_center_l[1] = vr::m_hmdinfo->CenterFromTopInMeters;
+
+    m_lens_center_r[0] = vr::m_renderinfo->LensSeparationInMeters / 2;
+    m_lens_center_r[1] = vr::m_hmdinfo->CenterFromTopInMeters;
 
     // Get as much from the OVR config util as possible. (i.e. some unnecessary work done by libOVR)
     auto render_desc = CalculateDistortionRenderDesc(OVR::StereoEye(OVR::StereoEye_Left), *m_renderinfo);
@@ -214,18 +224,29 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     /*     printf("K[%d] = %f\n", i, lens_config.K[i]); */
     /* } */
 
+    GLfloat size_m[2] = {
+        m_screen_size_m[0] / 2,
+        m_screen_size_m[1],
+    };
+
+    glUseProgram(m_postprocess_program);
+
+    glUniform2fv(3, 1, size_m);     // screen_size_m
+    glUniform2fv(4, 1, m_lens_center_l);
+    glUniform2fv(5, 1, m_lens_center_r);
 
     glUseProgram(m_program);
     glUniform1f(3, vr::m_default_eye_z);
     /* printf("MaxR is %f\n", lens_config.MaxR); */
     /* glUniform1f(4, lens_config.MaxR * lens_config.MaxR); */ // TODO: Change this, should it change from one...
 
-    GLfloat size_m[2] = {
-        m_screen_size_m[0] / 2,
-        m_screen_size_m[1],
-    };
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Cull?
+
+}
+
+void toggle_postproc() {
+    m_do_postprocessing = m_do_postprocessing? false : true;
 }
 
 void draw(int* resolution) {
@@ -256,22 +277,14 @@ void draw(int* resolution) {
 
     // Dispatch left viewport
     {
-        GLfloat lens_center[2] = {
-            (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2),
-            vr::m_hmdinfo->CenterFromTopInMeters,
-        };
-        glUniform2fv(6, 1, lens_center);  // Lens center
+        glUniform2fv(6, 1, m_lens_center_l);  // Lens center
         GLCHK ( glUniform1f(2, 0) );  // x_offset
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
                     GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
     }
     // Dispatch right viewport
     {
-        GLfloat lens_center[2] = {
-            vr::m_renderinfo->LensSeparationInMeters / 2,
-            vr::m_hmdinfo->CenterFromTopInMeters,
-        };
-        glUniform2fv(6, 1, lens_center);  // Lens center
+        glUniform2fv(6, 1, m_lens_center_r);  // Lens center
         glUniform1f(2, ((GLfloat)viewport_resolution[0]));  // x_offset
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
                     GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
@@ -287,7 +300,11 @@ void draw(int* resolution) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     {
-        glUseProgram(m_postprocess_program);
+        if (m_do_postprocessing) {
+            glUseProgram(m_postprocess_program);
+        } else {
+            glUseProgram(m_quad_program);
+        }
         GLCHK (glBindVertexArray (m_quad_vao) );
         GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
     }
