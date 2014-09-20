@@ -12,12 +12,13 @@ static GLuint g_program;
 
 int g_resolution[] = {1920, 1080};  // DK2 res
 
-void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+static void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     ph::io::wasd_callback(window, key, scancode, action, mods);
     if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
         vr::toggle_postproc();
     }
 }
+
 int main() {
     ph_assert(g_num_samples >= 1);
     ph::init();

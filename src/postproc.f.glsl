@@ -70,7 +70,7 @@ void main() {
     /* float chroma_threshold = 0.25; */
     float r_factor = 0.975;
     /* r_factor = float(rsq < chroma_threshold) * r_factor + float(rsq >= chroma_threshold) * 1.0; */
-    float b_factor = 1.045;
+    float b_factor = 1.025;
     /* b_factor = float(rsq < chroma_threshold) * b_factor + float(rsq >= chroma_threshold) * 1.0; */
     vec2 point_r = r * sqrt(r_factor) * vec2(cos(theta), sin(theta));
     //vec2 point_r = r * sqrt(1.0) * vec2(cos(theta), sin(theta));
@@ -111,7 +111,7 @@ void main() {
         vec4(0), //fxaaConsoleRcpFrameOpt
         vec4(0), //fxaaConsoleRcpFrameOpt2
         vec4(0), //fxaaConsole360RcpFrameOpt2
-        1.000, //fxaaQualitySubpix (default: 0.75)
+        0.000, //fxaaQualitySubpix (default: 0.75)
         0.166, //fxaaQualityEdgeThreshold
         0.000, //fxaaQualityEdgeThresholdMin
         -1, //fxaaConsoleEdgeSharpness
