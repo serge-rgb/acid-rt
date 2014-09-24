@@ -192,19 +192,14 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     }
 
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
-    auto fovPort_r = m_hmd->DefaultEyeFov[1];
+
+    // TODO: take relief into account.
+    float theta = atanf(fovPort_l.DownTan);
+    m_default_eye_z =  2 * abs(cosf(2 * theta));
 
     // Hard coded, taken from OVR source.
     m_screen_size_m[0] = 0.12576f;
     m_screen_size_m[1] = 0.07074f;
-
-    // Default fov (looking down)
-    float hvfov = (fovPort_r.DownTan + fovPort_l.DownTan) / 2.0f;   // 1.32928
-    float h = m_screen_size_m[1];
-    h = 1;
-
-    // TODO: take relief into account.
-    m_default_eye_z = h / (1 * hvfov);
 
     const OVR::CAPI::HMDState* m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
     m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
