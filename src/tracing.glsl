@@ -226,13 +226,13 @@ float recip_poly(float r) {
         1.250000,
         1.310000,
         1.380000,
-    };  // TODO: Hard coded, because Oculus hard codes it ATM (0.4.2)
+    };  // TODO: Hard coded,
 
 float catmull(float r) {
     int num_segments = 11;
 
     /* float scaled_val = 10 * r / (max_r_sq); */
-    float scaled_val = 10 * r * 2;
+    float scaled_val = 10 * r * 3.6;  // 3.6 == 100 * Distortion.Lens.MetersPerTanAngleAtCenter (DK2)
     float scaled_val_floor = max(0.0f, min(10, floor(scaled_val)));
 
     int k = int(scaled_val_floor);
@@ -296,11 +296,11 @@ void main() {
     // back to unit coordinates
     point.xy /= screen_size_m;
 
-    // Get radius squared
-    float radius_sq = (point.x * point.x) + (point.y * point.y);
-
     // Scale by aspect ratio.
     point.x *= screen_size.x / screen_size.y;
+
+    // Get radius squared
+    float radius_sq = (point.x * point.x) + (point.y * point.y);
 
     // Distortion correction
     point *= catmull(radius_sq);
@@ -318,7 +318,7 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.25) {         // <--- Cull
+    if (occlude && radius_sq > 0.20) {         // <--- Cull
         // Green is great for checking appropiate radius.
         /* color = vec4(0,1,0,1); */
         color = vec4(0);

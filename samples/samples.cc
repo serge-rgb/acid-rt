@@ -43,4 +43,5 @@ int main() {
 
     window::deinit();
     vr::deinit();
+    printf("Done.\n");
 }

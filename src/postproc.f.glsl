@@ -48,11 +48,12 @@ void main() {
     /* point.x /= 2;  // One viewport per eye */
     point.xy *= screen_size;
 
-    /* if (eye == -1) { */
-    /*     point -= lens_center_l; */
-    /* } else { */
-    /*     point -= lens_center_r; */
-    /* } */
+    if (eye == -1) {
+        point -= lens_center_l;
+    } else {
+        point -= lens_center_r;
+    }
+
     // Back to unit
     point.xy /= screen_size;
 

@@ -210,6 +210,9 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
 
+    // TODO: add this to shader.
+    // float t = m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
+
     m_lens_center_l[0] = (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2);
     m_lens_center_l[1] = vr::m_hmdinfo->CenterFromTopInMeters;
 
@@ -242,7 +245,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Cull?
-
 }
 
 void toggle_postproc() {
