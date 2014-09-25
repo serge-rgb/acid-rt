@@ -25,7 +25,7 @@ int main() {
 
     window::init("Samples", g_resolution[0], g_resolution[1],
                  window::InitFlag(
-                 window::InitFlag_IgnoreRift |
+                 /* window::InitFlag_IgnoreRift | */
                  window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
 
 

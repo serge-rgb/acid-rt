@@ -94,8 +94,6 @@ void init(const char* title, int width, int height, InitFlag flags) {
 
     glGetError();  // glew generates an error. Not our fault
 #endif
-
-
 }
 
 void main_loop(WindowProc step_func) {
@@ -119,13 +117,14 @@ void main_loop(WindowProc step_func) {
         // ---- Get end time. Measure
         long diff = ph::io::get_microseconds() - start_ns;
         double diff_ms = double(diff) / (1000.0);
+        printf("Frame time: %fms", diff_ms);
         if (diff_ms >= ms_per_frame) {
-            /* fprintf(stderr, "Overshot: %fms\n", diff_ms); */
+            printf("(overshot)\n");
         } else {
+            printf("\n");
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
-                /* printf("Frame time: %fms\n", diff_ms); */
             }
         }
     }

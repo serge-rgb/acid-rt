@@ -1,12 +1,10 @@
 #include "vr.h"
 
-/**
- * GL_TEXTURE0 -- quad
- * GL_TEXTURE1 -- post-process
- */
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
-static int g_warpsize[] = {16, 8};
+//static int g_warpsize[] = {2, 32};
+//static int g_warpsize[] = {4, 16}; // Good perf.
+static int g_warpsize[] = {1, 128};  // Nice trade-off between perf and artifacts.
 
 namespace ph {
 namespace vr {
@@ -15,14 +13,15 @@ static GLuint m_quad_vao;
 static GLuint m_quad_program;
 static GLuint m_compute_program;
 
-static GLuint                    m_size[2];
-static float                     m_default_eye_z;     // Eye distance from plane.
+static GLuint                    m_size[2];             // Size of the framebuffer
+static float                     m_default_eye_z;       // Eye distance from plane.
 static const OVR::HMDInfo*       m_hmdinfo;
 static const OVR::HmdRenderInfo* m_renderinfo;
-static float                     m_screen_size_m[2];  // Screen size in meters
+static float                     m_screen_size_m[2];    // Screen size in meters
 static GLuint                    m_program = 0;
 static GLuint                    m_postprocess_program = 0;
 static GLuint                    m_screen_tex;
+static GLuint                    m_backbuffer_tex;
 static float                     m_lens_center_l[2];
 static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
@@ -67,7 +66,24 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
                     0, GL_RGBA, GL_FLOAT, NULL) );
 
         // Bind it to image unit
-        GLCHK ( glBindImageTexture(0, m_screen_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F) );
+        /* GLCHK ( glBindImageTexture(0, m_screen_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F) ); */
+        GLCHK ( glBindImageTexture(0, m_screen_tex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F) );
+
+
+        // Make a second image, dual buffering (for checkerboard interlacing).
+        glActiveTexture (GL_TEXTURE1);
+        glGenTextures   (1, &m_backbuffer_tex);
+        glBindTexture   (GL_TEXTURE_2D, m_backbuffer_tex);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        GLCHK ( glBindImageTexture(1, m_backbuffer_tex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F) );
+
+        glActiveTexture(GL_TEXTURE0);
+
     }
     // Create main program
     {
@@ -92,7 +108,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
         GLCHK ( glUseProgram(m_quad_program) );
         GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
-
     }
     // Create post pocessing program.
     {
@@ -164,6 +179,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         glUseProgram(m_program);
 
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
+        GLCHK ( glUniform1i(11, 1) );
+
         float fsize[2] = {(float)width / 2, (float)height};
         glUniform2fv(Location_screen_size, 1, &fsize[0]);
     }
@@ -247,6 +264,7 @@ void toggle_postproc() {
 }
 
 void draw(int* resolution) {
+    glActiveTexture(GL_TEXTURE0);
     glUseProgram(m_program);
     GLfloat viewport_resolution[2] = { GLfloat(resolution[0] / 2), GLfloat(resolution[1]) };
     static unsigned int frame_index = 1;
@@ -272,6 +290,8 @@ void draw(int* resolution) {
     GLCHK ( glUniform4fv(7, 1, quat) );  // Camera orientation
     GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
 
+    GLCHK ( glUniform1i(9, (GLint)frame_index) );
+    /* GLCHK ( glUniform1i(9, (GLint)-1) ); */
     // Dispatch left viewport
     {
         glUniform2fv(6, 1, m_lens_center_l);  // Lens center
@@ -279,6 +299,7 @@ void draw(int* resolution) {
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
                     GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
     }
+    GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
     // Dispatch right viewport
     {
         glUniform2fv(6, 1, m_lens_center_r);  // Lens center
@@ -289,7 +310,7 @@ void draw(int* resolution) {
     frame_index++;
 
     GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
-    GLCHK ( glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT) );
+    //GLCHK ( glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT) );
 
     //////////////////////////////////////////////////////////////
 
@@ -306,9 +327,13 @@ void draw(int* resolution) {
         GLCHK (glDrawArrays      (GL_TRIANGLE_FAN, 0, 4) );
     }
 
+    glActiveTexture(GL_TEXTURE1);
+    // Copy to back buffer
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,0,0, (GLsizei)m_size[0], (GLsizei)m_size[1], 0);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     window::swap_buffers();
-    glFlush();
-    GLCHK ( glFinish() );
+    /* glFlush(); */
+    /* GLCHK ( glFinish() ); */
     ovrHmd_EndFrameTiming(m_hmd);
 
 }
