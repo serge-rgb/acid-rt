@@ -3,7 +3,7 @@
 #extension GL_ARB_gpu_shader5 : enable
 #define FXAA_PC 1
 #define FXAA_GLSL_130 1
-#define FXAA_QUALITY__PRESET 20
+#define FXAA_QUALITY__PRESET 39
 #define FXAA_GREEN_AS_LUMA 1
 #define FXAA_DISCARD 0
 

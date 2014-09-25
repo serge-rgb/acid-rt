@@ -1,3 +1,4 @@
+::set target=chicken
 set target=samples
 
 set config=Debug
@@ -15,8 +16,7 @@ copy build\third_party\glfw\src\%config%\glfw3.dll build\%target%\%config%\glfw3
 copy build\third_party\lua\%config%\lua.dll build\%target%\%config%\lua.dll
 copy build\third_party\yajl\yajl-2.1.1\lib\%config%\yajl.dll build\%target%\%config%\yajl.dll
 
-build\samples\%config%\samples.exe
-::build\chicken\%config%\chicken.exe
+build\%target%\%config%\%target%.exe
 
 :End
 
