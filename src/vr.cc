@@ -9,10 +9,9 @@ static int g_warpsize[] = {1, 128};  // Nice trade-off between perf and artifact
 namespace ph {
 namespace vr {
 
-static GLuint m_quad_vao;
-static GLuint m_quad_program;
-static GLuint m_compute_program;
-
+static GLuint                    m_quad_vao;
+static GLuint                    m_quad_program;
+static GLuint                    m_compute_program;
 static GLuint                    m_size[2];             // Size of the framebuffer
 static float                     m_default_eye_z;       // Eye distance from plane.
 static const OVR::HMDInfo*       m_hmdinfo;
@@ -198,8 +197,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
     m_hmd = ovrHmd_Create(0);
 
-    // TODO: avoid crash here by checking for ovrHmd_Create success.
-
     unsigned int sensor_caps =
         ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
 
@@ -219,8 +216,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     m_screen_size_m[1] = 0.07074f;
 
     const OVR::CAPI::HMDState* m_hmdstate = (OVR::CAPI::HMDState*)m_hmd->Handle;
-    m_renderinfo = &m_hmdstate->RenderState.RenderInfo;
-    m_hmdinfo    = &m_hmdstate->RenderState.OurHMDInfo;
+    m_renderinfo                          = &m_hmdstate->RenderState.RenderInfo;
+    m_hmdinfo                             = &m_hmdstate->RenderState.OurHMDInfo;
 
     // TODO: add this to shader.
     // float t = m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
@@ -252,8 +249,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
     glUseProgram(m_program);
     glUniform1f(3, vr::m_default_eye_z);
-    /* printf("MaxR is %f\n", lens_config.MaxR); */
-    /* glUniform1f(4, lens_config.MaxR * lens_config.MaxR); */ // TODO: Change this, should it change from one...
 
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Cull?
@@ -291,7 +286,6 @@ void draw(int* resolution) {
     GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
 
     GLCHK ( glUniform1i(9, (GLint)frame_index) );
-    /* GLCHK ( glUniform1i(9, (GLint)-1) ); */
     // Dispatch left viewport
     {
         glUniform2fv(6, 1, m_lens_center_l);  // Lens center

@@ -275,13 +275,14 @@ float catmull(float r) {
 }
 
 // (x * y) % 32 == 0
-//layout(local_size_x = 4, local_size_y = 16) in;
+//jlayout(local_size_x = 4, local_size_y = 16) in;
 layout(local_size_x = 1, local_size_y = 128) in;
 void main() {
-
     int off = int(frame_index % 2);
     bool quit = (off + (gl_WorkGroupID.x + gl_WorkGroupID.y)) % 2 == 0;
-    // quit = false;
+    // This is will happen with "stretched warps" because the height is not divisible by 128
+    if (gl_GlobalInvocationID.y > screen_size.y) { quit = true; }
+    //quit = false;
     if (frame_index != -1 && quit) {
         ivec2 coord_store = ivec2(gl_GlobalInvocationID.x + x_offset, gl_GlobalInvocationID.y);
         ivec2 coord_load = coord_store + ivec2(0 * screen_size.x, 0);

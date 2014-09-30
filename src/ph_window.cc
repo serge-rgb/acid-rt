@@ -117,11 +117,11 @@ void main_loop(WindowProc step_func) {
         // ---- Get end time. Measure
         long diff = ph::io::get_microseconds() - start_ns;
         double diff_ms = double(diff) / (1000.0);
-        printf("Frame time: %fms", diff_ms);
+        /* printf("Frame time: %fms", diff_ms); */
         if (diff_ms >= ms_per_frame) {
-            printf("(overshot)\n");
+            /* printf("(overshot)\n"); */
         } else {
-            printf("\n");
+            /* printf("\n"); */
             if (diff_ms > 0) {
                 total_time_ms += diff_ms;
                 num_frames++;
