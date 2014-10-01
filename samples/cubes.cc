@@ -24,7 +24,7 @@ void cubes_sample() {
         for (int i = 0; i < z; ++i) {
             for (int j = -4; j < y - 4; ++j) {
                 for (int k = -x/2; k < x; ++k) {
-                    thing = {{k * 1.1, j * 1.1, -2 - i * 1.1}, {0.5, 0.5, 0.5}, -1};
+                    thing = scene::make_cube(k * 1.1f, j * 1.1f, -2 - i*1.1f, 0.5);
                     scene::submit_primitive(&thing);
                 }
             }

@@ -24,8 +24,11 @@ enum SubmitFlags {
 struct Cube {
     glm::vec3 center;
     glm::vec3 sizes;
-    int index;          //  Place in triangle pool where associated triangles begin.
+    int32 index = -1; //  Place in triangle pool where associated triangles begin.
 };
+
+Cube make_cube(float x, float y, float z, float size);
+Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z);
 
 struct Rect {
     float x;

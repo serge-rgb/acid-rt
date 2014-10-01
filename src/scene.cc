@@ -145,7 +145,7 @@ enum SplitPlane {
 
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
-static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int* indices) {
+static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices) {
     BVHTreeNode* node = phanaged(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
@@ -469,7 +469,7 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     if (flags & SubmitFlags_Update) {
         index = cube->index;
     } else {  // Append 12 new triangles
-        tri.p0.x = 0;  // Initialize garbage
+        tri.p0.x = 0;  // Initialize garbage, just to get an index. Will be filled below.
         index = append(&m_triangle_pool, tri);
         for (int i = 0; i < 11; ++i) {
             append(&m_triangle_pool, tri);
@@ -587,7 +587,7 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     tri.normal = nm;
     m_triangle_pool[index + 11] = tri;
 
-    ph_assert(index <= PH_MAX_int64);
+    ph_assert(index <= PH_MAX_int32);
     cube->index = (int)index;
     Primitive prim;
     prim.offset = cube->index;
@@ -602,10 +602,10 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     }
 }
 
-int64 submit_primitive(AABB* bbox) {
+static int64 submit_primitive(AABB* bbox) {
     glm::vec3 center = {(bbox->xmax + bbox->xmin) / 2,
         (bbox->ymax + bbox->ymin) / 2, (bbox->zmax + bbox->zmin) / 2};
-    Cube cube = {center, {bbox->xmax - center.x, bbox->ymax - center.y, bbox->zmax - center.y}, -1};
+    Cube cube = make_cube(center.x, center.y, center.z, bbox->xmax - center.x, bbox->ymax - center.y, bbox->zmax - center.y);
     return submit_primitive(&cube);
 }
 
@@ -638,6 +638,22 @@ void submit_primitive(BVHTreeNode* root) {
     }
 }
 
+Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z) {
+    Cube c;
+    c.center.x = x;
+    c.center.y = y;
+    c.center.z = z;
+
+    c.sizes.x = size_x;
+    c.sizes.y = size_y;
+    c.sizes.z = size_z;
+
+    return c;
+}
+
+Cube make_cube(float x, float y, float z, float size) {
+    return make_cube(x,y,z,size,size,size);
+}
 
 void init() {
     m_triangle_pool = MakeSlice<GLtriangle>(1024);
@@ -656,10 +672,9 @@ void init() {
 }
 
 void update_structure() {
-    // Do this after submitting everything:
-    ph_assert(count(m_primitives) < PH_MAX_int64);
+    ph_assert(count(m_primitives) < PH_MAX_int32);
+    int32* indices = phalloc(int32, count(m_primitives));
 
-    int* indices = phalloc(int, count(m_primitives));
     for (int i = 0; i < count(m_primitives); ++i) {
         indices[i] = i;
     }
