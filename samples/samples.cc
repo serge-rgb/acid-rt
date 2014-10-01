@@ -20,6 +20,9 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
     if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
         vr::toggle_postproc();
     }
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        vr::toggle_interlacing();
+    }
     if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
         g_curr_sample--;
         while(g_curr_sample < 0) g_curr_sample++;

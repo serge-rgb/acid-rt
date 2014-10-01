@@ -3,7 +3,6 @@
 layout(location = 0) uniform vec2 screen_size;              // One eye! (960, 1080 for DK2)
 //layout(location = 1) writeonly uniform image2D tex;      // This is the image we write to.
 layout(location = 1, rgba32f) uniform image2D tex;          // This is the image we write to.
-layout(location = 11, rgba32f) uniform image2D back_tex;    // Framebuffer for the prev frame
 layout(location = 2) uniform float x_offset;                // In pixels, for separate viewports.
 layout(location = 3) uniform float eye_to_lens_m;
 // Not going to use this while it is 1.0
@@ -12,9 +11,10 @@ layout(location = 5) uniform vec2 screen_size_m;            // Screen size in me
 layout(location = 6) uniform vec2 lens_center_m;            // Lens center.
 layout(location = 7) uniform vec4 orientation_q;            // Orientation quaternion.
 layout(location = 8) uniform bool occlude;                  // Flag for occlusion circle
-// 9 unused
 layout(location = 9) uniform int frame_index;               //
 layout(location = 10) uniform vec3 camera_pos;
+layout(location = 11, rgba32f) uniform image2D back_tex;    // Framebuffer for the prev frame
+layout(location = 12) uniform bool enable_interlacing;      // Should warp interlacing optimization be on.
 
 float PI = 3.141526;
 float EPSILON = 0.00001;
@@ -280,6 +280,7 @@ layout(local_size_x = 1, local_size_y = 128) in;
 void main() {
     int off = int(frame_index % 2);
     bool quit = (off + (gl_WorkGroupID.x + gl_WorkGroupID.y)) % 2 == 0;
+    quit = quit && enable_interlacing;
     // This is will happen with "stretched warps" because the height is not divisible by 128
     if (gl_GlobalInvocationID.y > screen_size.y) { quit = true; }
     //quit = false;

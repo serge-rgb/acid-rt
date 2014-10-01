@@ -16,6 +16,8 @@ void draw(int* resolution);
 
 void toggle_postproc();
 
+void toggle_interlacing();
+
 void deinit();
 
 }  // ns vr

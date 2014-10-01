@@ -24,6 +24,7 @@ static GLuint                    m_backbuffer_tex;
 static float                     m_lens_center_l[2];
 static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
+static bool                      m_do_interlacing = false;
 
 
 ovrHmd m_hmd;
@@ -36,6 +37,12 @@ void init(int width, int height) {
 }
 
 void init_with_shaders(int width, int height, const char** shader_paths, int num_shaders) {
+    // Safety net.
+    static bool is_init = false;
+    if (is_init) {
+        phatal_error("vr::init called twice");
+    }
+    is_init = true;
 
     enum Location {
         Location_pos = 0,
@@ -177,19 +184,13 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
         glUseProgram(m_program);
 
+        glUniform1i(12, m_do_interlacing);
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
-        GLCHK ( glUniform1i(11, 1) );
+        GLCHK ( glUniform1i(11, 1) );  // Back texture
 
         float fsize[2] = {(float)width / 2, (float)height};
         glUniform2fv(Location_screen_size, 1, &fsize[0]);
     }
-
-    // Safety net.
-    static bool is_init = false;
-    if (is_init) {
-        phatal_error("vr::init called twice");
-    }
-    is_init = true;
 
     if (!ovr_Initialize()) {
         ph::phatal_error("Could not initialize OVR\n");
@@ -256,6 +257,12 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
 void toggle_postproc() {
     m_do_postprocessing = m_do_postprocessing? false : true;
+}
+
+void toggle_interlacing() {
+    m_do_interlacing = m_do_interlacing? false : true;
+    glUseProgram(m_program);
+    GLCHK ( glUniform1i(12, m_do_interlacing) );
 }
 
 void draw(int* resolution) {
