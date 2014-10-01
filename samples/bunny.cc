@@ -1,4 +1,3 @@
-
 // 2014 Sergio Gonzalez
 
 #include <ph.h>
@@ -19,12 +18,6 @@ static const char* str(const glm::vec3& v) {
     return out;
 }
 
-struct Face {
-    // Just indices into vertex/normal arrays.
-    int64 vert_i[3];
-    int64 norm_i[3];
-};
-
 /**
  * Represents triangle data. Small enough to be considered a primitive.
  * Large enough so that it justifies a bounding box.
@@ -32,11 +25,8 @@ struct Face {
 struct Chunk {
     glm::vec3* verts;
     glm::vec3* norms;
-    Face* faces;
-    int _padding;
     int64 num_verts;
     int64 num_norms;
-    int64 num_faces;
 };
 
 /*
@@ -61,6 +51,12 @@ static Chunk load_obj(const char* path) {
             line = strtok(NULL, "\n");
         }
     }
+
+    struct Face {
+        // Just indices into vertex/normal arrays.
+        int64 vert_i[3];
+        int64 norm_i[3];
+    };
 
     // Raw model data.
     auto verts = MakeSlice<glm::vec3>(1024);
@@ -137,14 +133,27 @@ static Chunk load_obj(const char* path) {
             }
         }
     }
-
     Chunk chunk;
-    chunk.verts = verts.ptr;
-    chunk.norms = norms.ptr;
-    chunk.num_verts = count(verts);
-    chunk.num_norms = count(norms);
-    chunk.faces = faces.ptr;
-    chunk.num_faces = count(faces);
+    {  // Fill chunk.
+        // Copies from vert / norms so that they form triangles.
+        // Uses way more memory, but no need for Face structure.
+        auto in_verts = MakeSlice<glm::vec3>(3 * (size_t)count(verts));
+        auto in_norms = MakeSlice<glm::vec3>(3 * (size_t)count(norms));
+        for (int64 i = 0; i < count(faces); ++i) {
+            auto face = faces[i];
+            for (int j = 0; j < 3; ++j) {
+                auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
+                auto norm = norms[face.norm_i[j] - 1];
+                append(&in_verts, vert);
+                append(&in_norms, norm);
+            }
+        }
+        chunk.verts = in_verts.ptr;
+        chunk.norms = in_norms.ptr;
+        chunk.num_verts = count(in_verts);
+        chunk.num_norms = count(in_norms);
+    }
+
     return chunk;
 }
 
