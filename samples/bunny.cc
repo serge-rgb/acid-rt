@@ -18,21 +18,10 @@ static const char* str(const glm::vec3& v) {
     return out;
 }
 
-/**
- * Represents triangle data. Small enough to be considered a primitive.
- * Large enough so that it justifies a bounding box.
- */
-struct Chunk {
-    glm::vec3* verts;
-    glm::vec3* norms;
-    int64 num_verts;
-    int64 num_norms;
-};
-
 /*
  * Loading only vertices and normals.
  */
-static Chunk load_obj(const char* path) {
+static scene::Chunk load_obj(const char* path) {
     char* model_str_raw = (char *)io::slurp(path);
 
     typedef char* charptr;
@@ -133,7 +122,7 @@ static Chunk load_obj(const char* path) {
             }
         }
     }
-    Chunk chunk;
+    scene::Chunk chunk;
     {  // Fill chunk.
         // Copies from vert / norms so that they form triangles.
         // Uses way more memory, but no need for Face structure.
@@ -148,10 +137,10 @@ static Chunk load_obj(const char* path) {
                 append(&in_norms, norm);
             }
         }
+        ph_assert(count(in_verts) == count(in_norms));
         chunk.verts = in_verts.ptr;
         chunk.norms = in_norms.ptr;
         chunk.num_verts = count(in_verts);
-        chunk.num_norms = count(in_norms);
     }
 
     return chunk;

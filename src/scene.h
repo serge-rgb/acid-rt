@@ -41,12 +41,23 @@ Rect cube_to_rect(scene::Cube cube);
 
 bool collision_p(Rect a, Rect b);
 
+/**
+ * Represents triangle data. Small enough to be considered a primitive.
+ * Large enough so that it justifies a bounding box.
+ */
+struct Chunk {
+    glm::vec3* verts;
+    glm::vec3* norms;
+    int64 num_verts;
+};
+
 void init();
 
 // ---- submit_primitive
 // Add primitives to scene.
 
 int64 submit_primitive(Cube* cube, SubmitFlags flags = SubmitFlags_None, int64 flag_params = 0);
+int64 submit_primitive(Chunk* chunk, SubmitFlags flags = SubmitFlags_None, int64 flag_params = 0);
 
 // ----------------------
 
