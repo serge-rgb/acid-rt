@@ -36,7 +36,7 @@ struct Chunk {
     int _padding;
     int64 num_verts;
     int64 num_norms;
-    int64 face_count;
+    int64 num_faces;
 };
 
 /*
@@ -77,82 +77,74 @@ static Chunk load_obj(const char* path) {
 
         for (int64 i = 0; i < count(lines); ++i) {
             auto* line = lines[i];
-            char* token = strtok(line, " ");
             int type = Type_count;
-            if (0 == strncmp("v", line, 2)) {
-                type = Type_vert;
-            }
             if (0 == strncmp("vn", line, 2)) {
                 type = Type_norm;
-            }
-            if (0 == strncmp("f", line, 2)) {
+            } else if (0 == strncmp("v", line, 1)) {
+                type = Type_vert;
+            } else if (0 == strncmp("f", line, 1)) {
                 type = Type_face;
             }
             float x,y,z;
-            char* sx;
-            char* sy;
-            char* sz;
-            Face face;
-            face.vert_i[0] = -1;  // Garbage initialize. Should be filled when a face is found.
-
-            if (type == Type_vert || type == Type_norm || type == Type_face) {
-                sx = strtok(NULL, " ");
-                sy = strtok(NULL, " ");
-                sz = strtok(NULL, " ");
-                ph_assert(sx);
-                ph_assert(sy);
-                ph_assert(sz);
-                char* end;
-                if (type == Type_vert || type == Type_norm) {
-                    x = strtof(sx, &end);
-                    y = strtof(sy, &end);
-                    z = strtof(sz, &end);
-                    if (x != x || y != y || z != z) {
-                        fprintf(stderr, "NaN error");
-                        printf("%f %f %f\n", x, y, z);
-                    }
-                    token = strtok(NULL, " ");  // Make null
-                } else if (type == Type_face) {
-                    char* strings[3] = {
-                        sx, sy, sz
-                    };
-
-                    for (int j = 0; j < 3; ++j) {
-                        char* s = strings[j];
-                        char* first  = strchr(s, '/');
-                        char* second = strrchr(s, '/');
-                        *first = '\0';  // destroys the string...
-                        second++;
-                        /* printf("FACE: v:%s, n:%s ==== \n", s, second); */
-                        face.vert_i[j] = atoi(s);
-                        face.norm_i[j] = atoi(second);
-                    }
-                    token = strtok(NULL, " ");  // Make null
-                }
-                // Make null
-                while(token) {
-                    token = strtok(NULL, " ");
-                }
-                if (type == Type_vert) {
+            switch(type) {
+            case Type_vert:
+                {
+                    sscanf(line, "v %f %f %f", &x, &y, &z);
                     append(&verts, glm::vec3(x, y, z));
-                    /* printf("appended vert %s\n", str(verts[count(verts) - 1])); */
-                } else if (type == Type_norm) {
-                    append(&norms, glm::vec3(x, y, z));
-                    /* printf("appended norm %s\n", str(norms[count(norms) - 1])); */
-                } else if (type == Type_face) {
-                    append(&faces, face);
+                    /* printf("VERT: %f %f %f\n", x, y, z); */
+                    break;
                 }
-                ph_assert(!token);
+            case Type_norm:
+                {
+                    sscanf(line, "vn %f %f %f", &x, &y, &z);
+                    /* printf("NORM: %f %f %f\n", x, y, z); */
+                    append(&norms, glm::vec3(x, y, z));
+                    break;
+                }
+            case Type_face:
+                {
+                    /* int a,b,c, */
+                    /*     d,e,f, */
+                    /*     g,h,k; */
+                    /* sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", */
+                    /*         &a,&b,&c, */
+                    /*         &d,&e,&f, */
+                    /*         &g,&h,&k); */
+                    int a,c,
+                        d,f,
+                        g,k;
+                    sscanf(line, "f %d//%d %d//%d %d//%d",
+                            &a, &c,
+                            &d, &f,
+                            &g, &k);
+                    /* printf("%d/%d %d/%d %d/%d\n", a,c, d,f, g,k); */
+                    Face face;
+                    face.vert_i[0] = a;
+                    face.vert_i[1] = d;
+                    face.vert_i[2] = g;
+
+                    face.norm_i[0] = c;
+                    face.norm_i[1] = f;
+                    face.norm_i[2] = k;
+                    append(&faces, face);
+
+                    break;
+                }
+            default:
+                {
+                    break;
+                }
             }
         }
     }
+
     Chunk chunk;
     chunk.verts = verts.ptr;
     chunk.norms = norms.ptr;
     chunk.num_verts = count(verts);
     chunk.num_norms = count(norms);
     chunk.faces = faces.ptr;
-    chunk.face_count = count(faces);
+    chunk.num_faces = count(faces);
     return chunk;
 }
 
