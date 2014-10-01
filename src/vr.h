@@ -6,7 +6,7 @@
 namespace ph {
 namespace vr {
 
-extern ovrHmd  m_hmd;
+//extern ovrHmd  m_hmd;
 
 void init(int width, int height);
 

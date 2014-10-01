@@ -53,8 +53,6 @@ int main() {
 
     vr::init(g_resolution[0], g_resolution[1]);
 
-    ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
-
     g_sample_func = g_samples[g_curr_sample];
 
     g_sample_func();
