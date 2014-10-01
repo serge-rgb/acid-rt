@@ -2,6 +2,7 @@
 set target=samples
 
 set config=Debug
+::set config=RelWithDebInfo
 ::set config=Release
 
 :: /nr prevents creation of persitent msbuild processes

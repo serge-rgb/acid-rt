@@ -656,14 +656,24 @@ Cube make_cube(float x, float y, float z, float size) {
 }
 
 void init() {
-    m_triangle_pool = MakeSlice<GLtriangle>(1024);
-    m_light_pool    = MakeSlice<GLlight>(8);
-    m_primitives    = MakeSlice<Primitive>(1024);
+    static bool is_init = false;
+    if (is_init) {
+        clear(&m_triangle_pool);
+        clear(&m_light_pool);
+        clear(&m_primitives);
+        update_structure();
+        upload_everything();
+    } else {
+        m_triangle_pool = MakeSlice<GLtriangle>(1024);
+        m_light_pool    = MakeSlice<GLlight>(8);
+        m_primitives    = MakeSlice<Primitive>(1024);
 
-    glGenBuffers(1, &m_bvh_buffer);
-    glGenBuffers(1, &m_triangle_buffer);
-    glGenBuffers(1, &m_light_buffer);
-    GLCHK ( glGenBuffers(1, &m_prim_buffer) );
+        glGenBuffers(1, &m_bvh_buffer);
+        glGenBuffers(1, &m_triangle_buffer);
+        glGenBuffers(1, &m_light_buffer);
+        GLCHK ( glGenBuffers(1, &m_prim_buffer) );
+    }
+    is_init = true;
 
     // TODO: build a light system.
     Light light;
@@ -673,6 +683,11 @@ void init() {
 
 void update_structure() {
     ph_assert(count(m_primitives) < PH_MAX_int32);
+
+    if (count(m_primitives) == 0) {
+        return;
+    }
+
     int32* indices = phalloc(int32, count(m_primitives));
 
     for (int i = 0; i < count(m_primitives); ++i) {
