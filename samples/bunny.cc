@@ -21,7 +21,7 @@ static const char* str(const glm::vec3& v) {
 /*
  * Loading only vertices and normals.
  */
-static scene::Chunk load_obj(const char* path) {
+static scene::Chunk load_obj(const char* path, float scale) {
     char* model_str_raw = (char *)io::slurp(path);
 
     typedef char* charptr;
@@ -75,6 +75,9 @@ static scene::Chunk load_obj(const char* path) {
             case Type_vert:
                 {
                     sscanf(line, "v %f %f %f", &x, &y, &z);
+                    x *= scale;
+                    y *= scale;
+                    z *= scale;
                     append(&verts, glm::vec3(x, y, z));
                     /* printf("VERT: %f %f %f\n", x, y, z); */
                     break;
@@ -126,20 +129,19 @@ static scene::Chunk load_obj(const char* path) {
     {  // Fill chunk.
         // Copies from vert / norms so that they form triangles.
         // Uses way more memory, but no need for Face structure.
+        static int limit = 5000;
+        int n = 0;
         auto in_verts = MakeSlice<glm::vec3>(3 * (size_t)count(verts));
-        auto in_norms = MakeSlice<glm::vec3>(3 * (size_t)count(norms));
         for (int64 i = 0; i < count(faces); ++i) {
             auto face = faces[i];
             for (int j = 0; j < 3; ++j) {
                 auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
-                auto norm = norms[face.norm_i[j] - 1];
                 append(&in_verts, vert);
-                append(&in_norms, norm);
+                n++;
             }
+            if (n > limit) break;
         }
-        ph_assert(count(in_verts) == count(in_norms));
         chunk.verts = in_verts.ptr;
-        chunk.norms = in_norms.ptr;
         chunk.num_verts = count(in_verts);
     }
 
@@ -149,7 +151,10 @@ static scene::Chunk load_obj(const char* path) {
 void bunny_sample() {
     scene::init();
 
-    load_obj("third_party/bunny.obj");
+    auto chunk = load_obj("third_party/bunny.obj", 10);
+    scene::submit_primitive(&chunk);
+    scene::update_structure();
+    scene::upload_everything();
 
     window::main_loop(bunny_idle);
 }

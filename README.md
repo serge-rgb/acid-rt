@@ -60,7 +60,9 @@ TODO
 ----
 
 * Static model sample.
+* per-vertex normals.
 * logger w/ frame time monitor
 * bouncing ball sample
 * optimize BVH construction.
 * on screen text
+* non-vr mode (fallback)

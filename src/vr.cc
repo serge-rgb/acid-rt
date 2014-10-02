@@ -302,7 +302,6 @@ void draw(int* resolution) {
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
                     GLuint(viewport_resolution[1] / g_warpsize[1]), 1) );
     }
-    GLCHK ( glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) );
     // Dispatch right viewport
     {
         glUniform2fv(6, 1, m_lens_center_r);  // Lens center

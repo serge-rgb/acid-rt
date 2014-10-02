@@ -336,10 +336,8 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
 static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
-    ph_assert(root->left && root->right);
-
-    auto slice = MakeSlice<BVHNode>(1024);       // Too big?
-    auto ptrs  = MakeSlice<BVHTreeNode*>(1024);  // Use this to get offsets for right childs (too slow?)
+    auto slice = MakeSlice<BVHNode>(16);
+    auto ptrs  = MakeSlice<BVHTreeNode*>(16);  // Use this to get offsets for right childs (too slow?)
 
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
@@ -636,6 +634,37 @@ void submit_primitive(BVHTreeNode* root) {
     for (int i = 0; i < count(nodes); ++i) {
         submit_primitive(&nodes[i]->data.bbox);
     }
+}
+
+int64 submit_primitive(Chunk* chunk, SubmitFlags, int64) {
+    // Non-exhaustive check to rule out non-triangle meshes:
+    ph_assert(chunk->num_verts % 3 == 0);
+
+    for (int64 i = 0; i < chunk->num_verts; i += 3) {
+        glm::vec3 a, b, c;
+        a = chunk->verts[i + 0];
+        b = chunk->verts[i + 1];
+        c = chunk->verts[i + 2];
+        glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
+
+        GLtriangle tri;
+        tri.p0 = to_gl(a);
+        tri.p1 = to_gl(b);
+        tri.p2 = to_gl(c);
+        tri.normal = to_gl(normal);
+
+        append(&m_triangle_pool, tri);
+    }
+
+    ph_assert(chunk->num_verts / 3 < PH_MAX_int64);
+
+    Primitive prim;
+    prim.num_triangles = int(chunk->num_verts / 3);
+    prim.offset = int(count(m_triangle_pool) - prim.num_triangles);
+    prim.material = MaterialType_Lambert;
+    auto index = append(&m_primitives, prim);
+
+    return index;
 }
 
 Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z) {
