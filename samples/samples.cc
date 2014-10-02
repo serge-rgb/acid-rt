@@ -40,10 +40,36 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
 int main() {
     ph_assert(g_num_samples >= 1);
     ph::init();
+    // ====
+    // OpenGL not supported for direct mode right now. Leaving this here
+    // to keep order of func calls clear.
+    // ====
+#if 0
+    if (!ovr_Initialize()) {
+        ph::phatal_error("Could not initialize OVR\n");
+    }
+
+    vr::m_hmd = ovrHmd_Create(0);
+
 
     window::init("Samples", g_resolution[0], g_resolution[1],
                  window::InitFlag(
                  window::InitFlag_IgnoreRift |
+                 window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
+
+    ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
+
+    unsigned int sensor_caps =
+        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
+
+    ovrBool succ = ovrHmd_ConfigureTracking(vr::m_hmd, sensor_caps, sensor_caps);
+    if (!succ) {
+        phatal_error("Could not initialize OVR sensors!");
+    }
+#endif
+    window::init("Samples", g_resolution[0], g_resolution[1],
+                 window::InitFlag(
+                 /* window::InitFlag_IgnoreRift | */
                  window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
 
 

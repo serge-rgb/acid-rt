@@ -13,7 +13,7 @@ static GLuint                    m_quad_vao;
 static GLuint                    m_quad_program;
 static GLuint                    m_compute_program;
 static GLuint                    m_size[2];             // Size of the framebuffer
-static ovrHmd                    m_hmd;
+
 static float                     m_default_eye_z;       // Eye distance from plane.
 static const OVR::HMDInfo*       m_hmdinfo;
 static const OVR::HmdRenderInfo* m_renderinfo;
@@ -27,6 +27,7 @@ static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
 static bool                      m_do_interlacing = false;
 
+ovrHmd                    m_hmd;
 
 void init(int width, int height) {
     const char* paths[] = {
@@ -191,6 +192,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         glUniform2fv(Location_screen_size, 1, &fsize[0]);
     }
 
+#if 1
     if (!ovr_Initialize()) {
         ph::phatal_error("Could not initialize OVR\n");
     }
@@ -204,6 +206,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     if (!succ) {
         phatal_error("Could not initialize OVR sensors!");
     }
+#endif
 
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
 
@@ -241,6 +244,22 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         m_screen_size_m[1],
     };
 
+
+#if 0
+    {  // Try to trick by calling ConfigureRendering
+        ovrRenderAPIConfig cfg;
+        cfg.Header.API = ovrRenderAPI_OpenGL;
+        cfg.Header.RTSize.w = width;
+        cfg.Header.RTSize.h = height;
+        cfg.Header.Multisample = 0;
+        //cfg.OGL.Window             = Window;
+        ovrFovPort fovs[2] = {fovPort_l, fovPort_l};
+        ovrEyeRenderDesc descs[2];
+        ovrHmd_ConfigureRendering(vr::m_hmd, &cfg, vr::m_hmd->DistortionCaps, fovs, descs);
+	}
+#endif
+
+
     glUseProgram(m_postprocess_program);
 
     glUniform2fv(3, 1, size_m);     // screen_size_m
@@ -252,9 +271,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Cull?
-
-    // TODO: is this necesary for extended mode?
-    // ovrHmd_AttachToWindow(m_hmd, window::m_window, NULL, NULL);
 }
 
 void toggle_postproc() {
@@ -331,7 +347,7 @@ void draw(int* resolution) {
 
     glActiveTexture(GL_TEXTURE1);
     // Copy to back buffer
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,0,0, (GLsizei)m_size[0], (GLsizei)m_size[1], 0);
+    // glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,0,0, (GLsizei)m_size[0], (GLsizei)m_size[1], 0);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     window::swap_buffers();
     /* glFlush(); */
