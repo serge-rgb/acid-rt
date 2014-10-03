@@ -129,17 +129,20 @@ static scene::Chunk load_obj(const char* path, float scale) {
     {  // Fill chunk.
         // Copies from vert / norms so that they form triangles.
         // Uses way more memory, but no need for Face structure.
-        int n = 0;
         auto in_verts = MakeSlice<glm::vec3>(3 * (size_t)count(verts));
+        auto in_norms = MakeSlice<glm::vec3>(3 * (size_t)count(norms));
         for (int64 i = 0; i < count(faces); ++i) {
             auto face = faces[i];
             for (int j = 0; j < 3; ++j) {
                 auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
+                auto norm = norms[face.norm_i[j] - 1];
                 append(&in_verts, vert);
-                n++;
+                append(&in_norms, norm);
             }
         }
+        ph_assert(count(in_norms) == count(in_verts));
         chunk.verts = in_verts.ptr;
+        chunk.norms = in_norms.ptr;
         chunk.num_verts = count(in_verts);
     }
 
@@ -198,7 +201,9 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     for (int j = 0; j < 8; ++j) {
         size_t sz = (size_t)big_chunk.num_verts;
         ((scene::Chunk*)chunks)[j].num_verts = 0;
-        ((scene::Chunk*)chunks)[j].verts = phanaged(glm::vec3, sz);   // ============== LEAK ================
+        // Wasteful!
+        ((scene::Chunk*)chunks)[j].verts = phanaged(glm::vec3, sz);
+        ((scene::Chunk*)chunks)[j].norms = phanaged(glm::vec3, sz);
     }
 
     // Fill chunks.
@@ -219,13 +224,14 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
         x = int(center.x < centroid.x);
         y = int(center.y < centroid.y);
         z = int(center.z < centroid.z);
-        ph_assert(x == 0 || x == 1);
-        ph_assert(y == 0 || y == 1);
-        ph_assert(z == 0 || z == 1);
+
         // Add triangle
         for (int k = 0; k < 3; ++k) {
             auto vert = big_chunk.verts[j + k];
-            chunks[z][y][x].verts[chunks[z][y][x].num_verts++] = vert;
+            auto norm = big_chunk.norms[j + k];
+            auto num = chunks[z][y][x].num_verts++;
+            chunks[z][y][x].verts[num] = vert;
+            chunks[z][y][x].norms[num] = norm;
         }
     }
     // 4) Recurse.
@@ -252,7 +258,8 @@ void bunny_sample() {
     auto big_chunk = load_obj("third_party/bunny.obj", 10);
     auto chunks = localized_chunks(big_chunk, 50);
     for (int i = 0; i < count(chunks); ++i) {
-        scene::submit_primitive(&chunks[i]);
+        // Bunny model appears to have the normals flipped.
+        scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
     }
     GC_gcollect();
     scene::update_structure();

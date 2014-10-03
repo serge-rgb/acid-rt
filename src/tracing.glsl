@@ -38,7 +38,9 @@ struct Triangle {
     vec3 p0;
     vec3 p1;
     vec3 p2;
-    vec3 normal;
+    vec3 n0;
+    vec3 n1;
+    vec3 n2;
 };
 
 struct Primitive {
@@ -171,7 +173,7 @@ TraceIntersection trace(Ray ray) {
                         float v = bar.z;
                         point = ray.o + bar.x * ray.dir;
                         //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                        normal = t.normal;
+                        normal = (1 - u - v) * t.n0 + u * t.n1 + v * t.n2;
                         uv = vec2(u,v);
                     }
                 }

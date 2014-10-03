@@ -32,7 +32,9 @@ struct GLtriangle {
     GLvec3 p0;
     GLvec3 p1;
     GLvec3 p2;
-    GLvec3 normal;
+    GLvec3 n0;
+    GLvec3 n1;
+    GLvec3 n2;
 };
 
 struct GLlight {
@@ -206,49 +208,59 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         int offset_r = 0;
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
+        // ============================================================
+        // SAH
+        // ============================================================
+        {
+            // TODO: implement
+        }
+        // ============================================================
+        // Equal partition.
+        // ============================================================
+        {
+            // Partition two slices based on which side of the midpoint.
+            for (int i = 0; i < count(primitives); ++i) {
 
-        // Partition two slices based on which side of the midpoint.
-        for (int i = 0; i < count(primitives); ++i) {
+                auto centroid = centroids[i];
 
-            auto centroid = centroids[i];
-
-            switch (split) {
-            case SplitPlane_X:
-                {
-                    if (centroid.x < midpoint.x && offset_l < count(primitives) / 2) {
-                        append(&slice_left, primitives[i]);
-                        new_indices_l[offset_l++] = indices[i];
-                    } else {  // Default: to the right
-                        append(&slice_right, primitives[i]);
-                        new_indices_r[offset_r++] = indices[i];
+                switch (split) {
+                case SplitPlane_X:
+                    {
+                        if (centroid.x < midpoint.x && offset_l < count(primitives) / 2) {
+                            append(&slice_left, primitives[i]);
+                            new_indices_l[offset_l++] = indices[i];
+                        } else {  // Default: to the right
+                            append(&slice_right, primitives[i]);
+                            new_indices_r[offset_r++] = indices[i];
+                        }
+                        break;
                     }
-                    break;
-                }
-            case SplitPlane_Y:
-                {
-                    if (centroid.y < midpoint.y && offset_l < count(primitives) / 2) {
-                        append(&slice_left, primitives[i]);
-                        new_indices_l[offset_l++] = indices[i];
-                    } else {
-                        append(&slice_right, primitives[i]);
-                        new_indices_r[offset_r++] = indices[i];
+                case SplitPlane_Y:
+                    {
+                        if (centroid.y < midpoint.y && offset_l < count(primitives) / 2) {
+                            append(&slice_left, primitives[i]);
+                            new_indices_l[offset_l++] = indices[i];
+                        } else {
+                            append(&slice_right, primitives[i]);
+                            new_indices_r[offset_r++] = indices[i];
+                        }
+                        break;
                     }
-                    break;
-                }
-            case SplitPlane_Z:
-                {
-                    if (centroid.z < midpoint.z && offset_l < count(primitives) / 2) {
-                        append(&slice_left, primitives[i]);
-                        new_indices_l[offset_l++] = indices[i];
-                    } else {
-                        append(&slice_right, primitives[i]);
-                        new_indices_r[offset_r++] = indices[i];
+                case SplitPlane_Z:
+                    {
+                        if (centroid.z < midpoint.z && offset_l < count(primitives) / 2) {
+                            append(&slice_left, primitives[i]);
+                            new_indices_l[offset_l++] = indices[i];
+                        } else {
+                            append(&slice_right, primitives[i]);
+                            new_indices_r[offset_r++] = indices[i];
+                        }
+                        break;
                     }
-                    break;
                 }
             }
-        }
 
+        }
         node->left = node->right = NULL;
         if (count(slice_left)) {
             node->left = build_bvh(slice_left, new_indices_l);
@@ -514,48 +526,64 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     tri.p0 = h;
     tri.p1 = b;
     tri.p2 = a;
-    tri.normal = nf;
+    tri.n0 = nf;
+    tri.n1 = nf;
+    tri.n2 = nf;
     m_triangle_pool[index + 0] = tri;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = b;
-    tri.normal = nf;
+    tri.n0 = nf;
+    tri.n1 = nf;
+    tri.n2 = nf;
     m_triangle_pool[index + 1] = tri;
 
     // Right
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = b;
-    tri.normal = nr;
+    tri.n0 = nr;
+    tri.n1 = nr;
+    tri.n2 = nr;
     m_triangle_pool[index + 2] = tri;
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = f;
-    tri.normal = nr;
+    tri.n0 = nr;
+    tri.n1 = nr;
+    tri.n2 = nr;
     m_triangle_pool[index + 3] = tri;
 
     // Back
     tri.p0 = d;
     tri.p1 = c;
     tri.p2 = g;
-    tri.normal = nb;
+    tri.n0 = nb;
+    tri.n1 = nb;
+    tri.n2 = nb;
     m_triangle_pool[index + 4] = tri;
     tri.p0 = c;
     tri.p1 = f;
     tri.p2 = g;
-    tri.normal = nb;
+    tri.n0 = nb;
+    tri.n1 = nb;
+    tri.n2 = nb;
     m_triangle_pool[index + 5] = tri;
 
     // Left
     tri.p0 = a;
     tri.p1 = h;
     tri.p2 = d;
-    tri.normal = nl;
+    tri.n0 = nl;
+    tri.n1 = nl;
+    tri.n2 = nl;
     m_triangle_pool[index + 6] = tri;
     tri.p0 = h;
     tri.p1 = d;
     tri.p2 = g;
-    tri.normal = nl;
+    tri.n0 = nl;
+    tri.n1 = nl;
+    tri.n2 = nl;
     m_triangle_pool[index + 7] = tri;
     tri.p0 = h;
 
@@ -563,25 +591,33 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     tri.p0 = a;
     tri.p1 = c;
     tri.p2 = d;
-    tri.normal = nt;
+    tri.n0 = nt;
+    tri.n1 = nt;
+    tri.n2 = nt;
     m_triangle_pool[index + 8] = tri;
     tri.p0 = h;
     tri.p0 = a;
     tri.p1 = b;
     tri.p2 = c;
-    tri.normal = nt;
+    tri.n0 = nt;
+    tri.n1 = nt;
+    tri.n2 = nt;
     m_triangle_pool[index + 9] = tri;
 
     // Bottom
     tri.p0 = h;
     tri.p1 = f;
     tri.p2 = g;
-    tri.normal = nm;
+    tri.n0 = nm;
+    tri.n1 = nm;
+    tri.n2 = nm;
     m_triangle_pool[index + 10] = tri;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = f;
-    tri.normal = nm;
+    tri.n0 = nm;
+    tri.n1 = nm;
+    tri.n2 = nm;
     m_triangle_pool[index + 11] = tri;
 
     ph_assert(index <= PH_MAX_int32);
@@ -635,22 +671,31 @@ void submit_primitive(BVHTreeNode* root) {
     }
 }
 
-int64 submit_primitive(Chunk* chunk, SubmitFlags, int64) {
+int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
     // Non-exhaustive check to rule out non-triangle meshes:
     ph_assert(chunk->num_verts % 3 == 0);
 
     for (int64 i = 0; i < chunk->num_verts; i += 3) {
-        glm::vec3 a, b, c;
+        glm::vec3 a, b, c;  // points
+        glm::vec3 d, e, f;  // normals
+
         a = chunk->verts[i + 0];
         b = chunk->verts[i + 1];
         c = chunk->verts[i + 2];
+
+        float sign = 1.0f - 2 * float((flags & SubmitFlags_FlipNormals) != 0);
+        d = sign * chunk->norms[i + 0];
+        e = sign * chunk->norms[i + 1];
+        f = sign * chunk->norms[i + 2];
         glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
 
         GLtriangle tri;
         tri.p0 = to_gl(a);
         tri.p1 = to_gl(b);
         tri.p2 = to_gl(c);
-        tri.normal = to_gl(normal);
+        tri.n0 = to_gl(d);
+        tri.n1 = to_gl(e);
+        tri.n2 = to_gl(f);
 
         append(&m_triangle_pool, tri);
     }

@@ -58,7 +58,7 @@ bool collision_p(Rect a, Rect b);
  */
 struct Chunk {
     glm::vec3* verts;
-    int _padding;  // Suppress warning.
+    glm::vec3* norms;  // One for each vertex
     int64 num_verts;
 };
 
