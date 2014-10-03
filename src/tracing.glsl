@@ -118,8 +118,8 @@ float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     is_inside = t0 <= 0;
 
     float collides = float(t0 < t1);
-    /* return collides * t0 + (1 - collides) * (-INFINITY); */
-    return collides * t1 + (1 - collides) * (-INFINITY);
+    return collides * t0 + (1 - collides) * (-INFINITY);
+    /* return collides * t1 + (1 - collides) * (-INFINITY); */
 
     /* if (t0 < t1) { */
         /* return t0;// > 0? t0 : t1; */

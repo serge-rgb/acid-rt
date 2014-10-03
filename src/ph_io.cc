@@ -9,7 +9,7 @@ namespace io
 {
 
 static float wasd_step = -1.0f;
-static float wasd_camera[3];
+static float wasd_camera[3] = {0,0,0};
 
 int wasd_pressed = 0;  // Bitmask for GLFW callback
 
@@ -53,6 +53,12 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
         wasd_camera[2] += cam_step_z;
         wasd_camera[0] += cam_step_x;
     }
+    if (io::wasd_pressed & io::Control_C) {
+        wasd_camera[1] -= wasd_step;
+    }
+    if (io::wasd_pressed & io::Control_Space) {
+        wasd_camera[1] += wasd_step;
+    }
 
     e = glm::vec3(1, 0, 0);
     rotated_e = e + 2.0f * glm::cross(glm::cross(e, axis) + glm_q.w * e, axis);
@@ -67,7 +73,6 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
         wasd_camera[2] -= cam_step_z;
         wasd_camera[0] -= cam_step_x;
     }
-    wasd_camera[1] = 0;
     out_xyz[0] = wasd_camera[0];
     out_xyz[1] = wasd_camera[1];
     out_xyz[2] = wasd_camera[2];
@@ -89,6 +94,12 @@ void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, in
     if (key == GLFW_KEY_D && action == GLFW_PRESS) {
        wasd_pressed |= Control_D;
     }
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        wasd_pressed |= Control_Space;
+    }
+    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+        wasd_pressed |= Control_C;
+    }
     if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
        wasd_pressed &= ~Control_W;
     }
@@ -100,6 +111,12 @@ void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, in
     }
     if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
        wasd_pressed &= ~Control_D;
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
+        wasd_pressed &= ~Control_Space;
+    }
+    if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
+        wasd_pressed &= ~Control_C;
     }
 }
 

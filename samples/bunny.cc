@@ -129,7 +129,6 @@ static scene::Chunk load_obj(const char* path, float scale) {
     {  // Fill chunk.
         // Copies from vert / norms so that they form triangles.
         // Uses way more memory, but no need for Face structure.
-        static int limit = 5000;
         int n = 0;
         auto in_verts = MakeSlice<glm::vec3>(3 * (size_t)count(verts));
         for (int64 i = 0; i < count(faces); ++i) {
@@ -139,20 +138,123 @@ static scene::Chunk load_obj(const char* path, float scale) {
                 append(&in_verts, vert);
                 n++;
             }
-            if (n > limit) break;
         }
         chunk.verts = in_verts.ptr;
         chunk.num_verts = count(in_verts);
     }
 
+
     return chunk;
+}
+
+/**
+ * Takes one big chunk and a limit. Returns an array of chunks, each holding
+ * between 1 and `limit` triangles. These triangles are close together (ideally
+ * adjacent)
+ */
+
+Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
+    ph_assert(big_chunk.num_verts % 3 == 0);
+    // Base cases:
+    auto size = big_chunk.num_verts;
+    if (size == 0) {                                // size 0 => Return an empty slice.
+        Slice<scene::Chunk> slice;
+        slice.ptr = NULL;
+        slice.n_elems = 0;
+        slice.n_capacity = 0;
+        return slice;
+    }
+    if (size < limit) {                             // size < limit => Return a slice of one.
+        auto slice = MakeSlice<scene::Chunk>(1);
+        append(&slice, big_chunk);
+        return slice;
+    }
+
+    // Recursion
+    // 1) make a bounding box.
+    scene::AABB bbox;
+    bbox.xmin = big_chunk.verts[0].x;
+    bbox.xmax = big_chunk.verts[0].x;
+    bbox.ymin = big_chunk.verts[0].y;
+    bbox.ymax = big_chunk.verts[0].y;
+    bbox.zmin = big_chunk.verts[0].z;
+    bbox.zmax = big_chunk.verts[0].z;
+    for (int64 i = 0; i < big_chunk.num_verts; ++i) {
+        auto vert = big_chunk.verts[i];
+        if (vert.x < bbox.xmin) bbox.xmin = vert.x;
+        if (vert.x > bbox.xmax) bbox.xmax = vert.x;
+        if (vert.y < bbox.ymin) bbox.ymin = vert.y;
+        if (vert.y > bbox.ymax) bbox.ymax = vert.y;
+        if (vert.z < bbox.zmin) bbox.zmin = vert.z;
+        if (vert.z > bbox.zmax) bbox.zmax = vert.z;
+    }
+    // 2) calculate centroid
+    glm::vec3 centroid = scene::get_centroid(bbox);
+    //printf("Centroid is: %s\n", str(centroid));
+    // 3) Make 8 chunks. Fill each one with triangles corresponding to eight corners.
+    scene::Chunk chunks[2][2][2];
+    // Fill memory.
+    // Worst case scenario: whole big_chunk is in a single octree cell. (?)
+    for (int j = 0; j < 8; ++j) {
+        size_t sz = (size_t)big_chunk.num_verts;
+        ((scene::Chunk*)chunks)[j].num_verts = 0;
+        ((scene::Chunk*)chunks)[j].verts = phanaged(glm::vec3, sz);   // ============== LEAK ================
+    }
+
+    // Fill chunks.
+    for (int j = 0; j < big_chunk.num_verts; j += 3) {
+        // Front or back.
+        int x,y,z;  // Three axis of octree. 0 or 1
+        // get center of triangle
+        glm::vec3 center;
+        for (int k = 0; k < 3; ++k) {
+            auto vert = big_chunk.verts[j + k];
+            center.x += vert.x;
+            center.y += vert.y;
+            center.z += vert.z;
+        }
+        center.x /= 3.0f;
+        center.y /= 3.0f;
+        center.z /= 3.0f;
+        x = int(center.x < centroid.x);
+        y = int(center.y < centroid.y);
+        z = int(center.z < centroid.z);
+        ph_assert(x == 0 || x == 1);
+        ph_assert(y == 0 || y == 1);
+        ph_assert(z == 0 || z == 1);
+        // Add triangle
+        for (int k = 0; k < 3; ++k) {
+            auto vert = big_chunk.verts[j + k];
+            chunks[z][y][x].verts[chunks[z][y][x].num_verts++] = vert;
+        }
+    }
+    // 4) Recurse.
+    auto slice = MakeSlice<scene::Chunk>(8);
+    Slice<scene::Chunk> subchunks[8];
+    for (int j = 0; j < 8; ++j) {
+        subchunks[j] = localized_chunks(((scene::Chunk*)chunks)[j], limit);
+    }
+    // 5) Append into one slice and return.
+    for (int j = 0; j < 8; ++j) {
+        auto subchunk = subchunks[j];
+        for (int k = 0; k < count(subchunk); ++k) {
+            auto chunk = subchunk[k];
+            append(&slice, chunk);
+        }
+    }
+
+    return slice;
 }
 
 void bunny_sample() {
     scene::init();
 
-    auto chunk = load_obj("third_party/bunny.obj", 10);
-    scene::submit_primitive(&chunk);
+    auto big_chunk = load_obj("third_party/bunny.obj", 10);
+    auto chunks = localized_chunks(big_chunk, 25);
+    for (int i = 0; i < count(chunks); ++i) {
+        scene::submit_primitive(&chunks[i]);
+    }
+    GC_gcollect();
     scene::update_structure();
     scene::upload_everything();
 

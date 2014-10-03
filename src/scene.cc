@@ -58,15 +58,6 @@ struct Primitive {
     int material;           // Enum (copy in shader).
 };
 
-struct AABB {
-    float xmin;
-    float xmax;
-    float ymin;
-    float ymax;
-    float zmin;
-    float zmax;
-};
-
 static const char* str(const glm::vec3& v) {
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
@@ -77,10 +68,6 @@ static const char* str(AABB b) {
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
     return out;
-}
-
-static glm::vec3 get_centroid(AABB b) {
-    return glm::vec3((b.xmax + b.xmin) / 2, (b.ymax + b.ymin) / 2, (b.zmax + b.zmin) / 2);
 }
 
 static AABB get_bbox(const Primitive* primitives, int count) {
@@ -417,6 +404,10 @@ static bool validate_flattened_bvh(BVHNode* node, int64 len) {
 static GLvec3 to_gl(glm::vec3 in) {
     GLvec3 out = {in.x, in.y, in.z, 0};
     return out;
+}
+
+glm::vec3 get_centroid(AABB b) {
+    return glm::vec3((b.xmax + b.xmin) / 2, (b.ymax + b.ymin) / 2, (b.zmax + b.zmin) / 2);
 }
 
 bool collision_p(Rect a, Rect b) {

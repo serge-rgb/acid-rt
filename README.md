@@ -59,7 +59,8 @@ BSD-style.
 TODO
 ----
 
-* Static model sample.
+* rudimentary lighting model
+* skybox in bunny sample
 * per-vertex normals.
 * logger w/ frame time monitor
 * bouncing ball sample

@@ -21,6 +21,17 @@ enum SubmitFlags {
     SubmitFlags_Update      = 1 << 2,
 };
 
+struct AABB {
+    float xmin;
+    float xmax;
+    float ymin;
+    float ymax;
+    float zmin;
+    float zmax;
+};
+
+glm::vec3 get_centroid(AABB b);
+
 struct Cube {
     glm::vec3 center;
     glm::vec3 sizes;

@@ -11,10 +11,12 @@ const char* slurp(const char* path);
 
 // ============ WASD control
 enum {
-    Control_W = 1 << 0,
-    Control_A = 1 << 1,
-    Control_S = 1 << 2,
-    Control_D = 1 << 3,
+    Control_W     = 1 << 0,
+    Control_A     = 1 << 1,
+    Control_S     = 1 << 2,
+    Control_D     = 1 << 3,
+    Control_Space = 1 << 4,
+    Control_C     = 1 << 5,
 };
 extern int wasd_pressed;
 

@@ -18,6 +18,11 @@ struct Slice {
     size_t n_elems;
     size_t n_capacity;
     T& operator[](const int64 i) {
+#ifdef PH_DEBUG
+        if (i >= n_elems) {
+            printf("fail access here.");  // Serving as a place to place breakpoints.
+        }
+#endif
         ph_assert(i >= 0);
         ph_assert((size_t )i < n_elems);
         return ptr[i];
