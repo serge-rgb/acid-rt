@@ -163,10 +163,22 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         // Fill variations.
 
         float variation[3] = {0, 0, 0};  // Used to choose split axis
-        for (int i = 0; i < count(centroids) - 1; ++i) {
-            variation[0] += fabs(centroids[i].x - centroids[i + 1].x);
-            variation[1] += fabs(centroids[i].y - centroids[i + 1].y);
-            variation[2] += fabs(centroids[i].z - centroids[i + 1].z);
+        {
+            float minx, maxx, miny, maxy, minz, maxz;
+            minx = maxx = centroids[0].x;
+            miny = maxy = centroids[0].y;
+            minz = maxz = centroids[0].z;
+            for (int i = 0; i < count(centroids); ++i) {
+                if (centroids[i].x < minx) minx = centroids[i].x;
+                if (centroids[i].x > maxx) maxx = centroids[i].x;
+                if (centroids[i].y < miny) miny = centroids[i].y;
+                if (centroids[i].y > maxy) maxy = centroids[i].y;
+                if (centroids[i].z < minz) minz = centroids[i].z;
+                if (centroids[i].z > maxz) maxz = centroids[i].z;
+            }
+            variation[0] = fabs(maxx - minx);
+            variation[1] = fabs(maxy - miny);
+            variation[2] = fabs(maxz - minz);
         }
 
         SplitPlane split = SplitPlane_X;
@@ -203,11 +215,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             switch (split) {
             case SplitPlane_X:
                 {
-                    if (centroid.x < midpoint.x) {
+                    if (centroid.x < midpoint.x && offset_l < count(primitives) / 2) {
                         append(&slice_left, primitives[i]);
                         new_indices_l[offset_l++] = indices[i];
-                    }
-                    if (centroid.x >= midpoint.x) {
+                    } else {  // Default: to the right
                         append(&slice_right, primitives[i]);
                         new_indices_r[offset_r++] = indices[i];
                     }
@@ -215,11 +226,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
                 }
             case SplitPlane_Y:
                 {
-                    if (centroid.y < midpoint.y) {
+                    if (centroid.y < midpoint.y && offset_l < count(primitives) / 2) {
                         append(&slice_left, primitives[i]);
                         new_indices_l[offset_l++] = indices[i];
-                    }
-                    if (centroid.y >= midpoint.y) {
+                    } else {
                         append(&slice_right, primitives[i]);
                         new_indices_r[offset_r++] = indices[i];
                     }
@@ -227,11 +237,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
                 }
             case SplitPlane_Z:
                 {
-                    if (centroid.z < midpoint.z) {
+                    if (centroid.z < midpoint.z && offset_l < count(primitives) / 2) {
                         append(&slice_left, primitives[i]);
                         new_indices_l[offset_l++] = indices[i];
-                    }
-                    if (centroid.z >= midpoint.z) {
+                    } else {
                         append(&slice_right, primitives[i]);
                         new_indices_r[offset_r++] = indices[i];
                     }
@@ -425,7 +434,6 @@ Rect cube_to_rect(scene::Cube cube) {
     rect.h = cube.sizes.y * 2;
     return rect;
 }
-
 
 int64 submit_light(Light* light) {
     light->index = append(&m_light_pool, light->data);

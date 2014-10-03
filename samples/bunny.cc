@@ -250,7 +250,7 @@ void bunny_sample() {
     scene::init();
 
     auto big_chunk = load_obj("third_party/bunny.obj", 10);
-    auto chunks = localized_chunks(big_chunk, 25);
+    auto chunks = localized_chunks(big_chunk, 50);
     for (int i = 0; i < count(chunks); ++i) {
         scene::submit_primitive(&chunks[i]);
     }

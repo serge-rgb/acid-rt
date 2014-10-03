@@ -60,6 +60,7 @@ TODO
 ----
 
 * rudimentary lighting model
+* SAH for BVH
 * skybox in bunny sample
 * per-vertex normals.
 * logger w/ frame time monitor
