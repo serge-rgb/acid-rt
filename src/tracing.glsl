@@ -89,7 +89,7 @@ layout(std430, binding = 3) buffer BVH {
     BVHNode data[];
 } bvh;
 
-float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
+float bbox_collision(AABB box, Ray ray, out bool is_inside, out float near_t) {
     // Perf note:
     //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
     // vec3 inv_dir = vec3(1) / ray.dir;
@@ -118,8 +118,8 @@ float bbox_collision(AABB box, Ray ray, inout bool is_inside) {
     is_inside = t0 <= 0;
 
     float collides = float(t0 < t1);
+    near_t = collides * t1 + (1 - collides) * (-INFINITY);
     return collides * t0 + (1 - collides) * (-INFINITY);
-    /* return collides * t1 + (1 - collides) * (-INFINITY); */
 
     /* if (t0 < t1) { */
         /* return t0;// > 0? t0 : t1; */
@@ -153,7 +153,8 @@ TraceIntersection trace(Ray ray) {
         int i = stack[--stack_offset];
         BVHNode node = bvh.data[i];
         bool is_inside; // is inside bbox?
-        float bbox_t = bbox_collision(node.bbox, ray, is_inside);
+        float near_t;
+        float bbox_t = bbox_collision(node.bbox, ray, is_inside, near_t);
         bool ditch_node = !is_inside && bbox_t > min_t;    // TODO: fix this
         if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
             Primitive p = primitive_pool.data[node.primitive_offset];
@@ -175,7 +176,7 @@ TraceIntersection trace(Ray ray) {
                     }
                 }
             }
-        } else if (bbox_t > 0 && !ditch_node) {                              // INNER NODE
+        } else if (near_t > 0 && !ditch_node) {                              // INNER NODE
             stack[stack_offset++] = i + 1;
             stack[stack_offset++] = node.r_child_offset;
         }
