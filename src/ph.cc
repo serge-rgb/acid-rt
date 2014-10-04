@@ -1,5 +1,8 @@
 #include <ph.h>
 
+#include <stdarg.h>
+
+
 namespace ph {
 
 void init() {
@@ -26,6 +29,24 @@ lua_State* new_lua() {
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
     return L;
+}
+
+#if defined(PH_DEBUG)
+void log(const char* s) {
+    printf("%s\n", s);
+#else
+void log(const char*) {
+#endif
+}
+
+#if defined(PH_DEBUG)
+void logf(const char* s, ...) {
+    va_list args;
+    va_start(args, s);
+    vfprintf(stdout, s, args);
+#else
+void logf(const char*, ...) {
+#endif
 }
 
 void phatal_error(const char* message) {

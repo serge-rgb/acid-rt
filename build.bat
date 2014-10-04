@@ -1,4 +1,5 @@
 ::set target=chicken
+::set target=ph_test
 set target=samples
 
 set config=Debug

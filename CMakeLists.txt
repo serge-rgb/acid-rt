@@ -99,5 +99,5 @@ set (engine_sources
 
 # ---- tests
 add_subdirectory(chicken)
-add_subdirectory(test)
+add_subdirectory(ph_test)
 add_subdirectory(samples)

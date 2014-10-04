@@ -78,6 +78,13 @@ void typeless_free(void* mem);
 lua_State* run_script(const char* path);
 
 /////////////////////////
+// Logging
+/////////////////////////
+
+void log(const char* s);
+void logf(const char* fmt, ...);
+
+/////////////////////////
 // Error handling
 /////////////////////////
 void phatal_error(const char* message);

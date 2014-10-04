@@ -29,7 +29,7 @@ void cubes_sample() {
                 }
             }
         }
-        printf("INFO: Submitted %d polygons.\n", x * y * z * 12);
+        logf("INFO: Submitted %d polygons.\n", x * y * z * 12);
     }
 
     scene::update_structure();

@@ -9,7 +9,6 @@ using namespace ph;
 
 int main() {
     ph::init();
-
     printf("Boehm GC version is %d.%d.%d\n", GC_VERSION_MAJOR, GC_VERSION_MINOR, GC_VERSION_MICRO);
     printf("Bytes used at start: %llu\n", memory::bytes_allocated());
     // Test slices
@@ -41,6 +40,12 @@ int main() {
 #ifdef PH_SLICES_ARE_MANUAL
         release(&s);
 #endif
+
+    {
+        char debug[] = "debug";;
+        ph::logf("This is my %s function\n", debug);
+    }
+
     }
     // Test memory tracking
     {
