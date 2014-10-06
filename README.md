@@ -62,8 +62,8 @@ TODO
 * rudimentary lighting model
 * SAH for BVH
 * skybox in bunny sample
-* logger w/ frame time monitor
 * bouncing ball sample
 * optimize BVH construction.
 * on screen text
 * non-vr mode (fallback)
+* throttle FPS by enabling (de-)interlacing

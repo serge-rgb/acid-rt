@@ -1,5 +1,6 @@
 #include "vr.h"
 
+#define PH_DEBUG_FRAMETIME
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
 //static int g_warpsize[] = {2, 32};
@@ -291,6 +292,9 @@ void draw(int* resolution) {
 
     /* ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index); */
     ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
+#ifdef PH_DEBUG_FRAMETIME
+    long frame_begin = io::get_microseconds();
+#endif
 
     ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
 
@@ -349,10 +353,15 @@ void draw(int* resolution) {
     // Copy to back buffer
     // glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,0,0, (GLsizei)m_size[0], (GLsizei)m_size[1], 0);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    window::swap_buffers();
     /* glFlush(); */
-    /* GLCHK ( glFinish() ); */
+    GLCHK ( glFinish() );
+#ifdef PH_DEBUG_FRAMETIME
+    long frame_end = io::get_microseconds();
+    double frame_time_ms = (frame_end - frame_begin) / 1000.0; // Before vsync
+    logf("Frame time is %f\n", frame_time_ms);
+#endif
     ovrHmd_EndFrameTiming(m_hmd);
+    window::swap_buffers();
 
 }
 

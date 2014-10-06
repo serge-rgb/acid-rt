@@ -100,38 +100,14 @@ void main_loop(WindowProc step_func) {
     //=========================================
     // Main loop.
     //=========================================
-    double total_time_ms = 0;
-    int64 num_frames = 1;
-    double ms_per_frame = 13.333333;
     while (!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
-
-        // ---- Get start time
-        long start_ns = ph::io::get_microseconds();
 
         // Call user supplied step function.
         {
             step_func();
         }
-
-        // ---- Get end time. Measure
-        long diff = ph::io::get_microseconds() - start_ns;
-        double diff_ms = double(diff) / (1000.0);
-        /* printf("Frame time: %fms", diff_ms); */
-        if (diff_ms >= ms_per_frame) {
-            /* printf("(overshot)\n"); */
-        } else {
-            /* printf("\n"); */
-            if (diff_ms > 0) {
-                total_time_ms += diff_ms;
-                num_frames++;
-            }
-        }
     }
-
-    double avg = total_time_ms / double(num_frames);
-    printf("Average frame time in ms: %f  %f%%\n",
-            avg, 100 * (avg/ms_per_frame));
 }
 
 void swap_buffers() {
