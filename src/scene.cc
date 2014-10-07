@@ -4,7 +4,7 @@ namespace ph {
 namespace scene {
 
 // For DFS buffers.
-static const int kTreeStackLimit = 16;
+static const int kTreeStackLimit = 20;
 
 // Defined below
 struct GLtriangle;
@@ -107,6 +107,36 @@ static AABB get_bbox(const Primitive* primitives, int count) {
     return bbox;
 }
 
+static AABB bbox_union(AABB a, AABB b) {
+    AABB res;
+    res.xmin = fmin(a.xmin, b.xmin);
+    res.ymin = fmin(a.ymin, b.ymin);
+    res.zmin = fmin(a.zmin, b.zmin);
+    res.xmax = fmax(a.xmax, b.xmax);
+    res.ymax = fmax(a.ymax, b.ymax);
+    res.zmax = fmax(a.ymax, b.zmax);
+    return res;
+}
+
+static float bbox_area(AABB bbox) {
+    // Test for just-initialized bbox.
+    if (bbox.xmin == INFINITY) return 0;
+    glm::vec3 d;
+    d.x = bbox.xmax - bbox.xmin;
+    d.y = bbox.ymax - bbox.ymin;
+    d.z = bbox.zmax - bbox.zmin;
+    return 2.0f * (d.x * d.x + d.y * d.y + d.z * d.z);
+}
+
+static void bbox_fill(AABB* bbox) {
+    bbox->xmax = -INFINITY;
+    bbox->ymax = -INFINITY;
+    bbox->zmax = -INFINITY;
+    bbox->xmin = INFINITY;
+    bbox->ymin = INFINITY;
+    bbox->zmin = INFINITY;
+}
+
 ////////////////////////////////////////
 // BVH Accel
 ////////////////////////////////////////
@@ -132,9 +162,11 @@ enum SplitPlane {
     SplitPlane_Z,
 };
 
+static long rec_count = 0;
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
 static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices) {
+    rec_count++;
     BVHTreeNode* node = phanaged(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
@@ -208,55 +240,158 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         int offset_r = 0;
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
+
+
+        bool use_sah = count(primitives) > 8;
         // ============================================================
         // SAH
         // ============================================================
-        {
-            // TODO: implement
-        }
+        if (use_sah) {
+            struct Bucket {
+                int num;
+                AABB bbox;
+            };
+
+            const int kNumBuckets = 12;
+            Bucket buckets[kNumBuckets];
+
+            // 1) Initialize info (bounds & count) for each bucket
+            for (int i = 0; i < kNumBuckets; ++i) {
+                bbox_fill(&buckets[i].bbox);
+                buckets[i].num = 0;
+            }
+            auto bbox = data.bbox;  // Bounding box for primitives.
+            auto bbox_centroid = get_centroid(bbox);
+            glm::vec3 bbox_vmin;
+            glm::vec3 bbox_vmax;
+            bbox_vmin.x = bbox.xmin;
+            bbox_vmin.y = bbox.ymin;
+            bbox_vmin.z = bbox.zmin;
+            bbox_vmax.x = bbox.xmax;
+            bbox_vmax.y = bbox.ymax;
+            bbox_vmax.z = bbox.zmax;
+
+            int* assign = phalloc(int, (size_t)count(primitives));
+                // ^--- Store which primitive is assigned to which bucket.
+
+            for (int i = 0; i < count(primitives); ++i) {
+                glm::vec3 centroid = centroids[i];
+                int b = (int)(kNumBuckets *
+                    (centroid[split] - bbox_vmin[split]) /
+                    (bbox_vmax[split] - bbox_vmin[split]));
+                if (b == kNumBuckets) { b--; }
+                buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1));
+                buckets[b].num++;
+                assign[i] = b;
+            }
+            // 2) compute cost for each permutation: Sum of (bucketBbox / primitivesBbox)
+            float cost[kNumBuckets];
+            for (int i = 0; i < kNumBuckets; ++i) {
+                AABB b0, b1;
+                int count0 = 0;
+                int count1 = 0;
+
+                bbox_fill(&b0);
+                bbox_fill(&b1);
+
+                for (int j = 0; j <= i; ++j) {
+                    b0 = bbox_union(b0, buckets[j].bbox);
+                    count0 += buckets[j].num;
+                }
+                for (int j = i + 1; j < kNumBuckets; ++j) {
+                    b1 = bbox_union(b1, buckets[j].bbox);
+                    count1 += buckets[j].num;
+                }
+                //printf("counts: %d %d\n", count0, count1);
+                //printf("areas: %f %f %f\n", bbox_area(b0), bbox_area(b1), bbox_area(bbox));
+                cost[i] = 0.125f +
+                    (count0 * bbox_area(b0) + count1 * bbox_area(b1)) /
+                    (bbox_area(bbox));
+                //logf("cost %d is %f\n", i , cost[i]);
+            }
+            // 3) find minimal cost split
+            int min_split = 0;
+            float min_cost = cost[0];
+            for (int i = 1; i < kNumBuckets; ++i) {
+                if (cost[i] < min_cost) {
+                    min_cost = cost[i];
+                    min_split = i;
+                }
+            }
+            // 4) split
+            // Use the assign array to send them left or right
+            bool will_split = false;
+            int c_left = 0;
+            int c_right = 0;
+            for (int i = 0; i < count(primitives); ++i) {
+                if (assign[i] <= min_split) {
+                    c_left++;
+                } else {
+                    c_right++;
+                }
+            }
+            if (c_left != 0 && c_right != 0) {
+                will_split = true;
+            }
+
+            static int noteven_count = 0;
+            if (will_split) {
+                noteven_count++;
+                for (int i = 0; i < count(primitives); ++i) {
+                    /* logf("i is %i\n", i); */
+                    /* logf("assign %i\n", assign[i]); */
+                    /* logf("split is %i\n", min_split); */
+                    if (assign[i] <= min_split) {
+                        /* log("left"); */
+                        append(&slice_left, primitives[i]);
+                        new_indices_l[offset_l++] = indices[i];
+                    } else {
+                        /* log("right"); */
+                        append(&slice_right, primitives[i]);
+                        new_indices_r[offset_r++] = indices[i];
+                    }
+                }
+            } else {
+                static int even_count = 0;
+                even_count++;
+                logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
+                for (int i = 0; i < count(primitives); ++i) {
+                    /* if (i < count(primitives) / 2) { */
+                    /*     append(&slice_left, primitives[i]); */
+                    /*     new_indices_l[offset_l++] = indices[i]; */
+                    /* } else { */
+                    /*     /1* log("right"); *1/ */
+                    /*     append(&slice_right, primitives[i]); */
+                    /*     new_indices_r[offset_r++] = indices[i]; */
+                    /* } */
+                    auto centroid = centroids[i];
+                    if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
+                        append(&slice_left, primitives[i]);
+                        new_indices_l[offset_l++] = indices[i];
+                    }
+                    else {  // Default: to the right
+                        append(&slice_right, primitives[i]);
+                        new_indices_r[offset_r++] = indices[i];
+                    }
+                }
+            }
+            phree(assign);
+        } else {
         // ============================================================
         // Equal partition.
         // ============================================================
-        {
             // Partition two slices based on which side of the midpoint.
             for (int i = 0; i < count(primitives); ++i) {
 
                 auto centroid = centroids[i];
 
-                switch (split) {
-                case SplitPlane_X:
-                    {
-                        if (centroid.x < midpoint.x && offset_l < count(primitives) / 2) {
-                            append(&slice_left, primitives[i]);
-                            new_indices_l[offset_l++] = indices[i];
-                        } else {  // Default: to the right
-                            append(&slice_right, primitives[i]);
-                            new_indices_r[offset_r++] = indices[i];
-                        }
-                        break;
-                    }
-                case SplitPlane_Y:
-                    {
-                        if (centroid.y < midpoint.y && offset_l < count(primitives) / 2) {
-                            append(&slice_left, primitives[i]);
-                            new_indices_l[offset_l++] = indices[i];
-                        } else {
-                            append(&slice_right, primitives[i]);
-                            new_indices_r[offset_r++] = indices[i];
-                        }
-                        break;
-                    }
-                case SplitPlane_Z:
-                    {
-                        if (centroid.z < midpoint.z && offset_l < count(primitives) / 2) {
-                            append(&slice_left, primitives[i]);
-                            new_indices_l[offset_l++] = indices[i];
-                        } else {
-                            append(&slice_right, primitives[i]);
-                            new_indices_r[offset_r++] = indices[i];
-                        }
-                        break;
-                    }
+                if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
+                    append(&slice_left, primitives[i]);
+                    new_indices_l[offset_l++] = indices[i];
+                }
+                else {  // Default: to the right
+                    append(&slice_right, primitives[i]);
+                    new_indices_r[offset_r++] = indices[i];
                 }
             }
 

@@ -148,7 +148,7 @@ TraceIntersection trace(Ray ray) {
     vec3 normal;
     vec2 uv;
 
-    int stack[16];
+    int stack[20];
     int stack_offset = 0;
     stack[stack_offset++] = 0;
     while (stack_offset > 0) {

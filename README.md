@@ -60,7 +60,6 @@ TODO
 ----
 
 * rudimentary lighting model
-* SAH for BVH
 * skybox in bunny sample
 * bouncing ball sample
 * optimize BVH construction.
