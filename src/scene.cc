@@ -164,7 +164,7 @@ enum SplitPlane {
 
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
-static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices) {
+static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices, int axis_split) {
     BVHTreeNode* node = phanaged(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
@@ -213,7 +213,9 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             variation[2] = fabs(maxz - minz);
         }
 
-        SplitPlane split = SplitPlane_X;
+        int split = SplitPlane_X;
+        split = axis_split;
+
         { // Choose split plane
             float v = -1;
             for (int i = 0; i < 3; i++) {
@@ -223,9 +225,9 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
                 }
             }
             if (v == 0.0f) {
-                printf ("Two objets have the same centroid. Fix that, or fix me.\n");
+                log("Two objets have the same centroid. Using default axis split");
+                split = axis_split;
             }
-            ph_assert ( v > 0 );
         }
 
         // Make two new slices.
@@ -238,6 +240,17 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         int offset_r = 0;
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
+
+        if (count(primitives) == 2) {
+            append(&slice_left, primitives[0]);
+            append(&slice_right, primitives[1]);
+            new_indices_l[offset_l++] = indices[0];
+            new_indices_r[offset_r++] = indices[1];
+            node->left = build_bvh(slice_left, new_indices_l, (split + 1) % 3);
+            node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
+            node->data = data;
+            return node;
+        }
 
 
         bool use_sah = count(primitives) > 4;
@@ -253,13 +266,9 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             const int kNumBuckets = 8;
             Bucket buckets[kNumBuckets];
 
-            // 1) Initialize info (bounds & count) for each bucket
-            for (int i = 0; i < kNumBuckets; ++i) {
-                bbox_fill(&buckets[i].bbox);
-                buckets[i].num = 0;
-            }
             auto bbox = data.bbox;  // Bounding box for primitives.
-            auto bbox_centroid = get_centroid(bbox);
+
+            // bbox as two vectors:
             glm::vec3 bbox_vmin;
             glm::vec3 bbox_vmax;
             bbox_vmin.x = bbox.xmin;
@@ -268,6 +277,14 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             bbox_vmax.x = bbox.xmax;
             bbox_vmax.y = bbox.ymax;
             bbox_vmax.z = bbox.zmax;
+
+
+            // 1) Initialize info (bounds & count) for each bucket
+            for (int i = 0; i < kNumBuckets; ++i) {
+                bbox_fill(&buckets[i].bbox);
+                buckets[i].num = 0;
+            }
+            auto bbox_centroid = get_centroid(bbox);
 
             int* assign = phalloc(int, (size_t)count(primitives));
                 // ^--- Store which primitive is assigned to which bucket.
@@ -349,10 +366,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             } else {
                 static int even_count = 0;
                 even_count++;
-                //logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
+                logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
                 for (int i = 0; i < count(primitives); ++i) {
                     auto centroid = centroids[i];
-                    if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
+                    if (centroid[split] < midpoint[split]) {
                         append(&slice_left, primitives[i]);
                         new_indices_l[offset_l++] = indices[i];
                     }
@@ -370,7 +387,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             // Partition two slices based on which side of the midpoint.
             for (int i = 0; i < count(primitives); ++i) {
                 auto centroid = centroids[i];
-                if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
+                if (centroid[split] < midpoint[split]) {
                     append(&slice_left, primitives[i]);
                     new_indices_l[offset_l++] = indices[i];
                 }
@@ -381,12 +398,14 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             }
 
         }
+        ph_assert(!(offset_r != 0 && offset_l == 0) && !(offset_l != 0 && offset_r == 0));
+
         node->left = node->right = NULL;
         if (count(slice_left)) {
-            node->left = build_bvh(slice_left, new_indices_l);
+            node->left = build_bvh(slice_left, new_indices_l, (split + 1) % 3);
         }
         if (count(slice_right)) {
-            node->right = build_bvh(slice_right, new_indices_r);
+            node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
         }
         phree(new_indices_l);
         phree(new_indices_r);
@@ -886,7 +905,7 @@ void update_structure() {
     for (int i = 0; i < count(m_primitives); ++i) {
         indices[i] = i;
     }
-    BVHTreeNode* root = build_bvh(m_primitives, indices);
+    BVHTreeNode* root = build_bvh(m_primitives, indices, 0);
     phree(indices);
 
     validate_bvh(root, m_primitives);
