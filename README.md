@@ -59,6 +59,7 @@ BSD-style.
 TODO
 ----
 
+* UBO trace stack
 * rudimentary lighting model
 * skybox in bunny sample
 * bouncing ball sample

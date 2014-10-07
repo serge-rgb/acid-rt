@@ -4,7 +4,7 @@ namespace ph {
 namespace scene {
 
 // For DFS buffers.
-static const int kTreeStackLimit = 20;
+static const int kTreeStackLimit = 30;
 
 // Defined below
 struct GLtriangle;
@@ -162,11 +162,9 @@ enum SplitPlane {
     SplitPlane_Z,
 };
 
-static long rec_count = 0;
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
 static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices) {
-    rec_count++;
     BVHTreeNode* node = phanaged(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
@@ -202,7 +200,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             minx = maxx = centroids[0].x;
             miny = maxy = centroids[0].y;
             minz = maxz = centroids[0].z;
-            for (int i = 0; i < count(centroids); ++i) {
+            for (int i = 1; i < count(centroids); ++i) {
                 if (centroids[i].x < minx) minx = centroids[i].x;
                 if (centroids[i].x > maxx) maxx = centroids[i].x;
                 if (centroids[i].y < miny) miny = centroids[i].y;
@@ -242,7 +240,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
 
 
-        bool use_sah = count(primitives) > 8;
+        bool use_sah = count(primitives) > 4;
         // ============================================================
         // SAH
         // ============================================================
@@ -252,7 +250,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
                 AABB bbox;
             };
 
-            const int kNumBuckets = 12;
+            const int kNumBuckets = 8;
             Bucket buckets[kNumBuckets];
 
             // 1) Initialize info (bounds & count) for each bucket
@@ -338,9 +336,6 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             if (will_split) {
                 noteven_count++;
                 for (int i = 0; i < count(primitives); ++i) {
-                    /* logf("i is %i\n", i); */
-                    /* logf("assign %i\n", assign[i]); */
-                    /* logf("split is %i\n", min_split); */
                     if (assign[i] <= min_split) {
                         /* log("left"); */
                         append(&slice_left, primitives[i]);
@@ -354,16 +349,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
             } else {
                 static int even_count = 0;
                 even_count++;
-                logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
+                //logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
                 for (int i = 0; i < count(primitives); ++i) {
-                    /* if (i < count(primitives) / 2) { */
-                    /*     append(&slice_left, primitives[i]); */
-                    /*     new_indices_l[offset_l++] = indices[i]; */
-                    /* } else { */
-                    /*     /1* log("right"); *1/ */
-                    /*     append(&slice_right, primitives[i]); */
-                    /*     new_indices_r[offset_r++] = indices[i]; */
-                    /* } */
                     auto centroid = centroids[i];
                     if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
                         append(&slice_left, primitives[i]);
@@ -382,9 +369,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices)
         // ============================================================
             // Partition two slices based on which side of the midpoint.
             for (int i = 0; i < count(primitives); ++i) {
-
                 auto centroid = centroids[i];
-
                 if (centroid[split] < midpoint[split] && offset_l < count(primitives) / 2) {
                     append(&slice_left, primitives[i]);
                     new_indices_l[offset_l++] = indices[i];
