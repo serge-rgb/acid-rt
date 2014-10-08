@@ -12,11 +12,13 @@ struct GLlight;
 struct Primitive;
 
 static Slice<GLtriangle>    m_triangle_pool;
+static Slice<GLtriangle>    m_normal_pool;
 static Slice<GLlight>       m_light_pool;
 static Slice<Primitive>     m_primitives;
 static int                  m_debug_bvh_height = -1;
 static GLuint               m_bvh_buffer;
 static GLuint               m_triangle_buffer;
+static GLuint               m_normal_buffer;
 static GLuint               m_light_buffer;
 static GLuint               m_prim_buffer;
 
@@ -32,9 +34,6 @@ struct GLtriangle {
     GLvec3 p0;
     GLvec3 p1;
     GLvec3 p2;
-    GLvec3 n0;
-    GLvec3 n1;
-    GLvec3 n2;
 };
 
 struct GLlight {
@@ -611,6 +610,7 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 
     // Temp struct, fill-and-submit.
     GLtriangle tri;
+    GLtriangle norm;
 
     // Return index to the first appended triangle.
     int64 index = -1;
@@ -619,8 +619,11 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     } else {  // Append 12 new triangles
         tri.p0.x = 0;  // Initialize garbage, just to get an index. Will be filled below.
         index = append(&m_triangle_pool, tri);
+        auto n_index = append(&m_normal_pool, tri);
+        ph_assert(n_index == index);
         for (int i = 0; i < 11; ++i) {
             append(&m_triangle_pool, tri);
+            append(&m_normal_pool, tri);
         }
     }
 
@@ -665,99 +668,111 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     tri.p0 = h;
     tri.p1 = b;
     tri.p2 = a;
-    tri.n0 = nf;
-    tri.n1 = nf;
-    tri.n2 = nf;
+    norm.p0 = nf;
+    norm.p1 = nf;
+    norm.p2 = nf;
     m_triangle_pool[index + 0] = tri;
+    m_normal_pool[index + 0] = norm;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = b;
-    tri.n0 = nf;
-    tri.n1 = nf;
-    tri.n2 = nf;
+    norm.p0 = nf;
+    norm.p1 = nf;
+    norm.p2 = nf;
     m_triangle_pool[index + 1] = tri;
+    m_normal_pool[index + 1] = norm;
 
     // Right
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = b;
-    tri.n0 = nr;
-    tri.n1 = nr;
-    tri.n2 = nr;
+    norm.p0 = nr;
+    norm.p1 = nr;
+    norm.p2 = nr;
     m_triangle_pool[index + 2] = tri;
+    m_normal_pool[index + 2] = norm;
     tri.p0 = e;
     tri.p1 = c;
     tri.p2 = f;
-    tri.n0 = nr;
-    tri.n1 = nr;
-    tri.n2 = nr;
+    norm.p0 = nr;
+    norm.p1 = nr;
+    norm.p2 = nr;
     m_triangle_pool[index + 3] = tri;
+    m_normal_pool[index + 3] = norm;
 
     // Back
     tri.p0 = d;
     tri.p1 = c;
     tri.p2 = g;
-    tri.n0 = nb;
-    tri.n1 = nb;
-    tri.n2 = nb;
+    norm.p0 = nb;
+    norm.p1 = nb;
+    norm.p2 = nb;
     m_triangle_pool[index + 4] = tri;
+    m_normal_pool[index + 4] = norm;
     tri.p0 = c;
     tri.p1 = f;
     tri.p2 = g;
-    tri.n0 = nb;
-    tri.n1 = nb;
-    tri.n2 = nb;
+    norm.p0 = nb;
+    norm.p1 = nb;
+    norm.p2 = nb;
     m_triangle_pool[index + 5] = tri;
+    m_normal_pool[index + 5] = norm;
 
     // Left
     tri.p0 = a;
     tri.p1 = h;
     tri.p2 = d;
-    tri.n0 = nl;
-    tri.n1 = nl;
-    tri.n2 = nl;
+    norm.p0 = nl;
+    norm.p1 = nl;
+    norm.p2 = nl;
     m_triangle_pool[index + 6] = tri;
+    m_normal_pool[index + 6] = norm;
     tri.p0 = h;
     tri.p1 = d;
     tri.p2 = g;
-    tri.n0 = nl;
-    tri.n1 = nl;
-    tri.n2 = nl;
+    norm.p0 = nl;
+    norm.p1 = nl;
+    norm.p2 = nl;
     m_triangle_pool[index + 7] = tri;
+    m_normal_pool[index + 7] = norm;
     tri.p0 = h;
 
     // Top
     tri.p0 = a;
     tri.p1 = c;
     tri.p2 = d;
-    tri.n0 = nt;
-    tri.n1 = nt;
-    tri.n2 = nt;
+    norm.p0 = nt;
+    norm.p1 = nt;
+    norm.p2 = nt;
     m_triangle_pool[index + 8] = tri;
+    m_normal_pool[index + 8] = norm;
     tri.p0 = h;
     tri.p0 = a;
     tri.p1 = b;
     tri.p2 = c;
-    tri.n0 = nt;
-    tri.n1 = nt;
-    tri.n2 = nt;
+    norm.p0 = nt;
+    norm.p1 = nt;
+    norm.p2 = nt;
     m_triangle_pool[index + 9] = tri;
+    m_normal_pool[index + 9] = norm;
 
     // Bottom
     tri.p0 = h;
     tri.p1 = f;
     tri.p2 = g;
-    tri.n0 = nm;
-    tri.n1 = nm;
-    tri.n2 = nm;
+    norm.p0 = nm;
+    norm.p1 = nm;
+    norm.p2 = nm;
     m_triangle_pool[index + 10] = tri;
+    m_normal_pool[index + 10] = norm;
     tri.p0 = h;
     tri.p1 = e;
     tri.p2 = f;
-    tri.n0 = nm;
-    tri.n1 = nm;
-    tri.n2 = nm;
+    norm.p0 = nm;
+    norm.p1 = nm;
+    norm.p2 = nm;
     m_triangle_pool[index + 11] = tri;
+    m_normal_pool[index + 11] = norm;
 
     ph_assert(index <= PH_MAX_int32);
     cube->index = (int)index;
@@ -826,17 +841,19 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
         d = sign * chunk->norms[i + 0];
         e = sign * chunk->norms[i + 1];
         f = sign * chunk->norms[i + 2];
-        glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
 
         GLtriangle tri;
+        GLtriangle norm;
         tri.p0 = to_gl(a);
         tri.p1 = to_gl(b);
         tri.p2 = to_gl(c);
-        tri.n0 = to_gl(d);
-        tri.n1 = to_gl(e);
-        tri.n2 = to_gl(f);
+        norm.p0 = to_gl(d);
+        norm.p1 = to_gl(e);
+        norm.p2 = to_gl(f);
 
-        append(&m_triangle_pool, tri);
+        auto vi = append(&m_triangle_pool, tri);
+        auto ni = append(&m_normal_pool, norm);
+        ph_assert(vi == ni);
     }
 
     ph_assert(chunk->num_verts / 3 < PH_MAX_int64);
@@ -871,17 +888,20 @@ void init() {
     static bool is_init = false;
     if (is_init) {
         clear(&m_triangle_pool);
+        clear(&m_normal_pool);
         clear(&m_light_pool);
         clear(&m_primitives);
         update_structure();
         upload_everything();
     } else {
         m_triangle_pool = MakeSlice<GLtriangle>(1024);
+        m_normal_pool   = MakeSlice<GLtriangle>(1024);
         m_light_pool    = MakeSlice<GLlight>(8);
         m_primitives    = MakeSlice<Primitive>(1024);
 
         glGenBuffers(1, &m_bvh_buffer);
         glGenBuffers(1, &m_triangle_buffer);
+        glGenBuffers(1, &m_normal_buffer);
         glGenBuffers(1, &m_light_buffer);
         GLCHK ( glGenBuffers(1, &m_prim_buffer) );
     }
@@ -936,6 +956,15 @@ void upload_everything() {
                     GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
                     (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_triangle_buffer) );
+    }
+
+    // Submit normal pool
+    {
+        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_normal_buffer) );
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                    GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_normal_pool.n_elems),
+                    (GLvoid*)scene::m_normal_pool.ptr, GL_DYNAMIC_COPY);
+        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_normal_buffer) );
     }
 
     // Submit light data to gpu.

@@ -38,9 +38,6 @@ struct Triangle {
     vec3 p0;
     vec3 p1;
     vec3 p2;
-    vec3 n0;
-    vec3 n1;
-    vec3 n2;
 };
 
 struct Primitive {
@@ -90,6 +87,10 @@ layout(std430, binding = 2) buffer PrimitivePool {
 layout(std430, binding = 3) buffer BVH {
     BVHNode data[];
 } bvh;
+
+layout(std430, binding = 4) buffer NormalPool {
+    Triangle data[];
+} normal_pool;
 
 float bbox_collision(AABB box, Ray ray, out bool is_inside, out float near_t) {
     // Perf note:
@@ -168,12 +169,13 @@ TraceIntersection trace(Ray ray) {
                         bar.z < 1 && bar.z > 0 &&
                         (bar.y + bar.z) < 1) {
                     if (bar.x < min_t) {
+                        Triangle n = normal_pool.data[j];
                         min_t = bar.x;
                         float u = bar.y;
                         float v = bar.z;
                         point = ray.o + bar.x * ray.dir;
                         //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                        normal = (1 - u - v) * t.n0 + u * t.n1 + v * t.n2;
+                        normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
                         uv = vec2(u,v);
                     }
                 }
