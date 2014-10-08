@@ -16,7 +16,7 @@ void draw(int* resolution);
 
 void toggle_postproc();
 
-void toggle_interlacing();
+void toggle_interlace_throttle();
 
 void deinit();
 

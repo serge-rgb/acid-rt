@@ -66,4 +66,3 @@ TODO
 * optimize BVH construction.
 * on screen text
 * non-vr mode (fallback)
-* throttle FPS by enabling (de-)interlacing

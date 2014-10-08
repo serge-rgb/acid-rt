@@ -26,7 +26,7 @@ static GLuint                    m_backbuffer_tex;
 static float                     m_lens_center_l[2];
 static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
-static bool                      m_do_interlacing = false;
+static bool                      m_do_interlace_throttling = true;
 
 ovrHmd                    m_hmd;
 
@@ -185,7 +185,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
         glUseProgram(m_program);
 
-        glUniform1i(12, m_do_interlacing);
+        glUniform1i(12, false);  // interlacing
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
         GLCHK ( glUniform1i(11, 1) );  // Back texture
 
@@ -278,10 +278,8 @@ void toggle_postproc() {
     m_do_postprocessing = m_do_postprocessing? false : true;
 }
 
-void toggle_interlacing() {
-    m_do_interlacing = m_do_interlacing? false : true;
-    glUseProgram(m_program);
-    GLCHK ( glUniform1i(12, m_do_interlacing) );
+void toggle_interlace_throttle() {
+    m_do_interlace_throttling = m_do_interlace_throttling? false : true;
 }
 
 void draw(int* resolution) {
@@ -292,9 +290,7 @@ void draw(int* resolution) {
 
     /* ovrFrameTiming frame_timing = ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index); */
     ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
-#ifdef PH_DEBUG_FRAMETIME
     long frame_begin = io::get_microseconds();
-#endif
 
     ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
 
@@ -355,9 +351,16 @@ void draw(int* resolution) {
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     /* glFlush(); */
     GLCHK ( glFinish() );
-#ifdef PH_DEBUG_FRAMETIME
     long frame_end = io::get_microseconds();
     double frame_time_ms = (frame_end - frame_begin) / 1000.0; // Before vsync
+    glUseProgram(m_program);
+    if (m_do_interlace_throttling && frame_time_ms > 13.333333) {
+        glUniform1i(12, true);  // interlacing
+    }
+    if (m_do_interlace_throttling && frame_time_ms < 0.5 * 13.333333) {
+        glUniform1i(12, false);  // interlacing
+    }
+#ifdef PH_DEBUG_FRAMETIME
     logf("Frame time is %f\n", frame_time_ms);
 #endif
     ovrHmd_EndFrameTiming(m_hmd);

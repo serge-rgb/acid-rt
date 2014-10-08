@@ -1,10 +1,12 @@
 #include "sample_list.h"
 
+
 #include <ph.h>
 #include <vr.h>
 
 #include "samples.h"
 #include "sample_list.h"
+
 
 using namespace ph;
 
@@ -21,7 +23,7 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
         vr::toggle_postproc();
     }
     if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-        vr::toggle_interlacing();
+        vr::toggle_interlace_throttle();
     }
     if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
         g_curr_sample--;
