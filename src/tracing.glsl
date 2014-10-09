@@ -92,7 +92,7 @@ layout(std430, binding = 4) buffer NormalPool {
     Triangle data[];
 } normal_pool;
 
-float bbox_collision(AABB box, Ray ray, out bool is_inside, out float near_t) {
+float bbox_collision(AABB box, Ray ray, out float far_t) {
     // Perf note:
     //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
     // vec3 inv_dir = vec3(1) / ray.dir;
@@ -118,10 +118,8 @@ float bbox_collision(AABB box, Ray ray, out bool is_inside, out float near_t) {
     t0 = max(t0, min(zmin, zmax));
     t1 = min(t1, max(zmin, zmax));
 
-    is_inside = t0 <= 0;
-
     float collides = float(t0 < t1);
-    near_t = collides * t1 + (1 - collides) * (-INFINITY);
+    far_t = collides * t1 + (1 - collides) * (-INFINITY);
     return collides * t0 + (1 - collides) * (-INFINITY);
 
     /* if (t0 < t1) { */
@@ -147,7 +145,6 @@ TraceIntersection trace(Ray ray) {
     float min_t = INFINITY;
     vec3 point;
     vec3 normal;
-    vec2 uv;
 
     int stack[32];
     int stack_offset = 0;
@@ -155,10 +152,9 @@ TraceIntersection trace(Ray ray) {
     while (stack_offset > 0) {
         int i = stack[--stack_offset];
         BVHNode node = bvh.data[i];
-        bool is_inside; // is inside bbox?
-        float near_t;
-        float bbox_t = bbox_collision(node.bbox, ray, is_inside, near_t);
-        bool ditch_node = !is_inside && bbox_t > min_t;    // TODO: fix this
+        float far_t;
+        float near_t = bbox_collision(node.bbox, ray, far_t);
+        bool ditch_node = near_t > min_t;
         if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
             Primitive p = primitive_pool.data[node.primitive_offset];
             for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
@@ -176,11 +172,10 @@ TraceIntersection trace(Ray ray) {
                         point = ray.o + bar.x * ray.dir;
                         //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
                         normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
-                        uv = vec2(u,v);
                     }
                 }
             }
-        } else if (near_t > 0 && !ditch_node) {                              // INNER NODE
+        } else if (far_t > 0 && !ditch_node) {                              // INNER NODE
             stack[stack_offset++] = i + 1;
             stack[stack_offset++] = node.r_child_offset;
         }

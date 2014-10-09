@@ -619,8 +619,12 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     } else {  // Append 12 new triangles
         tri.p0.x = 0;  // Initialize garbage, just to get an index. Will be filled below.
         index = append(&m_triangle_pool, tri);
+#ifdef PH_DEBUG
         auto n_index = append(&m_normal_pool, tri);
         ph_assert(n_index == index);
+#else
+        append(&m_normal_pool, tri);
+#endif
         for (int i = 0; i < 11; ++i) {
             append(&m_triangle_pool, tri);
             append(&m_normal_pool, tri);
@@ -851,9 +855,14 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
         norm.p1 = to_gl(e);
         norm.p2 = to_gl(f);
 
+#ifdef PH_DEBUG
         auto vi = append(&m_triangle_pool, tri);
         auto ni = append(&m_normal_pool, norm);
         ph_assert(vi == ni);
+#else
+        append(&m_triangle_pool, tri);
+        append(&m_normal_pool, norm);
+#endif
     }
 
     ph_assert(chunk->num_verts / 3 < PH_MAX_int64);

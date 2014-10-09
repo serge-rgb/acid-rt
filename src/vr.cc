@@ -354,14 +354,18 @@ void draw(int* resolution) {
     long frame_end = io::get_microseconds();
     double frame_time_ms = (frame_end - frame_begin) / 1000.0; // Before vsync
     glUseProgram(m_program);
-    if (m_do_interlace_throttling && frame_time_ms > 13.333333) {
-        glUniform1i(12, true);  // interlacing
-    }
-    if (m_do_interlace_throttling && frame_time_ms < 0.5 * 13.333333) {
+    if (m_do_interlace_throttling) {
+        if (frame_time_ms > 13.333333) {
+            glUniform1i(12, true);  // interlacing
+        }
+        if (frame_time_ms < 0.5 * 13.333333) {
+            glUniform1i(12, false);  // interlacing
+        }
+    } else {
         glUniform1i(12, false);  // interlacing
     }
 #ifdef PH_DEBUG_FRAMETIME
-    logf("Frame time is %f\n", frame_time_ms);
+    printf("Frame time is %f\n", frame_time_ms);
 #endif
     ovrHmd_EndFrameTiming(m_hmd);
     window::swap_buffers();
