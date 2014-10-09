@@ -68,10 +68,10 @@ int main() {
             ph::insert(&dict1, keys[i], i);
         }
         for (int i = 0; i < sizeof(keys) / sizeof(char*); ++i) {
-            if (!ph::find(&dict, keys[i]) == i) {
+            if (!*ph::find(&dict, keys[i]) == i) {
                 phatal_error("Incorrect value for key!");
             }
-            if (!ph::find(&dict1, keys[i]) == i) {
+            if (!*ph::find(&dict1, keys[i]) == i) {
                 phatal_error("Incorrect value for key!");
             }
         }

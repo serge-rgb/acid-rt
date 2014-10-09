@@ -31,6 +31,10 @@ Dict<K, V> MakeDict(int64 num_buckets) {
     return dict;
 }
 
+///////////////////////////////
+// Dict operations
+///////////////////////////////
+
 template<typename K, typename V>
 void insert(Dict<K, V>* dict, K key, V value) {
     uint64_t n = (hash(key)) % dict->num_buckets;
@@ -42,13 +46,17 @@ void insert(Dict<K, V>* dict, K key, V value) {
 }
 
 template<typename K, typename V>
-V find(Dict<K, V>* dict, K key) {
+V* find(Dict<K, V>* dict, K key) {
     uint64_t n = hash(key) % dict->num_buckets;
-    int64 i = 0;
-    while (*(dict->buckets[n][i].key) != key) {
-        i++;
+    Slice<Record<K, V>> bucket = dict->buckets[n];
+    for (int i = 0; i < count(bucket); ++i) {
+        Record<K, V>* record = &bucket[i];
+        if (*record->key == key) {
+            return &record->value;
+        }
     }
-    return dict->buckets[n][i].value;
+    phatal_error("could not find");
+    return NULL;
 }
 
 }

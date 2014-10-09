@@ -483,7 +483,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     return true;
 }
 
-uint64_t hash(BVHTreeNode* data) {
+uint64_t hash(BVHTreeNode* data) {  // TODO: step through
     uint64_t hash = 5381;
     size_t limit = sizeof(BVHTreeNode);
     for (size_t sz = 0; sz < limit; sz++) {
@@ -526,7 +526,7 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
         if (!is_leaf) {
             stack[stack_offset++] = fatnode->right;
             stack[stack_offset++] = fatnode->left;
-            int64 found_i = find(&dict, fatnode->right);
+            int64 found_i = *find(&dict, fatnode->right);
             ph_assert(found_i >= 0);
             ph_assert(found_i < int64(1) << 31);
             slice.ptr[i].right_child_offset = (int)found_i;
