@@ -202,8 +202,8 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
         size_t sz = (size_t)big_chunk.num_verts;
         ((scene::Chunk*)chunks)[j].num_verts = 0;
         // Wasteful!
-        ((scene::Chunk*)chunks)[j].verts = phanaged(glm::vec3, sz);
-        ((scene::Chunk*)chunks)[j].norms = phanaged(glm::vec3, sz);
+        ((scene::Chunk*)chunks)[j].verts = phalloc(glm::vec3, sz);
+        ((scene::Chunk*)chunks)[j].norms = phalloc(glm::vec3, sz);
     }
 
     // Fill chunks.
@@ -244,18 +244,30 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     for (int j = 0; j < 8; ++j) {
         auto subchunk = subchunks[j];
         for (int k = 0; k < count(subchunk); ++k) {
-            auto chunk = subchunk[k];
+            scene::Chunk chunk = subchunk[k];
+            if (chunk.num_verts) {
+                chunk.verts = phalloc(glm::vec3, chunk.num_verts);
+                chunk.norms = phalloc(glm::vec3, chunk.num_verts);
+                memcpy(chunk.verts, subchunk[k].verts,
+                        sizeof(glm::vec3) * (size_t)subchunk[k].num_verts);
+                memcpy(chunk.norms, subchunk[k].norms,
+                        sizeof(glm::vec3) * (size_t)subchunk[k].num_verts);
+            }
+            //append(&slice, subchunk[k]);
             append(&slice, chunk);
         }
     }
-
+    for (int j = 0; j < 8; ++j) {
+        phree(((scene::Chunk*)chunks)[j].verts);
+        phree(((scene::Chunk*)chunks)[j].norms);
+    }
     return slice;
 }
 
 void bunny_sample() {
     scene::init();
 
-    auto big_chunk = load_obj("third_party/bunny.obj", 10);
+    auto big_chunk = load_obj("third_party/bunny.obj", /*scale=*/10);
     auto chunks = localized_chunks(big_chunk, 8);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
