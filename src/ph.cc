@@ -121,6 +121,15 @@ int64 bytes_allocated() {
 }
 }  // ns memory
 
+uint64_t hash(const char* s) {
+    uint64_t hash = 5381;
+    while (*s != '\0') {
+        hash = (hash * 33) ^ (uint64_t)(*s);
+        ++s;
+    }
+    return hash;
+}
+
 void quit(int code) {
 #ifdef PH_DEBUG
     free(g_alloc_records.ptr);

@@ -84,6 +84,12 @@ lua_State* run_script(const char* path);
 void log(const char* s);
 void logf(const char* fmt, ...);
 
+//////////////////////////
+// Built in hash functions
+//////////////////////////
+
+uint64_t hash(const char* s);
+
 /////////////////////////
 // Error handling
 /////////////////////////

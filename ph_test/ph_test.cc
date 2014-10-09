@@ -47,6 +47,37 @@ int main() {
     }
 
     }
+    // Test dicts
+#define PH_DEBUG_DICT
+    {
+        char* keys[] = {
+            "hello",
+            "world",
+            "i",
+            "am testing", 
+            "my",
+            "hash",
+            "map",
+        };
+        typedef char* charptr;
+        auto dict = ph::MakeMap<char*, int>(50);
+        auto dict1 = ph::MakeMap<char*, int>(1);
+        for (int i = 0; i < sizeof(keys) / sizeof(char*); ++i) {
+            logf("%s\n", keys[i]);
+            ph::insert(&dict, keys[i], i);
+            ph::insert(&dict1, keys[i], i);
+        }
+        for (int i = 0; i < sizeof(keys) / sizeof(char*); ++i) {
+            if (!ph::find(&dict, keys[i]) == i) {
+                phatal_error("Incorrect value for key!");
+            }
+            if (!ph::find(&dict1, keys[i]) == i) {
+                phatal_error("Incorrect value for key!");
+            }
+        }
+    }
+#undef PH_DEBUG_DICT
+
     // Test memory tracking
     {
         auto* array = phalloc(int, 10);
