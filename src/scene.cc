@@ -91,7 +91,7 @@ static AABB get_bbox(const Primitive* primitives, int count) {
 
         for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
             GLtriangle tri = m_triangle_pool[i];
-            GLvec3 points[3] = {tri.p0, tri.p1, tri.p2};
+            GLvec3 points[3] = { tri.p0, tri.p1, tri.p2 };
             for (int j = 0; j < 3; ++j) {
                 auto p = points[j];
                 if (p.x < bbox.xmin) bbox.xmin = p.x;
@@ -174,7 +174,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
 
     if (count(primitives) == 1) {           // ---- Leaf
         data.primitive_offset = *indices;
-        node->left  = NULL;
+        node->left = NULL;
         node->right = NULL;
     } else {                                // ---- Inner node
         auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
@@ -193,7 +193,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
 
         // Fill variations.
 
-        float variation[3] = {0, 0, 0};  // Used to choose split axis
+        float variation[3] = { 0, 0, 0 };  // Used to choose split axis
         {
             float minx, maxx, miny, maxy, minz, maxz;
             minx = maxx = centroids[0].x;
@@ -230,7 +230,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
         }
 
         // Make two new slices.
-        auto slice_left  = MakeSlice<Primitive>(size_t(count(primitives) / 2));
+        auto slice_left = MakeSlice<Primitive>(size_t(count(primitives) / 2));
         auto slice_right = MakeSlice<Primitive>(size_t(count(primitives) / 2));
         // These indices keep the old ordering.
         int* new_indices_l = phalloc(int, (size_t)count(primitives));
@@ -286,13 +286,13 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
             auto bbox_centroid = get_centroid(bbox);
 
             int* assign = phalloc(int, (size_t)count(primitives));
-                // ^--- Store which primitive is assigned to which bucket.
+            // ^--- Store which primitive is assigned to which bucket.
 
             for (int i = 0; i < count(primitives); ++i) {
                 glm::vec3 centroid = centroids[i];
                 int b = (int)(kNumBuckets *
-                    (centroid[split] - bbox_vmin[split]) /
-                    (bbox_vmax[split] - bbox_vmin[split]));
+                        (centroid[split] - bbox_vmin[split]) /
+                        (bbox_vmax[split] - bbox_vmin[split]));
                 if (b == kNumBuckets) { b--; }
                 buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1));
                 buckets[b].num++;
@@ -340,7 +340,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
             for (int i = 0; i < count(primitives); ++i) {
                 if (assign[i] <= min_split) {
                     c_left++;
-                } else {
+                }
+                else {
                     c_right++;
                 }
             }
@@ -356,13 +357,15 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
                         /* log("left"); */
                         append(&slice_left, primitives[i]);
                         new_indices_l[offset_l++] = indices[i];
-                    } else {
+                    }
+                    else {
                         /* log("right"); */
                         append(&slice_right, primitives[i]);
                         new_indices_r[offset_r++] = indices[i];
                     }
                 }
-            } else {
+            }
+            else {
                 static int even_count = 0;
                 even_count++;
                 logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
@@ -379,10 +382,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
                 }
             }
             phree(assign);
-        } else {
         // ============================================================
         // Equal partition.
         // ============================================================
+        } else {
             // Partition two slices based on which side of the midpoint.
             for (int i = 0; i < count(primitives); ++i) {
                 auto centroid = centroids[i];
@@ -459,7 +462,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
                 printf("Found null child on non-leaf node\n");
                 return false;
             }
-            ph_assert(stack_offset + 2 < kTreeStackLimit)
+            ph_assert(stack_offset + 2 < kTreeStackLimit);
             stack[stack_offset++] = node->right;
             stack[stack_offset++] = node->left;
             if (stack_offset > height) {
@@ -469,21 +472,31 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     }
 
     for (int i = 0; i < count(data); ++i) {
-        if(checks[i] == false) {
+        if (checks[i] == false) {
             printf("Leaf %d not found.\n", i);
             return false;
         }
     }
 
-    phree (checks);
+    phree(checks);
     /* printf("BVH valid.\n"); */
     return true;
+}
+
+uint64_t hash(BVHTreeNode* data) {
+    uint64_t hash = 5381;
+    size_t limit = sizeof(BVHTreeNode);
+    for (size_t sz = 0; sz < limit; sz++) {
+        hash = (hash * 33) ^ (uint64_t)(((char*)data)[sz]);
+        ++data;
+    }
+    return hash;
 }
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
 static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     auto slice = MakeSlice<BVHNode>(16);
-    auto ptrs  = MakeSlice<BVHTreeNode*>(16);  // Use this to get offsets for right childs (too slow?)
+    auto dict  = MakeDict < BVHTreeNode*, int64> (kTreeStackLimit);
 
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
@@ -492,8 +505,8 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     while(stack_offset > 0) {
         auto fatnode = stack[--stack_offset];
         BVHNode node = fatnode->data;
-        append(&slice, node);
-        append(&ptrs, fatnode); // Slow? push pointer...
+        int64 index = append(&slice, node);
+        insert(&dict, fatnode, index);
         bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
         if (!is_leaf) {
             stack[stack_offset++] = fatnode->right;
@@ -513,7 +526,7 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
         if (!is_leaf) {
             stack[stack_offset++] = fatnode->right;
             stack[stack_offset++] = fatnode->left;
-            int64 found_i = find(ptrs, fatnode->right);
+            int64 found_i = find(&dict, fatnode->right);
             ph_assert(found_i >= 0);
             ph_assert(found_i < int64(1) << 31);
             slice.ptr[i].right_child_offset = (int)found_i;
@@ -962,8 +975,8 @@ void upload_everything() {
     {
         GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangle_buffer) );
         glBufferData(GL_SHADER_STORAGE_BUFFER,
-                    GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
-                    (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
+                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
+                (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_triangle_buffer) );
     }
 
@@ -971,8 +984,8 @@ void upload_everything() {
     {
         GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_normal_buffer) );
         glBufferData(GL_SHADER_STORAGE_BUFFER,
-                    GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_normal_pool.n_elems),
-                    (GLvoid*)scene::m_normal_pool.ptr, GL_DYNAMIC_COPY);
+                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_normal_pool.n_elems),
+                (GLvoid*)scene::m_normal_pool.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_normal_buffer) );
     }
 

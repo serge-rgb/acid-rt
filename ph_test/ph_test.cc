@@ -60,8 +60,8 @@ int main() {
             "map",
         };
         typedef char* charptr;
-        auto dict = ph::MakeMap<char*, int>(50);
-        auto dict1 = ph::MakeMap<char*, int>(1);
+        auto dict = ph::MakeDict<char*, int>(50);
+        auto dict1 = ph::MakeDict<char*, int>(1);
         for (int i = 0; i < sizeof(keys) / sizeof(char*); ++i) {
             logf("%s\n", keys[i]);
             ph::insert(&dict, keys[i], i);

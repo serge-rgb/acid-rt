@@ -8,6 +8,7 @@ namespace ph {
 template<typename K, typename V>
 struct Record {
     K* key;
+    char pad[4];
     V value;
 };
 
@@ -19,7 +20,7 @@ struct Dict {
 };
 
 template<typename K, typename V>
-Dict<K, V> MakeMap(int64 num_buckets) {
+Dict<K, V> MakeDict(int64 num_buckets) {
     Dict<K, V> dict;
     typedef Slice<Record<K, V>> record_slice_t;
     dict.buckets = phanaged(record_slice_t, (size_t) num_buckets);
