@@ -63,6 +63,6 @@ TODO
 * rudimentary lighting model
 * skybox in bunny sample
 * bouncing ball sample
-* optimize BVH construction.
 * on screen text
 * non-vr mode (fallback)
+* get rid of GC

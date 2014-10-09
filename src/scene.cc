@@ -483,12 +483,22 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     return true;
 }
 
-uint64_t hash(BVHTreeNode* data) {  // TODO: step through
+uint64_t hash(BVHTreeNode* data) {  
     uint64_t hash = 5381;
-    size_t limit = sizeof(BVHTreeNode);
+    uint64_t hash_data[] = {
+        (uint64_t)(data->data.primitive_offset),
+        (uint64_t)(data->data.right_child_offset),
+        (uint64_t)floorf(1000 * data->data.bbox.xmin),
+        (uint64_t)floorf(1000 * data->data.bbox.xmax),
+        (uint64_t)floorf(1000 * data->data.bbox.ymin),
+        (uint64_t)floorf(1000 * data->data.bbox.ymax),
+        (uint64_t)floorf(1000 * data->data.bbox.zmin),
+        (uint64_t)floorf(1000 * data->data.bbox.zmax),
+    };
+    size_t limit = sizeof(hash_data) / sizeof(uint64_t);
     for (size_t sz = 0; sz < limit; sz++) {
-        hash = (hash * 33) ^ (uint64_t)(((char*)data)[sz]);
-        ++data;
+        uint64_t v = hash_data[sz];
+        hash = (hash * 33) ^ v;
     }
     return hash;
 }
