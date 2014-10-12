@@ -247,6 +247,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
             new_indices_r[offset_r++] = indices[1];
             node->left = build_bvh(slice_left, new_indices_l, (split + 1) % 3);
             node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
+            release(&slice_left);
+            release(&slice_right);
             node->data = data;
             return node;
         }
@@ -409,6 +411,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
         if (count(slice_right)) {
             node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
         }
+        release(&slice_left);
+        release(&slice_right);
         phree(new_indices_l);
         phree(new_indices_r);
         release(&centroids);
@@ -496,7 +500,6 @@ void release(BVHTreeNode* root) {
             stack[stack_offset++] = node->right;
         }
         phree(node);
-        return;
     }
 }
 

@@ -170,7 +170,15 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     }
     if (size < limit) {                             // size < limit => Return a slice of one.
         auto slice = MakeSlice<scene::Chunk>(1);
-        append(&slice, big_chunk);
+        scene::Chunk chunk;
+        chunk.num_verts = big_chunk.num_verts;
+        chunk.verts = phalloc(glm::vec3, big_chunk.num_verts);
+        chunk.norms = phalloc(glm::vec3, big_chunk.num_verts);
+        memcpy(chunk.verts, big_chunk.verts,
+                sizeof(glm::vec3) * (size_t)big_chunk.num_verts);
+        memcpy(chunk.norms, big_chunk.norms,
+                sizeof(glm::vec3) * (size_t)big_chunk.num_verts);
+        append(&slice, chunk);
         return slice;
     }
 
@@ -240,7 +248,10 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     Slice<scene::Chunk> subchunks[8];
     for (int j = 0; j < 8; ++j) {
         subchunks[j] = localized_chunks(((scene::Chunk*)chunks)[j], limit);
+        phree(((scene::Chunk*)chunks)[j].verts);
+        phree(((scene::Chunk*)chunks)[j].norms);
     }
+
     // 5) Append into one slice and return.
     for (int j = 0; j < 8; ++j) {
         auto subchunk = subchunks[j];
@@ -280,8 +291,6 @@ void bunny_sample() {
     scene::update_structure();
     scene::upload_everything();
 
-    window::main_loop(bunny_idle);
-
     { // Release big chunk
        phree(big_chunk.verts);
        phree(big_chunk.norms);
@@ -292,4 +301,6 @@ void bunny_sample() {
            phree(chunks[i].norms);
     }
     release(&chunks);
+
+    window::main_loop(bunny_idle);
 }
