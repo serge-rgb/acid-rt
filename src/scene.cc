@@ -163,7 +163,9 @@ enum SplitPlane {
 
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
-static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices, int axis_split) {
+// bbox_cache avoids recomputation of bboxes for single primitives.
+static BVHTreeNode* build_bvh(
+        Slice<Primitive> primitives, const int32* indices, AABB* bbox_cache, int axis_split) {
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
@@ -245,8 +247,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
             append(&slice_right, primitives[1]);
             new_indices_l[offset_l++] = indices[0];
             new_indices_r[offset_r++] = indices[1];
-            node->left = build_bvh(slice_left, new_indices_l, (split + 1) % 3);
-            node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, (split + 1) % 3);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, (split + 1) % 3);
             release(&slice_left);
             release(&slice_right);
             node->data = data;
@@ -296,7 +298,8 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
                         (centroid[split] - bbox_vmin[split]) /
                         (bbox_vmax[split] - bbox_vmin[split]));
                 if (b == kNumBuckets) { b--; }
-                buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1));
+                /* buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1)); */
+                buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[i]);
                 buckets[b].num++;
                 assign[i] = b;
             }
@@ -406,10 +409,10 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
 
         node->left = node->right = NULL;
         if (count(slice_left)) {
-            node->left = build_bvh(slice_left, new_indices_l, (split + 1) % 3);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, (split + 1) % 3);
         }
         if (count(slice_right)) {
-            node->right = build_bvh(slice_right, new_indices_r, (split + 1) % 3);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, (split + 1) % 3);
         }
         release(&slice_left);
         release(&slice_right);
@@ -975,19 +978,27 @@ void update_structure() {
     }
 
     int32* indices = phalloc(int32, count(m_primitives));
+    AABB* bbox_cache = phalloc(AABB, count(m_primitives));
 
     for (int i = 0; i < count(m_primitives); ++i) {
         indices[i] = i;
+        bbox_cache[i] = get_bbox(&m_primitives[i], 1);
     }
-    BVHTreeNode* root = build_bvh(m_primitives, indices, 0);
-    phree(indices);
 
+    BVHTreeNode* root = build_bvh(m_primitives, indices, bbox_cache, 0);
+    phree(indices);
+    phree(bbox_cache);
+
+#ifdef PH_DEBUG
     validate_bvh(root, m_primitives);
+#endif
 
     int64 len;
     auto* flatroot = flatten_bvh(root, &len);
 
+#ifdef PH_DEBUG
     validate_flattened_bvh(flatroot, len);
+#endif
 
     // Upload flat bvh.
     {
