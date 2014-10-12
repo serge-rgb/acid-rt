@@ -79,9 +79,6 @@ endif()
 
 add_library(ph STATIC
     src/ph.cc
-    src/ph_gl.cc
-    src/ph_io.cc
-    src/ph_window.cc
     )
 target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
@@ -92,6 +89,9 @@ set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 set (engine_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ph_gl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/window.cc
     )
 #===============================================================================
 # Projects

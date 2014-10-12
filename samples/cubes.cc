@@ -5,6 +5,7 @@
 #include <vr.h>
 
 #include "samples.h"
+#include "window.h"
 
 using namespace ph;
 

@@ -2,9 +2,10 @@
 
 #include <ph.h>
 
+struct GLFWwindow;
+
 namespace ph {
 namespace io {
-
 
 // Returns the complete contents of file at path
 const char* slurp(const char* path);

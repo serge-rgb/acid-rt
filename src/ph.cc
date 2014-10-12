@@ -5,6 +5,7 @@
 
 namespace ph {
 
+
 void init() {
 #ifndef PH_SLICES_ARE_MANUAL
     GC_init();

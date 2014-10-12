@@ -1,5 +1,7 @@
 ﻿#include "scene.h"
 
+#include "ph_gl.h"
+
 namespace ph {
 namespace scene {
 
@@ -7,6 +9,7 @@ namespace scene {
 static const int kTreeStackLimit = 30;
 
 // Defined below
+struct BVHNode;
 struct GLtriangle;
 struct GLlight;
 struct Primitive;
@@ -15,6 +18,8 @@ static Slice<GLtriangle>    m_triangle_pool;
 static Slice<GLtriangle>    m_normal_pool;
 static Slice<GLlight>       m_light_pool;
 static Slice<Primitive>     m_primitives;
+static BVHNode*             m_flat_tree = NULL;
+static int64                m_flat_tree_len = 0;
 static int                  m_debug_bvh_height = -1;
 static GLuint               m_bvh_buffer;
 static GLuint               m_triangle_buffer;
@@ -986,37 +991,35 @@ void update_structure() {
     }
 
     BVHTreeNode* root = build_bvh(m_primitives, indices, bbox_cache, 0);
-    phree(indices);
-    phree(bbox_cache);
 
 #ifdef PH_DEBUG
     validate_bvh(root, m_primitives);
 #endif
 
-    int64 len;
-    auto* flatroot = flatten_bvh(root, &len);
+    if (m_flat_tree) { phree(m_flat_tree); }
+    m_flat_tree = flatten_bvh(root, &m_flat_tree_len);
 
 #ifdef PH_DEBUG
-    validate_flattened_bvh(flatroot, len);
+    validate_flattened_bvh(m_flat_tree, m_flat_tree_len);
 #endif
 
+    phree(indices);
+    phree(bbox_cache);
+    release(root);
+}
+
+// =========================  Upload to GPU
+void upload_everything() {
     // Upload flat bvh.
     {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvh_buffer);
         GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER,
-                    GLsizeiptr(sizeof(BVHNode) * (size_t)len),
-                    (GLvoid*)flatroot, GL_DYNAMIC_COPY) );
+                    GLsizeiptr(sizeof(BVHNode) * (size_t)m_flat_tree_len),
+                    (GLvoid*)m_flat_tree, GL_DYNAMIC_COPY) );
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_bvh_buffer) );
 
     }
 
-    release(root);
-    phree(flatroot);
-
-}
-
-void upload_everything() {
-    // =========================  Upload to GPU
     // Submit triangle pool
     {
         GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangle_buffer) );

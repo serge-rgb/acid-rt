@@ -1,8 +1,9 @@
 // 2014 Sergio Gonzalez
 
 #include <ph.h>
-#include <scene.h>
-#include <vr.h>
+#include "window.h"
+#include "scene.h"
+#include "vr.h"
 
 #include "samples.h"
 

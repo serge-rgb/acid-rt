@@ -3,7 +3,6 @@
 #pragma once
 
 #include <ph.h>
-#include "ph_slice_inl.h"
 
 ////////////////////////////////////////
 // Wrap gl functions

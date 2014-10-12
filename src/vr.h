@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ph.h>
-#include <vr.h>
 
 namespace ph {
 namespace vr {

@@ -65,5 +65,4 @@ TODO
 * bouncing ball sample
 * on screen text
 * non-vr mode (fallback)
-* get rid of GC
 * single ph header/impl

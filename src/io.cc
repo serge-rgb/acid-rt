@@ -1,12 +1,7 @@
-#include "ph_io.h"
+#include "io.h"
 
-#include "ph_base.h"
-
-
-namespace ph
-{
-namespace io
-{
+namespace ph {
+namespace io {
 
 static float wasd_step = -1.0f;
 static float wasd_camera[3] = {0,0,0};

@@ -2,10 +2,12 @@
 
 #pragma once
 
-#include "ph_base.h"
+#include <ph.h>
+
 
 namespace ph {
 namespace window {
+
 
 extern GLFWwindow* m_window;
 

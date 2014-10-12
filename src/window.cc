@@ -1,5 +1,5 @@
-#include "ph_window.h"
-#include "system_includes.h"
+#include "window.h"
+
 #include "ph_gl.h"
 
 namespace ph {

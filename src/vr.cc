@@ -1,5 +1,8 @@
 #include "vr.h"
 
+#include "ph_gl.h"
+#include "window.h"
+
 #define PH_DEBUG_FRAMETIME
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
@@ -252,7 +255,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         ovrFovPort fovs[2] = {fovPort_l, fovPort_l};
         ovrEyeRenderDesc descs[2];
         ovrHmd_ConfigureRendering(vr::m_hmd, &cfg, vr::m_hmd->DistortionCaps, fovs, descs);
-	}
+    }
 #endif
 
 
