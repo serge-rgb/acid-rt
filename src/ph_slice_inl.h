@@ -9,6 +9,8 @@
 
 #include "ph_base.h"
 
+#define PH_SLICES_ARE_MANUAL
+
 namespace ph {
 
 // === Slice

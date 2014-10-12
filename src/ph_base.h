@@ -38,7 +38,7 @@
     (type*)ph::memory::typeless_alloc(size_t(num) * sizeof(type))
 
 #define phree(mem)\
-        ph::memory::typeless_free((void*)mem); mem = NULL
+        ph::memory::typeless_free((void*)(mem)); (mem) = NULL
 
 namespace ph {
 
@@ -70,6 +70,7 @@ void* typeless_alloc(size_t n_bytes);
 
 // free equivalent. Use phree macro
 void typeless_free(void* mem);
+
 }  // ns memory
 
 /////////////////////////

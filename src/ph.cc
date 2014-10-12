@@ -15,18 +15,19 @@ struct AllocRecord {
 static size_t g_total_memory = 0;
 static size_t g_total_allocs = 0;
 
-Dict<int64, AllocRecord> g_alloc_records;
+//Dict<int64, AllocRecord> g_alloc_records;
+// TODO Redo g_alloc_records
 static bool g_init = false;
 #endif
 
 void init() {
 #ifndef PH_SLICES_ARE_MANUAL
-    /* GC_enable_incremental(); */
     GC_init();
+    GC_enable_incremental();
 #endif
 
 #ifdef PH_DEBUG
-    g_alloc_records = MakeDict<int64, AllocRecord>(1024 * 1024);
+
 #endif
 }
 
@@ -114,17 +115,25 @@ void* typeless_alloc(size_t n_bytes) {
     if (!g_init) {
         g_init = true;
     }
+#if 0
     AllocRecord r = {ptr, n_bytes};
     insert(&ph::g_alloc_records, (int64) (ULONGLONG)(ULONG)ptr, r);
     g_total_memory += n_bytes;
+#endif
 #endif
     return ptr;
 }
 
 void typeless_free(void* mem) {
 #ifdef PH_DEBUG
-    AllocRecord r = *find(&ph::g_alloc_records, (int64)(ULONGLONG)(ULONG)mem);
-    g_total_memory -= r.size;
+#if 0
+    AllocRecord* r = find(&ph::g_alloc_records, (int64)(ULONGLONG)(ULONG)mem);
+    if (!r) {
+        log("ERROR: AllocRecord not found for pointer.");
+    } else {
+        g_total_memory -= r->size;
+    }
+#endif
 #endif
     free(mem);
 }  // ns memory

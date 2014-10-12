@@ -37,9 +37,7 @@ int main() {
         // Slices are by default GC'd
         // so there is no need for this, unless the test
         // uncomments the define on PH_SLICES_ARE_MANUAL
-#ifdef PH_SLICES_ARE_MANUAL
         release(&s);
-#endif
 
     {
         char debug[] = "debug";;
@@ -54,7 +52,7 @@ int main() {
             "hello",
             "world",
             "i",
-            "am testing", 
+            "am testing",
             "my",
             "hash",
             "map",

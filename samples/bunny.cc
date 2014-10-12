@@ -145,8 +145,10 @@ static scene::Chunk load_obj(const char* path, float scale) {
         chunk.norms = in_norms.ptr;
         chunk.num_verts = count(in_verts);
     }
-
-
+    release(&verts);
+    release(&norms);
+    release(&faces);
+    release(&lines);
     return chunk;
 }
 
@@ -155,7 +157,6 @@ static scene::Chunk load_obj(const char* path, float scale) {
  * between 1 and `limit` triangles. These triangles are close together (ideally
  * adjacent)
  */
-
 Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     ph_assert(big_chunk.num_verts % 3 == 0);
     // Base cases:
@@ -243,8 +244,11 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
     // 5) Append into one slice and return.
     for (int j = 0; j < 8; ++j) {
         auto subchunk = subchunks[j];
-        for (int k = 0; k < count(subchunk); ++k) {
-            scene::Chunk chunk = subchunk[k];
+        for (int k = 0; k < count(subchunk); ++k) { // Clone chunks and append.
+            scene::Chunk chunk;
+            chunk.num_verts = subchunk[k].num_verts;
+            chunk.verts = NULL;
+            chunk.norms = NULL;
             if (chunk.num_verts) {
                 chunk.verts = phalloc(glm::vec3, chunk.num_verts);
                 chunk.norms = phalloc(glm::vec3, chunk.num_verts);
@@ -252,15 +256,14 @@ Slice<scene::Chunk> localized_chunks(scene::Chunk big_chunk, int limit) {
                         sizeof(glm::vec3) * (size_t)subchunk[k].num_verts);
                 memcpy(chunk.norms, subchunk[k].norms,
                         sizeof(glm::vec3) * (size_t)subchunk[k].num_verts);
+                phree(subchunk[k].verts);
+                phree(subchunk[k].norms);
             }
-            //append(&slice, subchunk[k]);
             append(&slice, chunk);
         }
+        release(&subchunk);
     }
-    for (int j = 0; j < 8; ++j) {
-        phree(((scene::Chunk*)chunks)[j].verts);
-        phree(((scene::Chunk*)chunks)[j].norms);
-    }
+
     return slice;
 }
 
@@ -273,9 +276,20 @@ void bunny_sample() {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
     }
-    GC_gcollect();
+
     scene::update_structure();
     scene::upload_everything();
 
     window::main_loop(bunny_idle);
+
+    { // Release big chunk
+       phree(big_chunk.verts);
+       phree(big_chunk.norms);
+    }
+    // Chunks are in heaven now.
+    for (int i = 0; i < count(chunks); ++i) {
+           phree(chunks[i].verts);
+           phree(chunks[i].norms);
+    }
+    release(&chunks);
 }

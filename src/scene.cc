@@ -164,7 +164,7 @@ enum SplitPlane {
 // Returns a memory managed BVH tree from primitives.
 // 'indices' keeps the original order of the slice.
 static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices, int axis_split) {
-    BVHTreeNode* node = phanaged(BVHTreeNode, 1);
+    BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     BVHNode data;
     data.primitive_offset = -1;
     data.right_child_offset = -1;
@@ -411,6 +411,7 @@ static BVHTreeNode* build_bvh(Slice<Primitive> primitives, const int32* indices,
         }
         phree(new_indices_l);
         phree(new_indices_r);
+        release(&centroids);
     }
     node->data = data;
     return node;
@@ -483,7 +484,23 @@ static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
     return true;
 }
 
-uint64_t hash(BVHTreeNode* data) {  
+void release(BVHTreeNode* root) {
+    BVHTreeNode* stack[kTreeStackLimit];
+    int stack_offset = 0;
+    stack[stack_offset++] = root;
+    while(stack_offset > 0) {
+        BVHTreeNode* node = stack[--stack_offset];
+        bool is_leaf = node->left == NULL && node->right == NULL;
+        if (!is_leaf) {
+            stack[stack_offset++] = node->left;
+            stack[stack_offset++] = node->right;
+        }
+        phree(node);
+        return;
+    }
+}
+
+uint64_t hash(BVHTreeNode* data) {
     uint64_t hash = 5381;
     uint64_t hash_data[] = {
         (uint64_t)(data->data.primitive_offset),
@@ -506,7 +523,7 @@ uint64_t hash(BVHTreeNode* data) {
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
 static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     auto slice = MakeSlice<BVHNode>(16);
-    auto dict  = MakeDict < BVHTreeNode*, int64> (kTreeStackLimit);
+    auto dict  = MakeDict < BVHTreeNode*, int64> (1000);
 
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
@@ -545,6 +562,8 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     }
 
     *out_len = count(slice);
+
+    release(&dict);
     return slice.ptr;
 }
 
@@ -976,6 +995,9 @@ void update_structure() {
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_bvh_buffer) );
 
     }
+
+    release(root);
+    phree(flatroot);
 
 }
 
