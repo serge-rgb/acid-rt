@@ -275,8 +275,8 @@ float catmull(float r) {
 }
 
 // (x * y) % 32 == 0
-//jlayout(local_size_x = 4, local_size_y = 16) in;
-layout(local_size_x = 1, local_size_y = 128) in;
+layout(local_size_x = 10, local_size_y = 16) in;
+//layout(local_size_x = 2, local_size_y = 128) in;
 void main() {
     int off = int(frame_index % 2);
     bool quit = (off + (gl_WorkGroupID.x + gl_WorkGroupID.y)) % 2 == 0;

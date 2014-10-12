@@ -3,9 +3,8 @@
 #define PH_DEBUG_FRAMETIME
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
-//static int g_warpsize[] = {2, 32};
-//static int g_warpsize[] = {4, 16}; // Good perf.
-static int g_warpsize[] = {1, 128};  // Nice trade-off between perf and artifacts.
+static int g_warpsize[] = {10, 16};
+//static int g_warpsize[] = {2, 128};  // Nice trade-off between perf and artifacts.
 
 namespace ph {
 namespace vr {
@@ -13,7 +12,6 @@ namespace vr {
 static GLuint                    m_quad_vao;
 static GLuint                    m_quad_program;
 static GLuint                    m_compute_program;
-static GLuint                    m_size[2];             // Size of the framebuffer
 
 static float                     m_default_eye_z;       // Eye distance from plane.
 static const OVR::HMDInfo*       m_hmdinfo;
@@ -26,7 +24,7 @@ static GLuint                    m_backbuffer_tex;
 static float                     m_lens_center_l[2];
 static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
-static bool                      m_do_interlace_throttling = true;
+static bool                      m_do_interlace_throttling = false;
 
 ovrHmd                    m_hmd;
 
@@ -50,9 +48,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         Location_screen_size = 0,
         Location_tex = 1,
     };
-
-    m_size[0] = (GLuint)width;
-    m_size[1] = (GLuint)height;
 
     // Create / fill texture
     {
@@ -346,10 +341,9 @@ void draw(int* resolution) {
     }
 
     glActiveTexture(GL_TEXTURE1);
-    // Copy to back buffer
-    // glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,0,0, (GLsizei)m_size[0], (GLsizei)m_size[1], 0);
+
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    /* glFlush(); */
+
     GLCHK ( glFinish() );
     long frame_end = io::get_microseconds();
     double frame_time_ms = (frame_end - frame_begin) / 1000.0; // Before vsync
