@@ -1,6 +1,20 @@
 #include "ph_gl.h"
 
 #include <ph.h>
+
+#if defined(_MSC_VER)
+
+#pragma warning( push, 0 )
+
+#endif
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
 #include "io.h"
 
 
@@ -57,6 +71,39 @@ void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
     }
     GLCHK ( glValidateProgram(obj) );
 #endif
+}
+
+GLuint create_cubemap(const char* paths[6]) {
+    GLuint tex;
+    GLCHK ( glGenTextures(1, &tex) );
+    glBindTexture(GL_TEXTURE_CUBE_MAP, tex);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    static const GLenum directions[6] = {
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+    };
+
+    uint8_t* image_data[6];
+    for(int i = 0; i < 6; ++i) {
+        int w, h;
+        const char* fname = paths[i];
+        image_data[i] = stbi_load(fname, (int*)&w, (int*)&h, NULL, 4);
+        ph_assert(image_data[i]);
+
+        glTexImage2D(directions[i], 0, GL_RGBA, w, h, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, &(image_data[i])[0]);
+
+        stbi_image_free(image_data[i]);
+    }
+    return tex;
 }
 
 inline void query_error(const char* expr, const char* file, int line) {

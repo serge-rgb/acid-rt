@@ -51,6 +51,7 @@ include_directories(
     "./third_party/glfw/include/"
     "./third_party/yajl/src/api"
     "./third_party/glm/"
+    "./third_party/stb/"
 
     "./OculusSDK/LibOVR/Include"
     )

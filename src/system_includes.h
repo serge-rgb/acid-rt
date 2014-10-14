@@ -17,6 +17,8 @@
 // ==== Yajl
 #include <yajl/yajl_tree.h>
 
+// ==== stb
+#include <stb_image.h>
 
 #ifdef PH_OVR
 #include <OVR.h>

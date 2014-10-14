@@ -63,6 +63,13 @@ if [ ! -d yajl ]; then
     git clone https://github.com/lloyd/yajl.git
 fi
 
+echo "========================================================================="
+echo "==== stb"
+echo "========================================================================="
+if [ ! -d stb ]; then
+    git clone https://github.com/nothings/stb.git
+fi
+
 cd ..  # root
 
 if [ -d OculusSDK ]; then

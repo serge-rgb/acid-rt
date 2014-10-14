@@ -1,6 +1,8 @@
 // 2014 Sergio Gonzalez
 
 #include <ph.h>
+
+#include "ph_gl.h"
 #include "window.h"
 #include "scene.h"
 #include "vr.h"
@@ -291,6 +293,18 @@ void bunny_sample() {
 
     scene::update_structure();
     scene::upload_everything();
+
+    const char* fnames [6] = {
+        "samples/skybox/negx.jpg",
+        "samples/skybox/negy.jpg",
+        "samples/skybox/negz.jpg",
+        "samples/skybox/posx.jpg",
+        "samples/skybox/posy.jpg",
+        "samples/skybox/posz.jpg",
+    };
+
+    auto tex = gl::create_cubemap(fnames);
+    logf("Texture created: %u\n", tex);
 
     { // Release big chunk
        phree(big_chunk.verts);
