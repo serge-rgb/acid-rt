@@ -11,7 +11,7 @@ using namespace ph;
 
 static GLuint g_program;
 
-int g_sample_factor = 2;
+int g_sample_factor = 1;
 int g_resolution[] = {1920 / g_sample_factor, 1080 / g_sample_factor};  // DK2 res
 
 static int        g_curr_sample = 0;
@@ -27,7 +27,7 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
     }
     if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
         g_curr_sample--;
-        while(g_curr_sample < 0) g_curr_sample++;
+        if (g_curr_sample < 0) g_curr_sample++;
         g_sample_func = g_samples[g_curr_sample];
         g_sample_func();
     }

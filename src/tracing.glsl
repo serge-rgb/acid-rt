@@ -99,32 +99,41 @@ layout(std430, binding = 4) buffer NormalPool {
 float bbox_collision(AABB box, Ray ray, out float far_t) {
     // Perf note:
     //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
-    // vec3 inv_dir = vec3(1) / ray.dir;
+    //vec3 inv_dir = vec3(1) / ray.dir;
+    // Note #2
+    //  Rearranging into (x * a) + b gives a minor perf gain (MUL+ADD => MAD ??)
     float t0 = 0;
     float t1 = INFINITY;
-    float xmin, xmax, ymin, ymax, zmin, zmax;
 
-    xmin = (box.xmin - ray.o.x) / ray.dir.x;
-    xmax = (box.xmax - ray.o.x) / ray.dir.x;
+    float rmin, rmax;
+    ray.o /= -ray.dir;
 
-    t0 = min(xmin, xmax);
-    t1 = max(xmin, xmax);
+    rmin = box.xmin / ray.dir.x + ray.o.x;
+    rmax = box.xmax / ray.dir.x + ray.o.x;
 
-    ymin = (box.ymin - ray.o.y) / ray.dir.y;
-    ymax = (box.ymax - ray.o.y) / ray.dir.y;
+    t0 = min(rmin, rmax);
+    t1 = max(rmin, rmax);
 
-    t0 = max(t0, min(ymin, ymax));
-    t1 = min(t1, max(ymin, ymax));
+    /* rmin = (box.ymin - ray.o.y) * inv_dir.y; */
+    /* rmax = (box.ymax - ray.o.y) * inv_dir.y; */
+    rmin = box.ymin / ray.dir.y + ray.o.y;
+    rmax = box.ymax / ray.dir.y + ray.o.y;
 
-    zmin = (box.zmin - ray.o.z) / ray.dir.z;
-    zmax = (box.zmax - ray.o.z) / ray.dir.z;
+    t0 = max(t0, min(rmin, rmax));
+    t1 = min(t1, max(rmin, rmax));
 
-    t0 = max(t0, min(zmin, zmax));
-    t1 = min(t1, max(zmin, zmax));
+    /* rmin = (box.zmin - ray.o.z) * ray.dir.z; */
+    /* rmax = (box.zmax - ray.o.z) * ray.dir.z; */
+    rmin = box.zmin / ray.dir.z + ray.o.z;
+    rmax = box.zmax / ray.dir.z + ray.o.z;
+
+    t0 = max(t0, min(rmin, rmax));
+    t1 = min(t1, max(rmin, rmax));
 
     float collides = float(t0 < t1);
     far_t = collides * t1 + (1 - collides) * (-INFINITY);
     return collides * t0 + (1 - collides) * (-INFINITY);
+
 
     /* if (t0 < t1) { */
         /* return t0;// > 0? t0 : t1; */
@@ -353,12 +362,12 @@ void main() {
 
     if (occlude && radius_sq > 0.18) {         // <--- Cull
         // Green is great for checking appropiate radius.
-        /* color = vec4(0,1,0,1); */
-        color = vec4(0);
+        color = vec4(0,1,0,1);
+        /* color = vec4(0); */
     } else {                                     // <--- Ray trace.
         Ray ray;
         ray.o = point;
-        ray.dir = normalize(ray.o - eye);
+        ray.dir = ray.o - eye;  // Not normalized so that we get correct distances. FWIW
 
         color = vec4(0.5);
         //color = textureCube(sky, coord);

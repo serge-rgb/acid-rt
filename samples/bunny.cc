@@ -305,7 +305,7 @@ void bunny_sample() {
 
     // Ray tracer automaticlly looks at GL_TEXTURE2 for a skybox.
     gl::create_cubemap(GL_TEXTURE2, fnames);
-    io::set_wasd_camera(0, 0, 10);
+    io::set_wasd_camera(-0.5, 1, 3);
 
     { // Release big chunk
        phree(big_chunk.verts);
