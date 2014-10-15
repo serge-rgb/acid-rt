@@ -33,6 +33,8 @@ void cubes_sample() {
         logf("INFO: Submitted %d polygons.\n", x * y * z * 12);
     }
 
+    io::set_wasd_camera(0,-2,3);
+
     scene::update_structure();
     scene::upload_everything();
 
