@@ -12,6 +12,12 @@ void set_wasd_step(float step) {
     wasd_step = step;
 }
 
+void set_wasd_camera(float x, float y, float z) {
+    wasd_camera[0] = x;
+    wasd_camera[1] = y;
+    wasd_camera[2] = z;
+}
+
 const char* slurp(const char* path) {
     FILE* fd = fopen(path, "r");
     ph_expect(fd);

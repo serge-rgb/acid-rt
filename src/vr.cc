@@ -7,7 +7,7 @@
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
 static int g_warpsize[] = {10, 16};
-//static int g_warpsize[] = {2, 128};  // Nice trade-off between perf and artifacts.
+//static int g_warpsize[] = {1, 256};  // Nice trade-off between perf and artifacts.
 
 namespace ph {
 namespace vr {
@@ -184,6 +184,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         glUseProgram(m_program);
 
         glUniform1i(12, false);  // interlacing
+        glUniform1i(13, /*GL_TEXTURE2*/2);  // skybox
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
         GLCHK ( glUniform1i(11, 1) );  // Back texture
 

@@ -73,8 +73,9 @@ void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
 #endif
 }
 
-GLuint create_cubemap(const char* paths[6]) {
+GLuint create_cubemap(GLuint texture_unit, const char* paths[6]) {
     GLuint tex;
+    GLCHK ( glActiveTexture(texture_unit) );
     GLCHK ( glGenTextures(1, &tex) );
     glBindTexture(GL_TEXTURE_CUBE_MAP, tex);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -98,8 +99,8 @@ GLuint create_cubemap(const char* paths[6]) {
         image_data[i] = stbi_load(fname, (int*)&w, (int*)&h, NULL, 4);
         ph_assert(image_data[i]);
 
-        glTexImage2D(directions[i], 0, GL_RGBA, w, h, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, &(image_data[i])[0]);
+        GLCHK ( glTexImage2D(directions[i], 0, GL_RGBA,
+                    w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, &(image_data[i])[0]) );
 
         stbi_image_free(image_data[i]);
     }

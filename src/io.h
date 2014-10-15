@@ -21,6 +21,8 @@ enum {
 };
 extern int wasd_pressed;
 
+void set_wasd_camera(float x, float y, float z);
+
 void set_wasd_step(float step);
 
 void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/);

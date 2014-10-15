@@ -1,12 +1,12 @@
 #version 430
 
 layout(location = 0) uniform vec2 screen_size;              // One eye! (960, 1080 for DK2)
-//layout(location = 1) writeonly uniform image2D tex;      // This is the image we write to.
+//layout(location = 1) writeonly uniform image2D tex;       // This is the image we write to.
 layout(location = 1, rgba32f) uniform image2D tex;          // This is the image we write to.
 layout(location = 2) uniform float x_offset;                // In pixels, for separate viewports.
 layout(location = 3) uniform float eye_to_lens_m;
 // Not going to use this while it is 1.0
-//layout(location = 4) uniform float max_r_sq;                // Max radius squared (for catmull spline).
+//layout(location = 4) uniform float max_r_sq;              // Max radius squared (for catmull spline).
 layout(location = 5) uniform vec2 screen_size_m;            // Screen size in meters.
 layout(location = 6) uniform vec2 lens_center_m;            // Lens center.
 layout(location = 7) uniform vec4 orientation_q;            // Orientation quaternion.
@@ -15,6 +15,10 @@ layout(location = 9) uniform int frame_index;               //
 layout(location = 10) uniform vec3 camera_pos;
 layout(location = 11, rgba32f) uniform image2D back_tex;    // Framebuffer for the prev frame
 layout(location = 12) uniform bool enable_interlacing;      // Should warp interlacing optimization be on.
+layout(location = 13) uniform samplerCube sky;              // Skybox texture
+
+#extension GL_NV_shadow_samplers_cube : enable
+
 
 float PI = 3.141526;
 float EPSILON = 0.00001;
@@ -276,7 +280,7 @@ float catmull(float r) {
 
 // (x * y) % 32 == 0
 layout(local_size_x = 10, local_size_y = 16) in;
-//layout(local_size_x = 2, local_size_y = 128) in;
+//layout(local_size_x = 1, local_size_y = 256) in;
 void main() {
     int off = int(frame_index % 2);
     bool quit = (off + (gl_WorkGroupID.x + gl_WorkGroupID.y)) % 2 == 0;
@@ -301,6 +305,7 @@ void main() {
     //float ar = screen_size.y / screen_size.x;
     vec3 eye = vec3(0, 0, 0);
 
+    vec3 fsky_coord;
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
                       (gl_GlobalInvocationID.y / screen_size.y),
@@ -317,6 +322,12 @@ void main() {
     // back to unit coordinates
     point.xy /= screen_size_m;
 
+    // At this stage, point is close to the un-oriented texture coordinate for the skybox.
+    // The constant 1.22222222 is (110 / 90).
+    //  A typical cubemap face has a 90 degree vertical FOV.
+    //  This is a hacky fix for 110 degree FOV. :)
+    fsky_coord = normalize(vec3(point.xy,-1) * 1.22222222);
+
     // Scale by aspect ratio.
     point.x *= screen_size.x / screen_size.y;
 
@@ -332,6 +343,7 @@ void main() {
     // Rotate.
     eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
+    fsky_coord = rotate_vector_quat(fsky_coord, vec4(orientation_q.xyz, orientation_q.w));
 
     // Camera movement
     eye += camera_pos;
@@ -339,16 +351,17 @@ void main() {
 
     vec4 color;  // This ends up written to the image.
 
-    if (occlude && radius_sq > 0.20) {         // <--- Cull
+    if (occlude && radius_sq > 0.18) {         // <--- Cull
         // Green is great for checking appropiate radius.
         /* color = vec4(0,1,0,1); */
         color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
         ray.o = point;
-        ray.dir = ray.o - eye;
+        ray.dir = normalize(ray.o - eye);
 
         color = vec4(0.5);
+        //color = textureCube(sky, coord);
         color.a = 1;
         TraceIntersection intersection = trace(ray);
         float t = intersection.t;
@@ -363,9 +376,10 @@ void main() {
                 vec3 rgb = (1.0 / num_lights) *
                     lambert(intersection.point, intersection.normal, vec3(0.9, 0.9, 0.9), light);
                 /* vec3 rgb = point; */
-                color += vec4(rgb, 1);
+                color.rgb += vec4(rgb, 1).rgb;
             }
-
+        } else {
+            color = textureCube(sky, normalize(fsky_coord));
         }
     }
 

@@ -303,8 +303,9 @@ void bunny_sample() {
         "samples/skybox/posz.jpg",
     };
 
-    auto tex = gl::create_cubemap(fnames);
-    logf("Texture created: %u\n", tex);
+    // Ray tracer automaticlly looks at GL_TEXTURE2 for a skybox.
+    gl::create_cubemap(GL_TEXTURE2, fnames);
+    io::set_wasd_camera(0, 0, 10);
 
     { // Release big chunk
        phree(big_chunk.verts);
