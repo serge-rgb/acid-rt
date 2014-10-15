@@ -77,23 +77,23 @@ struct TraceIntersection {
 };
 
 layout(std430, binding = 0) buffer TrianglePool {
-    Triangle data[];
+    readonly Triangle data[];
 } triangle_pool;
 
 layout(std430, binding = 1) buffer LightPool {
-    Light data[];
+    readonly Light data[];
 } light_pool;
 
 layout(std430, binding = 2) buffer PrimitivePool {
-    Primitive data[];
+    readonly Primitive data[];
 } primitive_pool;
 
 layout(std430, binding = 3) buffer BVH {
-    BVHNode data[];
+    readonly BVHNode data[];
 } bvh;
 
 layout(std430, binding = 4) buffer NormalPool {
-    Triangle data[];
+    readonly Triangle data[];
 } normal_pool;
 
 float bbox_collision(AABB box, Ray ray, out float far_t) {
