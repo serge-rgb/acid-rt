@@ -196,7 +196,7 @@ TraceIntersection r_trace(Ray ray) {
             bool left_hit = lfar_t > left_t;
             bool right_hit = rfar_t > right_t;
 
-            // if (!left_hit && !right_hit) break;
+            if (!left_hit && !right_hit) break;
             bitstack <<= 1;
             if (left_hit && right_hit) {
                 node = left_t < right_t? left : right;
@@ -214,13 +214,98 @@ TraceIntersection r_trace(Ray ray) {
             bitstack >>= 1;
         }
         if (node.primitive_offset == -1) {
-            node = bvh.data[node.sibling_offset];
+        node = bvh.data[node.sibling_offset];
         }
         bitstack ^= 1;
         cnt++;
     } //while
 
     intersection.t = INFINITY;
+    return intersection;
+}
+
+TraceIntersection nu_trace(Ray ray) {
+    TraceIntersection intersection;
+    intersection.t = INFINITY;
+    intersection.debug = 0;
+    float min_t = INFINITY;
+
+    int stack[8];
+    int stack_offset = 0;
+    BVHNode node = bvh.data[0];
+    int cnt = 0;
+    while (true) {
+        if (cnt > 100) break;
+        cnt++;
+        bool iterated = false;
+        if (node.primitive_offset >= 0) {                     // LEAF
+            Primitive p = primitive_pool.data[node.primitive_offset];
+            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
+                Triangle t = triangle_pool.data[j];
+                vec3 bar = barycentric(t, ray);
+                if (bar.x > 0 &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1) {
+                    if (bar.x < min_t) {
+                        Triangle n = normal_pool.data[j];
+                        min_t = bar.x;
+                        float u = bar.y;
+                        float v = bar.z;
+                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                        intersection.t = min_t;
+                        intersection.point = ray.o + bar.x * ray.dir;
+                        intersection.normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
+                        intersection.debug = 0;
+                    }
+                }
+            }
+        } else {                              // INNER NODE
+            // Get left and right
+            BVHNode left = bvh.data[node.l_child_offset];
+            BVHNode right = bvh.data[node.r_child_offset];
+            int other = node.r_child_offset;
+            int other_l = node.l_child_offset;
+
+
+            float l_n, l_f, r_n, r_f;
+            l_n = bbox_collision(left.bbox, ray, l_f);
+            r_n = bbox_collision(right.bbox, ray, r_f);
+
+            bool hit_l = l_n < l_f;
+            bool hit_r = r_n < r_f;
+
+            // If anyone got hit
+            if (hit_l || hit_r) {
+                iterated = true;
+                // If just one... traverse
+                if (hit_l) {
+                    node = left;
+                } else {
+                    node = right;
+                }
+                // When *both* children are hits choose the nearest
+                if (hit_l && hit_r) {
+                    float near = min(l_n, r_n);
+                    if (near == r_n) {
+                        node = right;
+                        other = other_l;
+                    }
+                    // We will need to traverse the other node later.
+                    stack[stack_offset++] = other;
+                }
+            }
+        }
+        // Reaching this only when there was no hit. Get from stack.
+        if (!iterated)
+        if (stack_offset > 0) {
+            node = bvh.data[stack[--stack_offset]];
+        } else {
+            return intersection;
+        }
+    }
+    intersection.t = INFINITY;
+    intersection.debug = 0;
     return intersection;
 }
 
@@ -238,7 +323,7 @@ TraceIntersection trace(Ray ray) {
         BVHNode node = bvh.data[i];
         float far_t;
         float near_t = bbox_collision(node.bbox, ray, far_t);
-        bool ditch_node = near_t > min_t;
+        bool ditch_node = (far_t < near_t) || (near_t > min_t);
         if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
             Primitive p = primitive_pool.data[node.primitive_offset];
             for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
@@ -444,7 +529,8 @@ void main() {
         //color = textureCube(sky, coord);
         color.a = 1;
         //TraceIntersection intersection = trace(ray);
-        TraceIntersection intersection = r_trace(ray);
+        //TraceIntersection intersection = r_trace(ray);
+        TraceIntersection intersection = nu_trace(ray);
 
         float t = intersection.t;
         // --- actual trace ends here
