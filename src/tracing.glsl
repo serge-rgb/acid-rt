@@ -61,7 +61,10 @@ struct AABB {
 
 struct BVHNode {
     int primitive_offset;
+    int l_child_offset;
     int r_child_offset;
+    int parent_offset;
+    int sibling_offset;
     AABB bbox;
 };
 
@@ -74,6 +77,7 @@ struct TraceIntersection {
     float t;
     vec3 point;
     vec3 normal;
+    int debug;
 };
 
 layout(std430, binding = 0) buffer TrianglePool {
@@ -130,16 +134,8 @@ float bbox_collision(AABB box, Ray ray, out float far_t) {
     t0 = max(t0, min(rmin, rmax));
     t1 = min(t1, max(rmin, rmax));
 
-    float collides = float(t0 < t1);
-    far_t = collides * t1 + (1 - collides) * (-INFINITY);
-    return collides * t0 + (1 - collides) * (-INFINITY);
-
-
-    /* if (t0 < t1) { */
-        /* return t0;// > 0? t0 : t1; */
-    /* } else { */
-    /*     return -INFINITY; */
-    /* } */
+    far_t = t1;
+    return t0;
 }
 
 vec3 barycentric(Triangle tri, Ray ray) {
@@ -151,6 +147,81 @@ vec3 barycentric(Triangle tri, Ray ray) {
     float det = dot(-n, ray.dir);
     //if (det <= EPSILON && det >= -EPSILON) return vec3(-1);
     return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
+}
+
+
+TraceIntersection r_trace(Ray ray) {
+    TraceIntersection intersection;
+    intersection.t = INFINITY;
+    float min_t = INFINITY;
+    vec3 point;
+    vec3 normal;
+
+    BVHNode node = bvh.data[0];
+    int bitstack = 0;
+    int cnt = 0;
+    while (true) {
+        if (cnt >= 1000) break;
+        //if (far_t > 0)
+        if ( node.primitive_offset >= 0 ) {                                     // LEAF
+            Primitive p = primitive_pool.data[node.primitive_offset];
+            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
+                Triangle t = triangle_pool.data[j];
+                vec3 bar = barycentric(t, ray);
+                if (bar.x > 0 &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1) {
+                    if (bar.x < min_t) {
+                        Triangle n = normal_pool.data[j];
+                        min_t = bar.x;
+                        float u = bar.y;
+                        float v = bar.z;
+                        point = ray.o + bar.x * ray.dir;
+                        normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
+                        intersection.t = min_t;
+                        intersection.point = point;
+                        intersection.normal = normal;
+                        intersection.debug = 0;
+                    }
+                }
+            }
+        } else {                                                 // INNER NODE
+            BVHNode left = bvh.data[node.l_child_offset];
+            BVHNode right = bvh.data[node.r_child_offset];
+            float lfar_t;
+            float left_t = bbox_collision(left.bbox, ray, lfar_t);
+            float rfar_t;
+            float right_t = bbox_collision(right.bbox, ray, rfar_t);
+            bool left_hit = lfar_t > left_t;
+            bool right_hit = rfar_t > right_t;
+
+            // if (!left_hit && !right_hit) break;
+            bitstack <<= 1;
+            if (left_hit && right_hit) {
+                node = left_t < right_t? left : right;
+                bitstack |= 1;
+            } else {
+                node = left_hit? left : right;
+            }
+            continue;
+        }
+        while ((bitstack & 1) == 0 ) {
+            if (bitstack == 0) {
+                return intersection;
+            }
+            node = bvh.data[node.parent_offset];
+            bitstack >>= 1;
+        }
+        if (node.primitive_offset == -1) {
+            node = bvh.data[node.sibling_offset];
+        }
+        bitstack ^= 1;
+        cnt++;
+    } //while
+
+    intersection.t = INFINITY;
+    return intersection;
 }
 
 TraceIntersection trace(Ray ray) {
@@ -372,7 +443,9 @@ void main() {
         color = vec4(0.5);
         //color = textureCube(sky, coord);
         color.a = 1;
-        TraceIntersection intersection = trace(ray);
+        //TraceIntersection intersection = trace(ray);
+        TraceIntersection intersection = r_trace(ray);
+
         float t = intersection.t;
         // --- actual trace ends here
 
@@ -390,6 +463,7 @@ void main() {
         } else {
             color = textureCube(sky, normalize(fsky_coord));
         }
+        if (intersection.debug == 1) color.rgb = vec3(1);
     }
 
     imageStore(tex, coord, color);

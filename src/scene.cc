@@ -148,7 +148,10 @@ static void bbox_fill(AABB* bbox) {
 // Plain and simple struct for flattened tree.
 struct BVHNode {
     int primitive_offset;       // >0 when leaf. -1 when not.
+    int left_child_offset;      // should be i + 1
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
+    int parent_offset;          // Pointer to dad.
+    int sibling_offset;
     AABB bbox;
 };
 
@@ -158,6 +161,8 @@ struct BVHTreeNode {
     // Children
     BVHTreeNode* left;
     BVHTreeNode* right;
+    BVHTreeNode* parent;
+    BVHTreeNode* sibling;
 };
 
 enum SplitPlane {
@@ -175,6 +180,10 @@ static BVHTreeNode* build_bvh(
     BVHNode data;
     data.primitive_offset = -1;
     data.right_child_offset = -1;
+    data.parent_offset = -1;
+    data.sibling_offset = -1;
+    node->parent = NULL;
+    node->sibling = NULL;
 
     ph_assert(count(primitives) != 0);
     data.bbox = get_bbox(primitives.ptr, (int)count(primitives));
@@ -257,6 +266,14 @@ static BVHTreeNode* build_bvh(
             release(&slice_left);
             release(&slice_right);
             node->data = data;
+            if(node->left) {
+                node->left->parent = node;
+                node->left->sibling = node->right;
+            }
+            if (node->right) {
+                node->right->parent = node;
+                node->right->sibling = node->left;
+            }
             return node;
         }
 
@@ -419,6 +436,14 @@ static BVHTreeNode* build_bvh(
         if (count(slice_right)) {
             node->right = build_bvh(slice_right, new_indices_r, bbox_cache, (split + 1) % 3);
         }
+        if(node->left) {
+            node->left->parent = node;
+            node->left->sibling = node->right;
+        }
+        if (node->right) {
+            node->right->parent = node;
+            node->right->sibling = node->left;
+        }
         release(&slice_left);
         release(&slice_right);
         phree(new_indices_l);
@@ -558,9 +583,12 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     stack_offset = 0;
     stack[stack_offset++] = root;
     int i = 0;
+    slice.ptr[0].parent_offset = 0;  // Root's parent is itself TODO: check if necessary
     while(stack_offset > 0) {
         auto fatnode = stack[--stack_offset];
         bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
+        slice.ptr[i].parent_offset = -1;
+        slice.ptr[i].sibling_offset = -1;
         if (!is_leaf) {
             stack[stack_offset++] = fatnode->right;
             stack[stack_offset++] = fatnode->left;
@@ -568,6 +596,21 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
             ph_assert(found_i >= 0);
             ph_assert(found_i < int64(1) << 31);
             slice.ptr[i].right_child_offset = (int)found_i;
+            slice.ptr[i].left_child_offset = i + 1;
+        } else {
+            slice.ptr[i].sibling_offset = -1;
+        }
+        if (fatnode->sibling) {
+            auto found_i = *find(&dict, fatnode->sibling);
+            slice.ptr[i].sibling_offset = (int)found_i;
+        }
+        if (fatnode->parent) {
+            auto found_i = *find(&dict, fatnode->parent);
+            ph_assert(found_i >= 0);
+            ph_assert(found_i < int64(1) << 31);
+            slice.ptr[i].parent_offset = (int)found_i;
+        } else {
+            log("No parent for fatnode");
         }
         i++;
     }
@@ -578,17 +621,17 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     return slice.ptr;
 }
 
-static bool validate_flattened_bvh(BVHNode* node, int64 len) {
+static bool validate_flattened_bvh(BVHNode* root, int64 len) {
     bool* check = phalloc(bool, len);
     for (int64 i = 0; i < len; ++i) {
         check[i] = false;
     }
 
     int64 num_leafs = 0;
-
+    BVHNode* node = root;
     for (int64 i = 0; i < len; ++i) {
         /* printf("Node %ld: At its right: %d\n", i, node->right_child_offset); */
-        if (node->primitive_offset != -1) {
+        if (node->primitive_offset != -1) {  // Not leaf
             num_leafs++;
             /* printf("  Leaf! %d\n", node->primitive_offset); */
             if (check[node->primitive_offset]) {
@@ -596,6 +639,36 @@ static bool validate_flattened_bvh(BVHNode* node, int64 len) {
                 return false;
             }
             check[node->primitive_offset] = true;
+
+        } else {
+            auto* dad = node;
+            auto* bob = &root[dad->left_child_offset];
+            auto* ana = &root[dad->right_child_offset];
+            auto* bob_a = &root[ana->sibling_offset];
+            auto* ana_a = &root[bob->sibling_offset];
+            auto* dad_a = &root[bob->parent_offset];
+
+            dad_a = &root[ana->parent_offset];
+
+            if (ana_a != ana) {
+                log("ERROR");
+                return false;
+            }
+            if (bob_a != bob) {
+                log("ERROR");
+                return false;
+            }
+            if (dad_a != dad) {
+                log("ERROR");
+                return false;
+            }
+            if (node->left_child_offset != i + 1) {
+                log("Flat validation failed: Left child offset");
+                return false;
+            }
+            if (node->sibling_offset == i) {
+                logf("Flat validation: WARNING: sibling is itself: %d.", i);
+            }
         }
         node++;
     }
@@ -607,7 +680,7 @@ static bool validate_flattened_bvh(BVHNode* node, int64 len) {
         }
     }
     phree(check);
-    /* printf("Flat tree valid.\n"); */
+    printf("Flat tree valid.\n");
     return true;
 }
 

@@ -285,7 +285,8 @@ void bunny_sample() {
     scene::init();
 
     auto big_chunk = load_obj("third_party/bunny.obj", /*scale=*/10);
-    auto chunks = localized_chunks(big_chunk, 8);
+    //auto chunks = localized_chunks(big_chunk, 8);
+    auto chunks = localized_chunks(big_chunk, 1000);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
