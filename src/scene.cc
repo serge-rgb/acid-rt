@@ -6,7 +6,7 @@ namespace ph {
 namespace scene {
 
 // For DFS buffers.
-static const int kTreeStackLimit = 30;
+static const int kTreeStackLimit = 64;
 
 // Defined below
 struct BVHNode;

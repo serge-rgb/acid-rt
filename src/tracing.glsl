@@ -227,17 +227,12 @@ TraceIntersection r_trace(Ray ray) {
 TraceIntersection nu_trace(Ray ray) {
     TraceIntersection intersection;
     intersection.t = INFINITY;
-    intersection.debug = 0;
     float min_t = INFINITY;
 
-    int stack[8];
+    int stack[24];
     int stack_offset = 0;
     BVHNode node = bvh.data[0];
-    int cnt = 0;
     while (true) {
-        if (cnt > 100) break;
-        cnt++;
-        bool iterated = false;
         if (node.primitive_offset >= 0) {                     // LEAF
             Primitive p = primitive_pool.data[node.primitive_offset];
             for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
@@ -256,7 +251,6 @@ TraceIntersection nu_trace(Ray ray) {
                         intersection.t = min_t;
                         intersection.point = ray.o + bar.x * ray.dir;
                         intersection.normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
-                        intersection.debug = 0;
                     }
                 }
             }
@@ -272,18 +266,14 @@ TraceIntersection nu_trace(Ray ray) {
             l_n = bbox_collision(left.bbox, ray, l_f);
             r_n = bbox_collision(right.bbox, ray, r_f);
 
-            bool hit_l = l_n < l_f;
-            bool hit_r = r_n < r_f;
+            bool hit_l = (l_n < l_f) && (l_n < min_t);
+            bool hit_r = (r_n < r_f) && (r_n < min_t);
 
             // If anyone got hit
-            if (hit_l || hit_r) {
-                iterated = true;
+            if ((hit_l || hit_r)) {
                 // If just one... traverse
-                if (hit_l) {
-                    node = left;
-                } else {
-                    node = right;
-                }
+                node = hit_l ? left : right;
+
                 // When *both* children are hits choose the nearest
                 if (hit_l && hit_r) {
                     float near = min(l_n, r_n);
@@ -294,10 +284,10 @@ TraceIntersection nu_trace(Ray ray) {
                     // We will need to traverse the other node later.
                     stack[stack_offset++] = other;
                 }
+                continue;
             }
         }
         // Reaching this only when there was no hit. Get from stack.
-        if (!iterated)
         if (stack_offset > 0) {
             node = bvh.data[stack[--stack_offset]];
         } else {
@@ -305,7 +295,7 @@ TraceIntersection nu_trace(Ray ray) {
         }
     }
     intersection.t = INFINITY;
-    intersection.debug = 0;
+    intersection.debug = 1;
     return intersection;
 }
 
@@ -549,7 +539,10 @@ void main() {
         } else {
             color = textureCube(sky, normalize(fsky_coord));
         }
-        if (intersection.debug == 1) color.rgb = vec3(1);
+        if (intersection.debug == 1) {
+            color.rgb = vec3(0);
+            color.r = 1;
+        }
     }
 
     imageStore(tex, coord, color);

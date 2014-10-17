@@ -285,8 +285,8 @@ void bunny_sample() {
     scene::init();
 
     auto big_chunk = load_obj("third_party/bunny.obj", /*scale=*/10);
-    //auto chunks = localized_chunks(big_chunk, 8);
-    auto chunks = localized_chunks(big_chunk, 1000);
+    auto chunks = localized_chunks(big_chunk, 8);
+    //auto chunks = localized_chunks(big_chunk, 50);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
@@ -306,7 +306,7 @@ void bunny_sample() {
 
     // Ray tracer automaticlly looks at GL_TEXTURE2 for a skybox.
     gl::create_cubemap(GL_TEXTURE2, fnames);
-    io::set_wasd_camera(-0.5, 1, 3);
+    io::set_wasd_camera(-0.4f, 1, 2);
 
     { // Release big chunk
        phree(big_chunk.verts);

@@ -7,7 +7,7 @@ set config=Debug
 ::set config=Release
 
 :: /nr prevents creation of persitent msbuild processes
-msbuild build\nuwen.sln /nologo /v:q /m /nr:false /t:%target% /p:Configuration=%config%
+msbuild build\nuwen.sln /nologo /v:q /m /nr:true /t:%target% /p:Configuration=%config%
 
 if %errorlevel% neq 0 goto End
 
