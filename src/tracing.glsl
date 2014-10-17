@@ -192,8 +192,8 @@ TraceIntersection nu_trace(Ray ray) {
             l_n = bbox_collision(left.bbox, ray, inv_dir, l_f);
             r_n = bbox_collision(right.bbox, ray, inv_dir, r_f);
 
-            bool hit_l = (l_n < l_f) && (l_n < min_t);
-            bool hit_r = (r_n < r_f) && (r_n < min_t);
+            bool hit_l = (l_n < l_f) && (l_n < min_t) && (l_f > 0);
+            bool hit_r = (r_n < r_f) && (r_n < min_t) && (r_f > 0);
 
             // If anyone got hit
             if ((hit_l || hit_r)) {
