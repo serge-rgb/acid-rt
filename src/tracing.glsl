@@ -149,7 +149,7 @@ TraceIntersection nu_trace(Ray ray) {
     intersection.t = INFINITY;
     float min_t = INFINITY;
 
-    int stack[24];
+    int stack[16];
     int stack_offset = 0;
 
     vec3 inv_dir = vec3(1) / ray.dir;
@@ -305,19 +305,19 @@ float recip_poly(float r) {
     return 1 / (k0 + r * (k1 + r * (r * k2 + r * k3)));
 }
 
-    const float K[11] = {
-        1.003000,
-        1.020000,
-        1.042000,
-        1.066000,
-        1.094000,
-        1.126000,
-        1.162000,
-        1.203000,
-        1.250000,
-        1.310000,
-        1.380000,
-    };  // TODO: Hard coded,
+const float K[11] = {
+    1.003000,
+    1.020000,
+    1.042000,
+    1.066000,
+    1.094000,
+    1.126000,
+    1.162000,
+    1.203000,
+    1.250000,
+    1.310000,
+    1.380000,
+};  // TODO: Hard coded,
 
 float catmull(float r) {
     int num_segments = 11;
@@ -437,8 +437,8 @@ void main() {
 
     if (occlude && radius_sq > 0.18) {         // <--- Cull
         // Green is great for checking appropiate radius.
-        color = vec4(0,1,0,1);
-        /* color = vec4(0); */
+        /* color = vec4(0,1,0,1); */
+        color = vec4(0);
     } else {                                     // <--- Ray trace.
         Ray ray;
         ray.o = point;
@@ -448,7 +448,6 @@ void main() {
         //color = textureCube(sky, coord);
         color.a = 1;
         //TraceIntersection intersection = trace(ray);
-        //TraceIntersection intersection = r_trace(ray);
         TraceIntersection intersection = nu_trace(ray);
 
         float t = intersection.t;
