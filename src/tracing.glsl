@@ -16,6 +16,7 @@ layout(location = 10) uniform vec3 camera_pos;
 layout(location = 11, rgba32f) uniform image2D back_tex;    // Framebuffer for the prev frame
 layout(location = 12) uniform bool enable_interlacing;      // Should warp interlacing optimization be on.
 layout(location = 13) uniform samplerCube sky;              // Skybox texture
+layout(location = 14) uniform bool skybox_enabled;
 
 #extension GL_NV_shadow_samplers_cube : enable
 
@@ -63,8 +64,6 @@ struct BVHNode {
     int primitive_offset;
     int l_child_offset;
     int r_child_offset;
-    int parent_offset;
-    int sibling_offset;
     AABB bbox;
 };
 
@@ -101,9 +100,7 @@ layout(std430, binding = 4) buffer NormalPool {
 } normal_pool;
 
 float bbox_collision(AABB box, Ray ray, vec3 inv_dir, out float far_t) {
-    // Perf note:
-    //  Precomputing inv_dir gives no measurable perf gain (geforce 770)
-    // Note #2
+    // Note
     //  Rearranging into (x * a) + b gives a minor perf gain (MUL+ADD => MAD ??)
     float t0 = 0;
     float t1 = INFINITY;
@@ -144,7 +141,7 @@ vec3 barycentric(Triangle tri, Ray ray) {
     return (1 / det) * vec3(dot(n, s), dot(m, e2), dot(-m, e1));
 }
 
-TraceIntersection nu_trace(Ray ray) {
+TraceIntersection trace(Ray ray) {
     TraceIntersection intersection;
     intersection.t = INFINITY;
     float min_t = INFINITY;
@@ -223,54 +220,6 @@ TraceIntersection nu_trace(Ray ray) {
     }
     intersection.t = INFINITY;
     intersection.debug = 1;
-    return intersection;
-}
-
-TraceIntersection trace(Ray ray) {
-    TraceIntersection intersection;
-    float min_t = INFINITY;
-    vec3 point;
-    vec3 normal;
-
-    vec3 inv_dir = vec3(1) / ray.dir;
-
-    int stack[32];
-    int stack_offset = 0;
-    stack[stack_offset++] = 0;
-    while (stack_offset > 0) {
-        int i = stack[--stack_offset];
-        BVHNode node = bvh.data[i];
-        float far_t;
-        float near_t = bbox_collision(node.bbox, ray, inv_dir, far_t);
-        bool ditch_node = (far_t < near_t) || (near_t > min_t);
-        if (node.primitive_offset >= 0 && !ditch_node) {                     // LEAF
-            Primitive p = primitive_pool.data[node.primitive_offset];
-            for (int j = p.offset; j < p.offset + p.num_triangles; ++j) {
-                Triangle t = triangle_pool.data[j];
-                vec3 bar = barycentric(t, ray);
-                if (bar.x > 0 &&
-                        bar.y < 1 && bar.y > 0 &&
-                        bar.z < 1 && bar.z > 0 &&
-                        (bar.y + bar.z) < 1) {
-                    if (bar.x < min_t) {
-                        Triangle n = normal_pool.data[j];
-                        min_t = bar.x;
-                        float u = bar.y;
-                        float v = bar.z;
-                        point = ray.o + bar.x * ray.dir;
-                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                        normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
-                    }
-                }
-            }
-        } else if (far_t > 0 && !ditch_node) {                              // INNER NODE
-            stack[stack_offset++] = i + 1;
-            stack[stack_offset++] = node.r_child_offset;
-        }
-    }
-    intersection.t = min_t;
-    intersection.point = point;
-    intersection.normal = normal;
     return intersection;
 }
 
@@ -445,10 +394,9 @@ void main() {
         ray.dir = ray.o - eye;  // Not normalized so that we get correct distances. FWIW
 
         color = vec4(0.5);
-        //color = textureCube(sky, coord);
+
         color.a = 1;
-        //TraceIntersection intersection = trace(ray);
-        TraceIntersection intersection = nu_trace(ray);
+        TraceIntersection intersection = trace(ray);
 
         float t = intersection.t;
         // --- actual trace ends here
@@ -465,7 +413,7 @@ void main() {
                 color.rgb += vec4(rgb, 1).rgb;
             }
         } else {
-            color = textureCube(sky, normalize(fsky_coord));
+            if (skybox_enabled) color = textureCube(sky, normalize(fsky_coord));
         }
         if (intersection.debug == 1) {
             color.rgb = vec3(0);
