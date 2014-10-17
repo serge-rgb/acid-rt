@@ -59,6 +59,7 @@ BSD-style.
 TODO
 ----
 
+* crytek sponza
 * rudimentary lighting model
 * bouncing ball sample
 * on screen text

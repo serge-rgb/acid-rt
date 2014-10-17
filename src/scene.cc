@@ -194,7 +194,8 @@ static BVHTreeNode* build_bvh(
 
         { // Fill centroids. Calculate midpoint.
             for (int i = 0; i < count(primitives); ++i) {
-                auto ci = append(&centroids, get_centroid(get_bbox(&primitives[i], 1)));
+                auto bbox = bbox_cache[indices[i]];
+                auto ci = append(&centroids, get_centroid(bbox));
                 midpoint.x += centroids[ci].x;
                 midpoint.y += centroids[ci].y;
                 midpoint.z += centroids[ci].z;
@@ -317,7 +318,7 @@ static BVHTreeNode* build_bvh(
                         (bbox_vmax[split] - bbox_vmin[split]));
                 if (b == kNumBuckets) { b--; }
                 /* buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1)); */
-                buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[i]);
+                buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[indices[i]]);
                 buckets[b].num++;
                 assign[i] = b;
             }
