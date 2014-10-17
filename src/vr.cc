@@ -28,6 +28,7 @@ static float                     m_lens_center_l[2];
 static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
 static bool                      m_do_interlace_throttling = false;
+static bool                      m_skybox_enabled = true;
 
 ovrHmd                    m_hmd;
 
@@ -185,6 +186,7 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
         glUniform1i(12, false);  // interlacing
         glUniform1i(13, /*GL_TEXTURE2*/2);  // skybox
+        glUniform1i(14, m_skybox_enabled);
         GLCHK ( glUniform1i(Location_tex, 0) );  // Location: 1, Texture Unit: 0
         GLCHK ( glUniform1i(11, 1) );  // Back texture
 
@@ -279,6 +281,18 @@ void toggle_postproc() {
 
 void toggle_interlace_throttle() {
     m_do_interlace_throttling = m_do_interlace_throttling? false : true;
+}
+
+void enable_skybox() {
+    m_skybox_enabled = true;
+    glUseProgram(m_program);
+    glUniform1i(14, m_skybox_enabled);
+}
+
+void disable_skybox() {
+    m_skybox_enabled = false;
+    glUseProgram(m_program);
+    glUniform1i(14, m_skybox_enabled);
 }
 
 void draw(int* resolution) {

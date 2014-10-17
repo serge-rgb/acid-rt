@@ -59,9 +59,7 @@ BSD-style.
 TODO
 ----
 
-* UBO trace stack
 * rudimentary lighting model
 * bouncing ball sample
 * on screen text
 * non-vr mode (fallback)
-* single ph header/impl

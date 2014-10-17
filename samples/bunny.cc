@@ -304,8 +304,12 @@ void bunny_sample() {
         "samples/skybox/posz.jpg",
     };
 
+    static GLuint cube = 0;
     // Ray tracer automaticlly looks at GL_TEXTURE2 for a skybox.
-    gl::create_cubemap(GL_TEXTURE2, fnames);
+    if (!cube) {
+        cube = gl::create_cubemap(GL_TEXTURE2, fnames);
+    }
+    vr::enable_skybox();
     io::set_wasd_camera(-0.4f, 1, 2);
 
     { // Release big chunk

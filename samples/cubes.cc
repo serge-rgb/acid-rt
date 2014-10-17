@@ -35,6 +35,8 @@ void cubes_sample() {
 
     io::set_wasd_camera(0,-2,3);
 
+    vr::disable_skybox();
+
     scene::update_structure();
     scene::upload_everything();
 

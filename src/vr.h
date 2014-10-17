@@ -13,6 +13,10 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
 void draw(int* resolution);
 
+void enable_skybox();
+
+void disable_skybox();
+
 void toggle_postproc();
 
 void toggle_interlace_throttle();
