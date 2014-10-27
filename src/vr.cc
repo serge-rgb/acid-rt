@@ -29,6 +29,8 @@ static float                     m_lens_center_r[2];
 static bool                      m_do_postprocessing = true;
 static bool                      m_do_interlace_throttling = false;
 static bool                      m_skybox_enabled = true;
+static ovrEyeRenderDesc          m_render_desc_l;
+static ovrEyeRenderDesc          m_render_desc_r;
 
 ovrHmd                    m_hmd;
 
@@ -233,8 +235,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     m_lens_center_r[0] = vr::m_renderinfo->LensSeparationInMeters / 2;
     m_lens_center_r[1] = vr::m_hmdinfo->CenterFromTopInMeters;
 
-    // Get as much from the OVR config util as possible. (i.e. some unnecessary work done by libOVR)
-    auto render_desc = CalculateDistortionRenderDesc(OVR::StereoEye(OVR::StereoEye_Left), *m_renderinfo);
+    m_render_desc_l = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, m_hmd->DefaultEyeFov[0]);
+    m_render_desc_r = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, m_hmd->DefaultEyeFov[1]);
     /* auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo); */
 
     /* for (int i = 0; i < OVR::LensConfig::NumCoefficients; ++i) { */
@@ -305,27 +307,39 @@ void draw(int* resolution) {
     ovrHmd_BeginFrameTiming(vr::m_hmd, frame_index);
     long frame_begin = io::get_microseconds();
 
-    ovrPosef pose = ovrHmd_GetEyePose(vr::m_hmd, ovrEye_Left);
+    ovrPosef poses[2];
+    {
+        ovrVector3f offsets[2] = {
+            m_render_desc_l.HmdToEyeViewOffset,
+            m_render_desc_r.HmdToEyeViewOffset
+        };
+        ovrHmd_GetEyePoses(m_hmd, frame_index, offsets, poses, /*ovrTrackingState*/NULL);
+    }
+
 
     // TODO -- Controls should be handled elsewhere
-    auto q = pose.Orientation;
-    GLfloat quat[4] {
-        q.x, q.y, q.z, q.w,
-    };
-    auto p = pose.Position;
-    GLfloat camera_pos[3];
-    io::get_wasd_camera(quat, camera_pos);
-    // add pos
-    camera_pos[0] += p.x;
-    camera_pos[1] += p.y;
-    camera_pos[2] += p.z;
+    auto update_camera = [&poses](int i) {
+        ovrPosef pose = poses[i];
+        auto q = pose.Orientation;
+        GLfloat quat[4] {
+            q.x, q.y, q.z, q.w,
+        };
+        auto p = pose.Position;
+        GLfloat camera_pos[3];
+        io::get_wasd_camera(quat, camera_pos);
+        // add pos
+        camera_pos[0] += p.x;
+        camera_pos[1] += p.y;
+        camera_pos[2] += p.z;
 
-    GLCHK ( glUniform4fv(7, 1, quat) );  // Camera orientation
-    GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
+        GLCHK ( glUniform4fv(7, 1, quat) );  // Camera orientation
+        GLCHK ( glUniform3fv(10, 1, camera_pos) );  // update camera_pos
+    };
 
     GLCHK ( glUniform1i(9, (GLint)frame_index) );
     // Dispatch left viewport
     {
+        update_camera(0);
         glUniform2fv(6, 1, m_lens_center_l);  // Lens center
         GLCHK ( glUniform1f(2, 0) );  // x_offset
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),
@@ -333,6 +347,7 @@ void draw(int* resolution) {
     }
     // Dispatch right viewport
     {
+        update_camera(1);
         glUniform2fv(6, 1, m_lens_center_r);  // Lens center
         glUniform1f(2, ((GLfloat)viewport_resolution[0]));  // x_offset
         GLCHK ( glDispatchCompute(GLuint(viewport_resolution[0] / g_warpsize[0]),

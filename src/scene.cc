@@ -882,35 +882,6 @@ static int64 submit_primitive(AABB* bbox) {
     return submit_primitive(&cube);
 }
 
-// For debugging purposes.
-// TODO: height check is broken.
-void submit_primitive(BVHTreeNode* root) {
-    if (m_debug_bvh_height < 0) return;
-
-    auto nodes = MakeSlice<BVHTreeNode*>(1);
-
-    BVHTreeNode* stack[64];
-    int stack_offset = 0;
-    stack[stack_offset++] = root->right;
-    stack[stack_offset++] = root->left;
-
-    while (stack_offset > 0) {
-        BVHTreeNode* node = stack[--stack_offset];
-        if (stack_offset == m_debug_bvh_height) {
-            append(&nodes, node);
-        }
-
-        if (node->left != NULL && node->right != NULL) {
-            stack[stack_offset++] = node->right;
-            stack[stack_offset++] = node->left;
-        }
-    }
-
-    for (int i = 0; i < count(nodes); ++i) {
-        submit_primitive(&nodes[i]->data.bbox);
-    }
-}
-
 int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
     // Non-exhaustive check to rule out non-triangle meshes:
     ph_assert(chunk->num_verts % 3 == 0);
@@ -1067,7 +1038,7 @@ void upload_everything() {
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_normal_buffer) );
     }
 
-    // Submit light data to gpu.
+    // Submit light data.
     {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_light_buffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER,

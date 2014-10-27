@@ -72,11 +72,6 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags = SubmitFlags_None, int64
 
 // ----------------------
 
-// ---- update_primitive
-// TODO: implement this
-
-// ----------------------
-
 // ---- After submitting or updating, update the acceleration structure
 
 // Build acceleration structure,
