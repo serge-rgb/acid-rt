@@ -274,7 +274,6 @@ static BVHTreeNode* build_bvh(
             return node;
         }
 
-
         bool use_sah = count(primitives) > 4;
         // ============================================================
         // SAH

@@ -23,7 +23,7 @@ You will need:
 * CMake
 * Visual Studio 2013
 
-Place the latest (0.4.2) OculusSDK folder inside the project's root directory.
+Place the latest (0.4.3) OculusSDK folder inside the project's root directory.
 
 Open git shell, go to the project dir and run:
 
@@ -44,7 +44,11 @@ Use cmake to create a visual studio solution.
 Run samples
 -----------
 
-Build and run the 'samples' project.
+Build and run the 'samples' project. Left and right arrows switch between samples.
+
+1. Cube grid
+2. Stanford Bunny
+3. Crytek Sponza
 
 You can do that either through Visual Studio or through the built-in
 `build.bat` script. `build.bat` copies DLLs so it should be run at least once

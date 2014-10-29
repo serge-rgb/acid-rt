@@ -23,7 +23,7 @@ if (UNIX)
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 endif()
 if (WIN32)
-    set(CMAKE_CXX_FLAGS "/MP /Wall /WX /wd4514 /wd4505 /wd4996 /wd4756 /wd4056 /wd4738 /D_CRT_SECURE_NO_WARNINGS")
+    set(CMAKE_CXX_FLAGS "/MP /Wall /WX /wd4514 /wd4505 /wd4996 /wd4756 /wd4056 /wd4738 /wd4686 /D_CRT_SECURE_NO_WARNINGS")
     set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od /ZI")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /wd4711")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELEASE} " /Zi")
@@ -88,10 +88,11 @@ endif()
 set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
 set (engine_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ph_gl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vr.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ph_gl.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/window.cc
     )
 #===============================================================================

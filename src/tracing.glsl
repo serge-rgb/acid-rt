@@ -146,7 +146,7 @@ TraceIntersection trace(Ray ray) {
     intersection.t = INFINITY;
     float min_t = INFINITY;
 
-    int stack[16];
+    int stack[12];
     int stack_offset = 0;
 
     vec3 inv_dir = vec3(1) / ray.dir;
@@ -338,7 +338,7 @@ void main() {
     //float ar = screen_size.y / screen_size.x;
     vec3 eye = vec3(0, 0, 0);
 
-    vec3 fsky_coord;
+    vec3 sky_coord;
     // This point represents the pixel in the viewport as a point in the frustrum near face
     vec3 point = vec3((gl_GlobalInvocationID.x / screen_size.x),
                       (gl_GlobalInvocationID.y / screen_size.y),
@@ -359,7 +359,7 @@ void main() {
     // The constant 1.22222222 is (110 / 90).
     //  A typical cubemap face has a 90 degree vertical FOV.
     //  This is a hacky fix for 110 degree FOV. :)
-    fsky_coord = normalize(vec3(point.xy,-1) * 1.22222222);
+    sky_coord = normalize(vec3(point.xy,-1) * 1.22222222);
 
     // Scale by aspect ratio.
     point.x *= screen_size.x / screen_size.y;
@@ -376,7 +376,7 @@ void main() {
     // Rotate.
     eye = rotate_vector_quat(eye, orientation_q);
     point = rotate_vector_quat(point, orientation_q);
-    fsky_coord = rotate_vector_quat(fsky_coord, vec4(orientation_q.xyz, orientation_q.w));
+    sky_coord = rotate_vector_quat(sky_coord, vec4(orientation_q.xyz, orientation_q.w));
 
     // Camera movement
     eye += camera_pos;
@@ -413,7 +413,7 @@ void main() {
                 color.rgb += vec4(rgb, 1).rgb;
             }
         } else {
-            if (skybox_enabled) color = textureCube(sky, normalize(fsky_coord));
+            if (skybox_enabled) color = textureCube(sky, normalize(sky_coord));
         }
         if (intersection.debug == 1) {
             color.rgb = vec3(0);
