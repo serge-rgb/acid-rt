@@ -1,6 +1,8 @@
-﻿#include "scene.h"
+﻿#include "scene.h
 
-#include "ph_gl.h"
+
+#include "ph_gl.h
+
 
 namespace ph {
 namespace scene {

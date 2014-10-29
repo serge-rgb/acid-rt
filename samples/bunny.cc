@@ -23,7 +23,7 @@ void bunny_sample() {
             "third_party/bunny.obj", mesh::LoadFlags_NoTexcoords, /*scale=*/10);
 
     // 100 - 150 seems to be the sweetspot for bunny.obj
-    auto chunks = mesh::shatter(big_chunk, 150);
+    auto chunks = mesh::shatter(big_chunk, 100);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
