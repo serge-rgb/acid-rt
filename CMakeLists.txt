@@ -87,7 +87,7 @@ if (WIN32)
 endif()
 set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
-set (engine_sources
+set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ph_gl.cc

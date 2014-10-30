@@ -121,7 +121,7 @@ struct Slice {
     T& operator[](const int64 i) {
 #ifdef PH_DEBUG
         if (i >= n_elems) {
-            printf("fail access here.");  // Serving as a place to place breakpoints.
+            log("slice access fail");  // Serving as a place to place breakpoints.
         }
 #endif
         ph_assert(i >= 0);

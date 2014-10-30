@@ -1,8 +1,10 @@
 include(../OVRLink.cmake)  # for ph_link_ovr
 
 set (sample_sources
-	${engine_sources}
+	${renderer_sources}
     samples.cc
+    # == sponza
+    sponza.cc
     # == bunny obj model
     bunny.cc
     # == cube grid

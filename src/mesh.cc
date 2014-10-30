@@ -14,7 +14,7 @@ scene::Chunk load_obj(const char* path, float scale) {
     return load_obj_with_face_fmt(path, LoadFlags_Default, scale);
 }
 
-scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags, float scale) {
+scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float scale) {
     char* model_str_raw = (char *)io::slurp(path);
 
     typedef char* charptr;
@@ -84,20 +84,25 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags, float scale) {
                 }
             case Type_face:
                 {
-                    /* int a,b,c, */
-                    /*     d,e,f, */
-                    /*     g,h,k; */
-                    /* sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", */
-                    /*         &a,&b,&c, */
-                    /*         &d,&e,&f, */
-                    /*         &g,&h,&k); */
-                    int a,c,
-                        d,f,
-                        g,k;
-                    sscanf(line, "f %d//%d %d//%d %d//%d",
-                            &a, &c,
-                            &d, &f,
-                            &g, &k);
+                    int a,b,c,
+                        d,e,f,
+                        g,h,k;
+                    a = b = c = d = e = f = g = h = k = 0;
+                    switch (flags) {
+                    case LoadFlags_Default:
+                        sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
+                                &a,&b,&c,
+                                &d,&e,&f,
+                                &g,&h,&k);
+                        break;
+                    case LoadFlags_NoTexcoords:
+                        sscanf(line, "f %d//%d %d//%d %d//%d",
+                                &a, &c,
+                                &d, &f,
+                                &g, &k);
+                        break;
+                    }
+
                     /* printf("%d/%d %d/%d %d/%d\n", a,c, d,f, g,k); */
                     Face face;
                     face.vert_i[0] = a;
@@ -116,8 +121,12 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags, float scale) {
                     break;
                 }
             }
+            if (count(faces) >= 50000) {
+                break;
+            }
         }
     }
+    logf("num faces %ld\n", count(faces));
     scene::Chunk chunk;
     {  // Fill chunk.
         // Copies from vert / norms so that they form triangles.
@@ -145,7 +154,7 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags, float scale) {
     return chunk;
 }
 
-Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
+Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit, int depth) {
     ph_assert(big_chunk.num_verts % 3 == 0);
     // Base cases:
     auto size = big_chunk.num_verts;
@@ -156,7 +165,8 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
         slice.n_capacity = 0;
         return slice;
     }
-    if (size < limit) {                             // size < limit => Return a slice of one.
+    static int kMaxDepth = 1000;
+    if (size < limit || depth >= kMaxDepth) {                             // size < limit => Return a slice of one.
         auto slice = MakeSlice<scene::Chunk>(1);
         scene::Chunk chunk;
         chunk.num_verts = big_chunk.num_verts;
@@ -193,14 +203,14 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
     //printf("Centroid is: %s\n", str(centroid));
     // 3) Make 8 chunks. Fill each one with triangles corresponding to eight corners.
     scene::Chunk chunks[2][2][2];
+    Slice<glm::vec3> vert_slices[2][2][2];
+    Slice<glm::vec3> norm_slices[2][2][2];
+
     // Fill memory.
-    // Worst case scenario: whole big_chunk is in a single octree cell. (?)
     for (int j = 0; j < 8; ++j) {
-        size_t sz = (size_t)big_chunk.num_verts;
         ((scene::Chunk*)chunks)[j].num_verts = 0;
-        // Wasteful!
-        ((scene::Chunk*)chunks)[j].verts = phalloc(glm::vec3, sz);
-        ((scene::Chunk*)chunks)[j].norms = phalloc(glm::vec3, sz);
+        ((Slice<glm::vec3>*)vert_slices)[j] = MakeSlice<glm::vec3>((size_t)2);
+        ((Slice<glm::vec3>*)norm_slices)[j] = MakeSlice<glm::vec3>((size_t)2);
     }
 
     // Fill chunks.
@@ -226,9 +236,20 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
         for (int k = 0; k < 3; ++k) {
             auto vert = big_chunk.verts[j + k];
             auto norm = big_chunk.norms[j + k];
-            auto num = chunks[z][y][x].num_verts++;
-            chunks[z][y][x].verts[num] = vert;
-            chunks[z][y][x].norms[num] = norm;
+            chunks[z][y][x].num_verts++;
+            append(&vert_slices[z][y][x], vert);
+            append(&norm_slices[z][y][x], norm);
+
+            //chunks[z][y][x].verts[num] = vert;
+            //chunks[z][y][x].norms[num] = norm;
+        }
+    }
+    for (int iz = 0; iz < 2; iz++) {
+        for (int iy = 0; iy < 2; iy++) {
+            for (int ix = 0; ix < 2; ix++) {
+                chunks[iz][iy][ix].verts = vert_slices[iz][iy][ix].ptr;
+                chunks[iz][iy][ix].norms = norm_slices[iz][iy][ix].ptr;
+            }
         }
     }
     // 4) Recurse.
@@ -236,7 +257,14 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
     auto slice = MakeSlice<scene::Chunk>(8);
     Slice<scene::Chunk> subchunks[8];
     for (int j = 0; j < 8; ++j) {
-        subchunks[j] = shatter(((scene::Chunk*)chunks)[j], limit);
+        if (((scene::Chunk*)chunks)[j].num_verts == 0) {
+            static int c = 0;
+            c++;
+            subchunks[j].n_elems = 0;
+            subchunks[j].ptr = NULL;
+        } else {
+            subchunks[j] = shatter(((scene::Chunk*)chunks)[j], limit, depth + 1);
+        }
         phree(((scene::Chunk*)chunks)[j].verts);
         phree(((scene::Chunk*)chunks)[j].norms);
     }

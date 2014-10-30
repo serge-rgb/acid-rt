@@ -68,3 +68,4 @@ TODO
 * bouncing ball sample
 * on screen text
 * non-vr mode (fallback)
+* port to OpenCL

@@ -2,8 +2,8 @@
 ::set target=ph_test
 set target=samples
 
+set config=RelWithDebInfo
 set config=Debug
-::set config=RelWithDebInfo
 ::set config=Release
 
 :: /nr prevents creation of persitent msbuild processes

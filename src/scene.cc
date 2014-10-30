@@ -1,8 +1,6 @@
-﻿#include "scene.h
+﻿#include "scene.h"
 
-
-#include "ph_gl.h
-
+#include "ph_gl.h"
 
 namespace ph {
 namespace scene {
@@ -276,7 +274,7 @@ static BVHTreeNode* build_bvh(
             return node;
         }
 
-        bool use_sah = count(primitives) > 4;
+        bool use_sah = true && count(primitives) > 4;
         // ============================================================
         // SAH
         // ============================================================
