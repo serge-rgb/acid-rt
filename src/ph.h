@@ -120,7 +120,7 @@ struct Slice {
     size_t n_capacity;
     T& operator[](const int64 i) {
 #ifdef PH_DEBUG
-        if (i >= n_elems) {
+        if (i >= n_elems || i < 0) {
             log("slice access fail");  // Serving as a place to place breakpoints.
         }
 #endif

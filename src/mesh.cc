@@ -11,10 +11,6 @@ static const char* str(const glm::vec3& v) {
 }
 
 scene::Chunk load_obj(const char* path, float scale) {
-    return load_obj_with_face_fmt(path, LoadFlags_Default, scale);
-}
-
-scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float scale) {
     char* model_str_raw = (char *)io::slurp(path);
 
     typedef char* charptr;
@@ -84,23 +80,53 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float sca
                 }
             case Type_face:
                 {
+                    enum {
+                        DEFAULT,
+                        NO_TEXCOORDS,
+                        QUAD,
+                    };
+                    // Determine type of face.
+                    int facetype = DEFAULT;
+                    {
+                        auto len = strlen(line);
+                        int num_slashes = 0;
+                        size_t prev = (size_t)-1;
+                        for (size_t i = 0; i < len; ++i) {
+                            char c = line[i];
+                            if (c == '/') {
+                                if (num_slashes == 1 && prev == (i - 1)) {
+                                    facetype = NO_TEXCOORDS;
+                                    break;
+                                }
+                                prev = i;
+                                num_slashes++;
+                            }
+                        }
+                        if (num_slashes == 8) {
+                            facetype = QUAD;
+                        }
+                    }
                     int a,b,c,
                         d,e,f,
-                        g,h,k;
-                    a = b = c = d = e = f = g = h = k = 0;
-                    switch (flags) {
-                    case LoadFlags_Default:
-                        sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                                &a,&b,&c,
-                                &d,&e,&f,
-                                &g,&h,&k);
-                        break;
-                    case LoadFlags_NoTexcoords:
+                        g,h,k,
+                        l,m,n;
+                    a = b = c = d = e = f = g = h = k = l = m = n = 0;
+                    if (facetype == DEFAULT) {
+                            sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
+                                    &a,&b,&c,
+                                    &d,&e,&f,
+                                    &g,&h,&k);
+                    } else if (facetype == NO_TEXCOORDS) {
                         sscanf(line, "f %d//%d %d//%d %d//%d",
                                 &a, &c,
                                 &d, &f,
                                 &g, &k);
-                        break;
+                    } else if (facetype == QUAD) {
+                        sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d",
+                                    &a,&b,&c,
+                                    &d,&e,&f,
+                                    &g,&h,&k,
+                                    &l,&m,&n);
                     }
 
                     /* printf("%d/%d %d/%d %d/%d\n", a,c, d,f, g,k); */
@@ -114,6 +140,16 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float sca
                     face.norm_i[2] = k;
                     append(&faces, face);
 
+                    if (facetype == QUAD) {
+                        face.vert_i[0] = a;
+                        face.vert_i[1] = g;
+                        face.vert_i[2] = l;
+
+                        face.norm_i[0] = c;
+                        face.norm_i[1] = k;
+                        face.norm_i[2] = n;
+                        append(&faces, face);
+                    }
                     break;
                 }
             default:
@@ -121,6 +157,7 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float sca
                     break;
                 }
             }
+            //if (count(faces) > 100000) break;
         }
     }
     logf("num faces %ld\n", count(faces));

@@ -14,7 +14,7 @@ static GLuint g_program;
 int g_sample_factor = 1;
 int g_resolution[] = {1920 / g_sample_factor, 1080 / g_sample_factor};  // DK2 res
 
-static int        g_curr_sample = 2;
+static int        g_curr_sample = 0;
 static SampleFunc g_sample_func;
 
 static void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {

@@ -22,11 +22,6 @@ namespace ph {
 namespace mesh {
 
 /**
- * Returns a triangle soup of the OBJ model specified at "path"
- */
-scene::Chunk load_obj(const char* path, float scale);
-
-/**
  * flags specifies the way faces are described. i.e.
  *  In OBJ
  * - LoadFlags_NoTexcoords
@@ -37,11 +32,16 @@ scene::Chunk load_obj(const char* path, float scale);
  */
 
 enum LoadFlags {
-    LoadFlags_Default,
-    LoadFlags_NoTexcoords,
+    LoadFlags_Default = 1 << 0,
+    LoadFlags_NoTexcoords = 1 << 1,
+    LoadFlags_Quads = 1 << 2,
 };
 
-scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float scale);
+/**
+ * Returns a triangle soup of the OBJ model specified at "path"
+ */
+scene::Chunk load_obj(const char* path, float scale);
+
 
 /**
  * Takes a triangle soup (big_chunk) and returns an array of chunks with

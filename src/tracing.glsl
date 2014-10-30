@@ -146,7 +146,7 @@ TraceIntersection trace(Ray ray) {
     intersection.t = INFINITY;
     float min_t = INFINITY;
 
-    int stack[12];
+    int stack[16];
     int stack_offset = 0;
 
     vec3 inv_dir = vec3(1) / ray.dir;

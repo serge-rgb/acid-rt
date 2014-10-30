@@ -19,8 +19,8 @@ static void bunny_idle() {
 void bunny_sample() {
     scene::init();
 
-    auto big_chunk = mesh::load_obj_with_face_fmt(
-            "third_party/bunny.obj", mesh::LoadFlags_NoTexcoords, /*scale=*/10);
+    auto big_chunk = mesh::load_obj(
+            "third_party/bunny.obj", /*scale=*/10);
 
     auto chunks = mesh::shatter(big_chunk, 8);
     for (int i = 0; i < count(chunks); ++i) {
