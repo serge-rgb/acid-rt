@@ -47,7 +47,7 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float sca
  * Takes a triangle soup (big_chunk) and returns an array of chunks with
  * at most "limit" triangles each. Each chunk's triangles are close together.
  */
-Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit, int depth = 0);
+Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit);
 
 }  // ns mesh
 }  // ns ph

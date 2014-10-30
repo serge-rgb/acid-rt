@@ -132,15 +132,6 @@ static float bbox_area(AABB bbox) {
     return 2.0f * (d.x * d.x + d.y * d.y + d.z * d.z);
 }
 
-static void bbox_fill(AABB* bbox) {
-    bbox->xmax = -INFINITY;
-    bbox->ymax = -INFINITY;
-    bbox->zmax = -INFINITY;
-    bbox->xmin = INFINITY;
-    bbox->ymin = INFINITY;
-    bbox->zmin = INFINITY;
-}
-
 ////////////////////////////////////////
 // BVH Accel
 ////////////////////////////////////////
@@ -274,7 +265,7 @@ static BVHTreeNode* build_bvh(
             return node;
         }
 
-        bool use_sah = true && count(primitives) > 4;
+        bool use_sah = count(primitives) > 8;
         // ============================================================
         // SAH
         // ============================================================
@@ -644,6 +635,15 @@ static bool validate_flattened_bvh(BVHNode* root, int64 len) {
 static GLvec3 to_gl(glm::vec3 in) {
     GLvec3 out = {in.x, in.y, in.z, 0};
     return out;
+}
+
+void bbox_fill(AABB* bbox) {
+    bbox->xmax = -INFINITY;
+    bbox->ymax = -INFINITY;
+    bbox->zmax = -INFINITY;
+    bbox->xmin = INFINITY;
+    bbox->ymin = INFINITY;
+    bbox->zmin = INFINITY;
 }
 
 glm::vec3 get_centroid(AABB b) {

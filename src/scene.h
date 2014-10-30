@@ -87,5 +87,12 @@ void upload_everything();
 
 // ----------------------
 
+////////////////////////////////////////
+// Various utilities
+////////////////////////////////////////
+
+
+void bbox_fill(AABB* bbox);
+
 }  // ns scene
 }  // ns ph
