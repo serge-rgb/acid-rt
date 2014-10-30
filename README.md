@@ -63,9 +63,10 @@ BSD-style.
 TODO
 ----
 
+* make mesh::shatter iterative.
 * crytek sponza
+* port to OpenCL
 * rudimentary lighting model
 * bouncing ball sample
 * on screen text
 * non-vr mode (fallback)
-* port to OpenCL

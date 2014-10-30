@@ -121,9 +121,7 @@ scene::Chunk load_obj_with_face_fmt(const char* path, LoadFlags flags, float sca
                     break;
                 }
             }
-            if (count(faces) >= 50000) {
-                break;
-            }
+            //if (count(faces) > 30000) break;
         }
     }
     logf("num faces %ld\n", count(faces));
@@ -165,7 +163,7 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit, int depth) {
         slice.n_capacity = 0;
         return slice;
     }
-    static int kMaxDepth = 1000;
+    static int kMaxDepth = 1000;  // Avoid stack overflow
     if (size < limit || depth >= kMaxDepth) {                             // size < limit => Return a slice of one.
         auto slice = MakeSlice<scene::Chunk>(1);
         scene::Chunk chunk;
