@@ -1,7 +1,5 @@
 * text=auto
 
-Windows/GL/*.h text eol=crlf
-
 *.cc text eol=lf
 *.h text eol=lf
 *.cl text eol=lf
