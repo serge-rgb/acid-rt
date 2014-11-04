@@ -1,18 +1,24 @@
-nuwen
-=====
+Acid Ray Tracer
+===============
 
-Real time ray tracing library for the Oculus Rift.
---------------------------------------------------
+Real time ray tracing renderer
+------------------------------
 
-![old screenshot](http://bigmonachus.org/img/c_log_6_1.png)
+This is what it was looking like before the port to OpenCL (in-progress).
+
+![old screenshot](http://i.imgur.com/iZVTZX4.png)
+
+This is a real time ray tracing renderer with support for the Oculus Rift.
+It was based on GLSL compute shaders but now those parts are being ported to OpenCL.
+
 
 Features / Requirements:
 ------------------------
 
-* Not for general consumption at the moment :)
-* Young, ray tracing polygon renderer and some samples.
+* WIP -- Not for general consumption at the moment :)
+* Young, ray tracing polygon renderer with some samples included.
 * Only Supports DK2 on Windows.
-* OpenGL 4.3 required
+* Requires OpenGL 4.3
 
 How to build
 ------------
@@ -54,7 +60,6 @@ You can do that either through Visual Studio or through the built-in
 `build.bat` script. `build.bat` copies DLLs so it should be run at least once
 for each config.
 
-
 License
 -------
 
@@ -63,10 +68,8 @@ BSD-style.
 TODO
 ----
 
-* make mesh::shatter iterative.
-* crytek sponza
 * port to OpenCL
-* rudimentary lighting model
-* bouncing ball sample
+* use external mesh loader
+* lighting model
 * on screen text
-* non-vr mode (fallback)
+* desktop mode
