@@ -1,13 +1,14 @@
 ::set target=chicken
 ::set target=ph_test
 set target=samples
+set target=ocl_hello
 
 set config=RelWithDebInfo
 set config=Debug
 ::set config=Release
 
 :: /nr prevents creation of persitent msbuild processes
-msbuild build\nuwen.sln /nologo /v:q /m /nr:true /t:%target% /p:Configuration=%config%
+msbuild build\acid.sln /nologo /v:q /m /nr:true /t:%target% /p:Configuration=%config%
 
 if %errorlevel% neq 0 goto End
 

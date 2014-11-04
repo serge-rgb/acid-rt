@@ -11,5 +11,5 @@ set (sample_sources
     cubes.cc)
 
 add_executable(samples ${sample_sources})
-target_link_libraries(samples ${nuwen_runtime})
+target_link_libraries(samples ${acid_runtime})
 ph_link_ovr(samples)

@@ -1,6 +1,3 @@
-#===============================================================================
-# nuwen software
-#===============================================================================
 cmake_minimum_required(VERSION 2.8)
 
 add_subdirectory(third_party/lua)
@@ -11,7 +8,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
 add_subdirectory(third_party/bdwgc)
 add_subdirectory(third_party/yajl)
 
-project(nuwen)
+project(acid)
 if (UNIX)
     set(CMAKE_C_COMPILER clang)
     set(CMAKE_CXX_COMPILER clang++)
@@ -35,10 +32,6 @@ if (WIN32)
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG")
     set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG")
 endif()
-
-#===============================================================================
-# nuwen runtime
-#===============================================================================
 
 find_package(OpenGL)
 
@@ -85,7 +78,7 @@ target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
     target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
-set(nuwen_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
+set(acid_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
 
 set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc
@@ -100,6 +93,6 @@ set (renderer_sources
 #===============================================================================
 
 # ---- tests
-add_subdirectory(chicken)
+add_subdirectory(ocl_hello)
 add_subdirectory(ph_test)
 add_subdirectory(samples)
