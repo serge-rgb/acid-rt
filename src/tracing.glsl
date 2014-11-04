@@ -146,7 +146,7 @@ TraceIntersection trace(Ray ray) {
     intersection.t = INFINITY;
     float min_t = INFINITY;
 
-    int stack[16];
+    int stack[32];
     int stack_offset = 0;
 
     vec3 inv_dir = vec3(1) / ray.dir;
@@ -164,17 +164,17 @@ TraceIntersection trace(Ray ray) {
                 if (bar.x > 0 &&
                         bar.y < 1 && bar.y > 0 &&
                         bar.z < 1 && bar.z > 0 &&
-                        (bar.y + bar.z) < 1) {
-                    if (bar.x < min_t) {
-                        Triangle n = normal_pool.data[j];
-                        min_t = bar.x;
-                        float u = bar.y;
-                        float v = bar.z;
-                        //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
-                        intersection.t = min_t;
-                        intersection.point = ray.o + bar.x * ray.dir;
-                        intersection.normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
-                    }
+                        (bar.y + bar.z) < 1 &&
+                        bar.x < min_t)
+                {
+                    Triangle n = normal_pool.data[j];
+                    min_t = bar.x;
+                    float u = bar.y;
+                    float v = bar.z;
+                    //point = (1 - u - v) * t.p0 + u * t.p1 + v * t.p2;
+                    intersection.t = min_t;
+                    intersection.point = ray.o + bar.x * ray.dir;
+                    intersection.normal = (1 - u - v) * n.p0 + u * n.p1 + v * n.p2;
                 }
             }
         } else {                              // INNER NODE
@@ -192,11 +192,9 @@ TraceIntersection trace(Ray ray) {
             bool hit_l = (l_n < l_f) && (l_n < min_t) && (l_f > 0);
             bool hit_r = (r_n < r_f) && (r_n < min_t) && (r_f > 0);
 
+            node = left;
             // If anyone got hit
             if ((hit_l || hit_r)) {
-                // If just one... traverse
-                node = hit_l ? left : right;
-
                 // When *both* children are hits choose the nearest
                 if (hit_l && hit_r) {
                     float near = min(l_n, r_n);
@@ -207,6 +205,8 @@ TraceIntersection trace(Ray ray) {
 
                     // We will need to traverse the other node later.
                     stack[stack_offset++] = other;
+                } else if (hit_r) {  // If just one... traverse
+                    node = right;
                 }
                 continue;
             }

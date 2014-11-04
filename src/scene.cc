@@ -228,7 +228,7 @@ static BVHTreeNode* build_bvh(
                 }
             }
             if (v == 0.0f) {
-                log("Two objets have the same centroid. Using default axis split");
+                //log("Two objets have the same centroid. Using default axis split");
                 split = axis_split;
             }
         }
@@ -307,7 +307,6 @@ static BVHTreeNode* build_bvh(
                         (centroid[split] - bbox_vmin[split]) /
                         (bbox_vmax[split] - bbox_vmin[split]));
                 if (b == kNumBuckets) { b--; }
-                /* buckets[b].bbox = bbox_union(buckets[b].bbox, get_bbox(&primitives[i], 1)); */
                 buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[indices[i]]);
                 buckets[b].num++;
                 assign[i] = b;
