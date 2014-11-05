@@ -30,7 +30,7 @@ Requirements:
 -------------
 
 * Only Supports DK2 on Windows.
-* Requires OpenGL 4.3  (Will change soon)
+* Requires OpenGL 4.3
 * Requires OpenCL 1.1
 
 How to build

@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 2.8)
 
 add_subdirectory(third_party/lua)
 add_subdirectory(third_party/glfw)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "..")
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "..")
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
 add_subdirectory(third_party/bdwgc)
 add_subdirectory(third_party/yajl)
 
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "..")
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "..")
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
+
 project(acid)
+
 if (UNIX)
     set(CMAKE_C_COMPILER clang)
     set(CMAKE_CXX_COMPILER clang++)
@@ -33,11 +35,31 @@ if (WIN32)
     set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG")
 endif()
 
-find_package(OpenGL)
+find_package(OpenGL REQUIRED)
+
+if (WIN32)
+    set(OPENCL_INCLUDE_DIR "third_party/CL")
+
+    find_package_handle_standard_args(
+        OpenCL
+        DEFAULT_MSG
+        OPENCL_LIBRARY OPENCL_INCLUDE_DIR)
+
+    if(OPENCL_FOUND)
+        set(OPENCL_LIBRARIES ${OPENCL_LIBRARY})
+        message("Found OpenCL ${OPENCL_LIBRARY}")
+    else(OPENCL_FOUND)
+        set(OPENCL_LIBRARIES)
+        message("OPENCL NOT FOUND")
+    endif(OPENCL_FOUND)
+else()
+    find_package(OpenCL REQUIRED)
+endif()
 
 include_directories(
     "src/"
 
+    "./third_party/"
     "./third_party/lua/"
     "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
@@ -68,6 +90,7 @@ if (WIN32)
     set_property(TARGET ovr PROPERTY IMPORTED_LOCATION
         "${CMAKE_CURRENT_SOURCE_DIR}/OculusSDK/LibOVR/Lib/Win32/VS2013/libovr.lib")
     find_library(GLEW_LIB glew32 HINTS "./Windows/")
+    set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "third_party/")
 endif()
 
 
@@ -78,7 +101,7 @@ target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
 if (WIN32)
     target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
-set(acid_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} yajl)
+set(acid_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY} yajl)
 
 set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc
