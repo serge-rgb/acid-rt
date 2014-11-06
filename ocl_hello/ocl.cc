@@ -12,9 +12,12 @@ using namespace ph;
 static const int width = 1920;
 static const int height = 1080;
 
-static GLuint m_gl_texture;
-static GLuint m_quad_program;
-static cl_mem m_cl_texture;
+static GLuint     m_gl_texture;
+static GLuint     m_quad_vao;
+static GLuint     m_quad_program;
+static cl_mem     m_cl_texture;
+static cl_program m_cl_program;
+static cl_kernel  m_cl_kernel;
 
 
 void __stdcall context_callback(
@@ -28,6 +31,11 @@ void ocl_idle() {
     // Wait and release
 
     // Draw texture to screen
+    {
+        glUseProgram(m_quad_program);
+        glBindVertexArray (m_quad_vao);
+        GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
+    }
 
     window::swap_buffers();
 }
@@ -201,6 +209,33 @@ int main() {
 
     // Create GL quad program to fill screen.
     {
+        enum {  // Locations set in shaders.
+            Location_pos = 0,
+            Location_tex = 1,
+        };
+        // Create the quad
+        {
+            glPointSize(3);
+            const GLfloat u = 1.0f;
+            GLfloat vert_data[] = {
+                -u, u,
+                -u, -u,
+                u, -u,
+                u, u,
+            };
+            glGenVertexArrays(1, &m_quad_vao);
+            glBindVertexArray(m_quad_vao);
+
+            GLuint vbo;
+            glGenBuffers(1, &vbo);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+            GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof(vert_data), vert_data, GL_STATIC_DRAW));
+
+            GLCHK (glEnableVertexAttribArray (Location_pos) );
+            GLCHK (glVertexAttribPointer     (/*attrib location*/Location_pos,
+                        /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
+        }
         enum {
             vert,
             frag,
@@ -217,10 +252,6 @@ int main() {
 
         ph::gl::link_program(m_quad_program, shaders, shader_count);
 
-        enum {
-            Location_pos = 0,
-            Location_tex = 1,
-        };
         ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
         ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));
 
@@ -253,12 +284,10 @@ int main() {
         }
     }
 
-    cl_program m_cl_program;
     // Create program & kernel.
     {
         static const char* path = "ocl_hello/checker.cl";
         auto source = io::slurp(path);
-        puts(source);
         m_cl_program = clCreateProgramWithSource(
                 context,
                 1,
@@ -281,7 +310,51 @@ int main() {
                 NULL  // user data
                 );
         if (err != CL_SUCCESS) {
+            // Write build result.
+            size_t sz;
+            clGetProgramBuildInfo(
+                    m_cl_program,
+                    device,
+                    CL_PROGRAM_BUILD_LOG,
+                    0, NULL, &sz);
+
+            char* log = phanaged(char, sz);
+
+            clGetProgramBuildInfo(
+                    m_cl_program,
+                    device,
+                    CL_PROGRAM_BUILD_LOG,
+                    sz, (void*)log, 0);
+            puts(log);
             phatal_error("Could not build program");
+        }
+    }
+    {  // Get kernel
+        m_cl_kernel = clCreateKernel(m_cl_program, "fill_checkerboard", &err);
+        if (err != CL_SUCCESS) {
+            phatal_error("Can't get kernel from program.");
+        }
+        // Set argument to be the texture.
+        err = clSetKernelArg(m_cl_kernel, 0, sizeof(cl_mem), (void*) &m_cl_texture);
+        if (err != CL_SUCCESS) {
+            switch(err) {
+            case CL_INVALID_SAMPLER:
+                log("invalid sampler");
+                break;
+            case CL_INVALID_KERNEL:
+                log("invalid kernel");
+                break;
+            case CL_INVALID_ARG_INDEX:
+                log("invalid arg index");
+                break;
+            case CL_INVALID_MEM_OBJECT:
+                log("invalid mem object");
+                break;
+            default:
+                log("???");
+                break;
+            }
+            phatal_error("Can't set kernel image param.");
         }
     }
 
