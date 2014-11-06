@@ -2,9 +2,20 @@
 
 #include <opencl.h>
 
+#include "io.h"
+#include "ph_gl.h"
 #include "window.h"
 
 using namespace ph;
+
+
+static const int width = 1920;
+static const int height = 1080;
+
+static GLuint m_gl_texture;
+static GLuint m_quad_program;
+static cl_mem m_cl_texture;
+
 
 void __stdcall context_callback(
         const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/) {
@@ -12,14 +23,23 @@ void __stdcall context_callback(
 }
 
 void ocl_idle() {
+    // Run OpenCL kernel
+
+    // Wait and release
+
+    // Draw texture to screen
+
     window::swap_buffers();
 }
+
+// For empty GL_CHECK().
+static void no_op() {}
 
 int main() {
     ph::init();
 
     // Creates a GL context, so we need to init the window before doing OpenCL.
-    window::init("OCL", 1920, 1080, window::InitFlag_Default);
+    window::init("OCL", width, height, window::InitFlag_Default);
 
     // ========================================
     // Get platforms
@@ -30,6 +50,7 @@ int main() {
     cl_platform_id *platforms = phalloc(cl_platform_id, num_platforms);
     clGetPlatformIDs(num_platforms, platforms, NULL);
 
+    // TODO: check platform for respective GL interop extension.
     for (cl_uint i = 0; i < num_platforms; ++i) {
         ph::log("==== platform: ");
         cl_platform_info info_type[2] = {
@@ -145,7 +166,8 @@ int main() {
     // ========================================
 
     cl_command_queue queue =
-        clCreateCommandQueue(context, device, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+        clCreateCommandQueue(context, device, 0, &err);
+        //clCreateCommandQueue(context, device, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
     // ^----- commands can be profiled (spec: 5.12)
     if (err != CL_SUCCESS) {
         logf("err num %d\n", err);
@@ -157,19 +179,118 @@ int main() {
     // Do stuff before we block and go to main loop
     // ========================================
 
-    // Create program & kernel.
+    // Create GL "framebufer".
+    {
+        // Create texture
+        GLCHK (glActiveTexture (GL_TEXTURE0) );
+        glGenTextures   (1, &m_gl_texture);
+        glBindTexture   (GL_TEXTURE_2D, m_gl_texture);
+
+        // Note for the future: These are needed.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        // Pass a null pointer, texture will be filled by opencl ray tracer
+        GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
+                    0, GL_RGBA, GL_FLOAT, NULL) );
+
+        GLCHK ( no_op() );
+    }
+
+    // Create GL quad program to fill screen.
+    {
+        enum {
+            vert,
+            frag,
+            shader_count,
+        };
+        GLuint shaders[shader_count];
+        const char* path[shader_count];
+        path[vert] = "src/quad.v.glsl";
+        path[frag] = "src/quad.f.glsl";
+        shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
+        shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
+
+        m_quad_program = glCreateProgram();
+
+        ph::gl::link_program(m_quad_program, shaders, shader_count);
+
+        enum {
+            Location_pos = 0,
+            Location_tex = 1,
+        };
+        ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
+        ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));
+
+        GLCHK ( glUseProgram(m_quad_program) );
+        GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
+    }
 
     // Create buffer
+    {
+        cl_mem_flags flags = CL_MEM_WRITE_ONLY;
+        m_cl_texture = clCreateFromGLTexture2D(
+                context,
+                flags,
+                /*texture_target*/GL_TEXTURE_2D,
+                /*miplevel*/0,
+                m_gl_texture,
+                &err);
+        if (err != CL_SUCCESS) {
+            switch (err) {
+            case CL_INVALID_CONTEXT:
+                log("CL_INVALID_CONTEXT");
+                break;
+            case CL_INVALID_VALUE:
+                log("CL_INVALID_VALUE");
+                break;
+            default:
+                log("???");
+            }
+            phatal_error("Could not create OpenCL image from GL texture");
+        }
+    }
 
-    // Fence (out of order queue)
-
-    // Run kernel
+    cl_program m_cl_program;
+    // Create program & kernel.
+    {
+        static const char* path = "ocl_hello/checker.cl";
+        auto source = io::slurp(path);
+        puts(source);
+        m_cl_program = clCreateProgramWithSource(
+                context,
+                1,
+                &source,
+                NULL, /*lengths, NULL means lines end in \0*/
+                &err
+                );
+        if (err != CL_SUCCESS) {
+            logf("could not create program from source %s", path);
+            ph::quit(EXIT_FAILURE);
+        }
+        // Build program
+        const char* options = "";  // 5.6.3.3 p117
+        err = clBuildProgram(
+                m_cl_program,
+                1,
+                &device,
+                options,
+                NULL, // callback
+                NULL  // user data
+                );
+        if (err != CL_SUCCESS) {
+            phatal_error("Could not build program");
+        }
+    }
 
     // ========================================
     window::main_loop(ocl_idle);
     // ========================================
 
 
+    clReleaseProgram(m_cl_program);
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
     phree(platforms);
