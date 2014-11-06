@@ -20,7 +20,7 @@ void bunny_sample() {
     scene::init();
 
     auto big_chunk = mesh::load_obj(
-            "third_party/bunny.obj", /*scale=*/10);
+            "third_party/ASSETS/bunny.obj", /*scale=*/10);
 
     auto chunks = mesh::shatter(big_chunk, 8);
     for (int i = 0; i < count(chunks); ++i) {
