@@ -12,12 +12,14 @@ using namespace ph;
 static const int width = 1920;
 static const int height = 1080;
 
-static GLuint     m_gl_texture;
-static GLuint     m_quad_vao;
-static GLuint     m_quad_program;
-static cl_mem     m_cl_texture;
-static cl_program m_cl_program;
-static cl_kernel  m_cl_kernel;
+static GLuint           m_gl_texture;
+static GLuint           m_quad_vao;
+static GLuint           m_quad_program;
+static cl_context       m_context;
+static cl_command_queue m_queue;
+static cl_mem           m_cl_texture;
+static cl_program       m_cl_program;
+static cl_kernel        m_cl_kernel;
 
 
 void __stdcall context_callback(
@@ -26,16 +28,70 @@ void __stdcall context_callback(
 }
 
 void ocl_idle() {
+    glFinish();
+    auto t_start = io::get_microseconds();
+
+    cl_int err;
     // Run OpenCL kernel
+    err = clEnqueueAcquireGLObjects(
+            m_queue, 1, &m_cl_texture, 0, NULL/*event wait list*/, NULL/*event*/);
+    if (err != CL_SUCCESS) {
+        phatal_error("Could not acquire texture from GL context");
+    }
+
+    cl_event event;
+    size_t global_size[2] = {
+        1920,
+        1080,
+    };
+    size_t local_size[2] = {
+        8,
+        8,
+    };
+
+    auto t_send = io::get_microseconds();
+
+    err = clEnqueueNDRangeKernel(  // Run the kernel
+            m_queue,
+            m_cl_kernel,
+            2, //dim
+            NULL, // offset
+            global_size,
+            local_size,
+            0, NULL, &event);
+
 
     // Wait and release
+    clFinish(m_queue);
+
+    err = clEnqueueReleaseGLObjects(
+            m_queue,
+            1,
+            &m_cl_texture,
+            0, NULL, NULL);
+    if (err != CL_SUCCESS) {
+        phatal_error("could not release texture");
+    }
+
+    auto t_draw = io::get_microseconds();
 
     // Draw texture to screen
     {
         glUseProgram(m_quad_program);
-        glBindVertexArray (m_quad_vao);
+        glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+        glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
+    glFinish();
+
+    auto t_end = io::get_microseconds();
+
+    logf("Total frame time: %f\nOpenCL time: %f\nDraw time: %f\n=====================\n",
+            float(t_end - t_start) / 1000.0f,
+            float(t_draw - t_send) / 1000.0f,
+            float(t_end - t_draw) / 1000.0f
+            );
+
 
     window::swap_buffers();
 }
@@ -129,7 +185,6 @@ int main() {
         CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE, (cl_context_properties)kCGLShareGroup,
         0
     };
-    //context = clCreateContext(local_props, 0,0, NULL, NULL, &ciErrNum);
     props = local_props;
 #else
 #ifdef UNIX
@@ -140,7 +195,6 @@ int main() {
         //CL_CONTEXT_PLATFORM, (cl_context_properties)cpPlatform,
         0
     };
-    //context = clCreateContext(local_props, 1, , NULL, NULL, &ciErrNum);
     props = local_props;
 #else // Win32
     cl_context_properties local_props[] =
@@ -150,11 +204,10 @@ int main() {
         CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[0],
         0
     };
-    //context = clCreateContext(local_props, 1, &cdDevices[uiDeviceUsed], NULL, NULL, &ciErrNum);
     props = local_props;
 #endif
 #endif
-    cl_context context = clCreateContext(
+    m_context = clCreateContext(
             props,
             1, &devices[0],
             context_callback,
@@ -167,16 +220,10 @@ int main() {
     }
 
     // ========================================
-    // ========================================
-
-    // ========================================
     // Command queue
     // ========================================
 
-    cl_command_queue queue =
-        clCreateCommandQueue(context, device, 0, &err);
-        //clCreateCommandQueue(context, device, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
-    // ^----- commands can be profiled (spec: 5.12)
+    m_queue = clCreateCommandQueue(m_context, device, 0, &err);
     if (err != CL_SUCCESS) {
         logf("err num %d\n", err);
         phatal_error("Cannot create command queue");
@@ -259,11 +306,11 @@ int main() {
         GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
     }
 
-    // Create buffer
+    // Create OpenCL buffer
     {
         cl_mem_flags flags = CL_MEM_WRITE_ONLY;
         m_cl_texture = clCreateFromGLTexture2D(
-                context,
+                m_context,
                 flags,
                 /*texture_target*/GL_TEXTURE_2D,
                 /*miplevel*/0,
@@ -289,7 +336,7 @@ int main() {
         static const char* path = "ocl_hello/checker.cl";
         auto source = io::slurp(path);
         m_cl_program = clCreateProgramWithSource(
-                context,
+                m_context,
                 1,
                 &source,
                 NULL, /*lengths, NULL means lines end in \0*/
@@ -358,14 +405,11 @@ int main() {
         }
     }
 
-    // ========================================
     window::main_loop(ocl_idle);
-    // ========================================
-
 
     clReleaseProgram(m_cl_program);
-    clReleaseCommandQueue(queue);
-    clReleaseContext(context);
+    clReleaseCommandQueue(m_queue);
+    clReleaseContext(m_context);
     phree(platforms);
     phree(devices);
 
