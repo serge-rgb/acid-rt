@@ -9,6 +9,11 @@ struct Ray {
     float3 d;
 };
 
+
+float ray_sphere(const struct Ray* ray, const float3 c, const float3 r) {
+    return 0;
+}
+
 // TODO: impl
 float catmull(float rsq) {
     return 1.0;
@@ -33,22 +38,22 @@ __kernel void main(
     }
     ////////////////
 
-    struct Ray ray;
-    ray.o = (float3)(0);
+    float3 eye = (float3)(0);
+    float3 point = (float3)(
+            (float)(get_global_id(0)) / viewport_size_px.x,
+            (float)(get_global_id(1)) / viewport_size_px.y,
+            0);
 
-    float3 point =
-        (float3)(
-                (float)(get_global_id(0)) / viewport_size_px.x,
-                (float)(get_global_id(1)) / viewport_size_px.y,
-                0);
+    // Point is in [0, 1] x [0, 1]
 
-    point.xy -= lens_center / viewport_size_m;
+    // Translate to center ( in screen space. )
+    point.xy -= lens_center / (float2)(viewport_size_m.x, viewport_size_m.y / 2);
 
-    // Aspect ratio
-    point.x *= viewport_size_px.x / viewport_size_px.y;
-    //point.y *= viewport_size_px.y / viewport_size_px.x;
+    // Correct for aspect ratio
+    const float ar = (float)(viewport_size_px.y) / viewport_size_px.x;
+    point.y *= ar;
 
-    float rsq = point.x * point.x + point.y * point.y;
+    const float rsq = point.x * point.x + point.y * point.y;
 
     point *= (float4)catmull(rsq);
 
@@ -56,13 +61,13 @@ __kernel void main(
 
 
     // TODO: rotation & translation
-    ray.o.z += 1.0;
 
-    ray.d = normalize(point - ray.o);
+    struct Ray ray;
+    ray.o = (float3)point;
+    ray.d = normalize(point - eye);
 
-
-    if (rsq < 0.18) {
-        color = (float4)(point, 1.0f);
+    if (rsq < 0.25) {
+        color = (float4)(ray.d, 1.0f);
     }
 
     size_t i, j;
