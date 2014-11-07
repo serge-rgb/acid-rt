@@ -29,8 +29,26 @@ void __stdcall context_callback(
     logf("OpenCL context error:  %s\n", errinfo);
 }
 
+struct CBColors {
+    float a[4];
+    float b[4];
+};
+
+
 void ocl_idle() {
+    static CBColors colors;
+    colors.a[0] = 0.6f;
+    colors.a[1] = 0.4f;
+    colors.a[2] = 0.2f;
+    colors.a[3] = 1.0f;
+
+    colors.b[0] = 0.2f;
+    colors.b[1] = 0.4f;
+    colors.b[2] = 0.6f;
+    colors.b[3] = 1.0f;
+
     glFinish();
+
     auto t_start = io::get_microseconds();
 
     cl_int err;
@@ -45,21 +63,21 @@ void ocl_idle() {
 
     auto t_send = io::get_microseconds();
 
-#define VP_TEST
     size_t global_size[2] = {
-#ifdef VP_TEST
         960,
-#else
-        1920,
-#endif
         1080,
     };
+
     size_t local_size[2] = {
         8,
         8,
     };
+
+    clSetKernelArg(m_cl_kernel, 2, sizeof(CBColors), (void*) &colors);
+
     cl_int off = 0;
     clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
+
     err = clEnqueueNDRangeKernel(  // Run the kernel
             m_queue,
             m_cl_kernel,
@@ -69,7 +87,6 @@ void ocl_idle() {
             local_size,
             0, NULL, &event);
 
-#ifdef VP_TEST
     off = 960;
     clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
 
@@ -81,7 +98,6 @@ void ocl_idle() {
             global_size,
             local_size,
             0, NULL, &event);
-#endif
 
 
     // Wait and release
