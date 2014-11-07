@@ -1,17 +1,39 @@
+typedef struct Light_s {
+    float3 point;
+} Light;
 
-struct CBColors {
-    float a[4];
-    float b[4];
-};
-
-struct Ray {
+typedef struct Ray_s {
     float3 o;
     float3 d;
-};
+} Ray;
+
+typedef struct Intersection_s {
+    float t;
+    float3 point;
+    float3 norm;
+} Intersection;
 
 
-float ray_sphere(const struct Ray* ray, const float3 c, const float3 r) {
-    return 0;
+Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
+    Intersection intersection;
+    intersection.t = -1;
+    const float b = dot(ray->d, ray->o - c);
+    const float d = dot(ray->o - c, ray->o - c) - r * r;
+    const float det = b*b - d;
+
+    if (det >= 0) {
+        intersection.t = -b + sqrt(det);
+        intersection.point = ray->o + intersection.t * ray->d;
+        intersection.norm = normalize(intersection.point - c);
+    }
+
+    return intersection;
+}
+
+float lambert(Light l, float3 point, float3 norm) {
+    float3 dir = normalize(l.point - point);
+    const float c = max(dot(norm, dir), (float)0);
+    return c;
 }
 
 // TODO: impl
@@ -27,16 +49,7 @@ __kernel void main(
         float2 viewport_size_m,
         int2 viewport_size_px) {
 
-    float4 color;
-    /////////////////
-    // Checkerboard
-    int m = (get_group_id(0) + get_group_id(1)) % 2;
-    if (m == 0) {
-        color = (float4)(0,0,0,1);
-    } else {
-        color = (x_off == 960)? (float4)(1,1,1,1) : (float4)(0,0,0.3,1);
-    }
-    ////////////////
+    float4 color = 1;
 
     float3 eye = (float3)(0);
     float3 point = (float3)(
@@ -62,12 +75,22 @@ __kernel void main(
 
     // TODO: rotation & translation
 
-    struct Ray ray;
+    Ray ray;
     ray.o = (float3)point;
     ray.d = normalize(point - eye);
 
+    Light l;
+    l.point = (float3)(0,10,-5);
+
     if (rsq < 0.25) {
-        color = (float4)(ray.d, 1.0f);
+        color = 0;
+
+        Intersection its = ray_sphere(&ray, (float3)(0,0,-2), 0.2);
+        if (its.t > 0) {
+            color = (float4)(1,1,1,1);
+            float f = lambert(l, its.point, its.norm);
+            color *= f;
+        }
     }
 
     size_t i, j;
