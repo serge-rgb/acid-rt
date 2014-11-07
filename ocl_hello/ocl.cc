@@ -4,6 +4,7 @@
 
 #include "io.h"
 #include "ph_gl.h"
+#include "vr.h"
 #include "window.h"
 
 using namespace ph;
@@ -11,6 +12,28 @@ using namespace ph;
 
 static const int width = 1920;
 static const int height = 1080;
+
+namespace ph {
+namespace ocl {
+void init();
+void idle();
+void deinit();
+}
+}
+
+int main() {
+    ph::ocl::init();
+
+
+    window::main_loop(ocl::idle);
+
+    ph::ocl::deinit();
+    puts("Done.");
+    return 0;
+}
+
+namespace ph {
+namespace ocl {
 
 static GLuint           m_gl_texture;
 static GLuint           m_quad_vao;
@@ -20,33 +43,17 @@ static cl_command_queue m_queue;
 static cl_mem           m_cl_texture;
 static cl_program       m_cl_program;
 static cl_kernel        m_cl_kernel;
+static vr::HMDConsts    m_hmd_consts;
 
-static int64 num_frames = 1;
-static float avg_render = 0.0f;
+static int64 m_num_frames = 1;
+static float m_avg_render = 0.0f;
 
 void __stdcall context_callback(
         const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/) {
     logf("OpenCL context error:  %s\n", errinfo);
 }
 
-struct CBColors {
-    float a[4];
-    float b[4];
-};
-
-
-void ocl_idle() {
-    static CBColors colors;
-    colors.a[0] = 0.6f;
-    colors.a[1] = 0.4f;
-    colors.a[2] = 0.2f;
-    colors.a[3] = 1.0f;
-
-    colors.b[0] = 0.2f;
-    colors.b[1] = 0.4f;
-    colors.b[2] = 0.6f;
-    colors.b[3] = 1.0f;
-
+void idle() {
     glFinish();
 
     auto t_start = io::get_microseconds();
@@ -64,8 +71,8 @@ void ocl_idle() {
     auto t_send = io::get_microseconds();
 
     size_t global_size[2] = {
-        960,
-        1080,
+        width/2,
+        height,
     };
 
     size_t local_size[2] = {
@@ -73,10 +80,18 @@ void ocl_idle() {
         8,
     };
 
-    clSetKernelArg(m_cl_kernel, 2, sizeof(CBColors), (void*) &colors);
-
     cl_int off = 0;
     clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
+    clSetKernelArg(m_cl_kernel,
+            2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Left]);
+    clSetKernelArg(m_cl_kernel,
+            3, sizeof(float), (void*)&m_hmd_consts.eye_to_screen);
+    clSetKernelArg(m_cl_kernel,
+            4, 2 * sizeof(float), (void*)&m_hmd_consts.viewport_size_m);
+    int size_px[2] = { width / 2, height / 2 };
+    clSetKernelArg(m_cl_kernel,
+            5, 2 * sizeof(int), (void*)size_px);
+
 
     err = clEnqueueNDRangeKernel(  // Run the kernel
             m_queue,
@@ -87,8 +102,12 @@ void ocl_idle() {
             local_size,
             0, NULL, &event);
 
+    // Update parameters for right eye
     off = 960;
-    clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
+    clSetKernelArg(m_cl_kernel,
+            1, sizeof(cl_int), (void*) &off);
+    clSetKernelArg(m_cl_kernel,
+            2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Right]);
 
     err |= clEnqueueNDRangeKernel(  // Run the kernel
             m_queue,
@@ -131,8 +150,8 @@ void ocl_idle() {
             float(t_end - t_draw) / 1000.0f
             );
 
-    avg_render += float(t_draw - t_send) / 1000.0f;
-    num_frames++;
+    m_avg_render += float(t_draw - t_send) / 1000.0f;
+    m_num_frames++;
 
     window::swap_buffers();
 }
@@ -140,11 +159,13 @@ void ocl_idle() {
 // For empty GL_CHECK().
 static void no_op() {}
 
-int main() {
+void init() {
     ph::init();
 
     // Creates a GL context, so we need to init the window before doing OpenCL.
     window::init("OCL", width, height, window::InitFlag_Default);
+
+    vr::init();
 
     // ========================================
     // Get platforms
@@ -269,7 +290,6 @@ int main() {
         logf("err num %d\n", err);
         phatal_error("Cannot create command queue");
     }
-
 
     // ========================================
     // Do stuff before we block and go to main loop
@@ -418,7 +438,7 @@ int main() {
         }
     }
     {  // Get kernel
-        m_cl_kernel = clCreateKernel(m_cl_program, "fill_checkerboard", &err);
+        m_cl_kernel = clCreateKernel(m_cl_program, "main", &err);
         if (err != CL_SUCCESS) {
             phatal_error("Can't get kernel from program.");
         }
@@ -446,17 +466,34 @@ int main() {
         }
     }
 
-    window::main_loop(ocl_idle);
+    m_hmd_consts = vr::get_hmd_constants();
 
+    log("HMD Info: =======");
+    float xl = m_hmd_consts.lens_centers[vr::EYE_Left][0];
+    float yl = m_hmd_consts.lens_centers[vr::EYE_Left][1];
+    float xr = m_hmd_consts.lens_centers[vr::EYE_Right][0];
+    float yr = m_hmd_consts.lens_centers[vr::EYE_Right][1];
+
+    logf("Eye centers: Left (%f, %f) , Right (%f, %f)\n",
+            xl, yl, xr, yr);
+    logf("Eye to screen dist: %f\n",
+            m_hmd_consts.eye_to_screen);
+    logf("Screen size meters: (%f, %f)\n",
+            2 * m_hmd_consts.viewport_size_m[0], m_hmd_consts.viewport_size_m[1]);
+
+    phree(platforms);
+    phree(devices);
+}
+
+void deinit() {
     clReleaseProgram(m_cl_program);
     clReleaseCommandQueue(m_queue);
     clReleaseContext(m_context);
-    phree(platforms);
-    phree(devices);
 
     window::deinit();
 
-    logf("average opencl time is %f(%d)\n", avg_render / (float)num_frames, num_frames);
-    puts("Done.");
-    return 0;
+    logf("average opencl time is %f(%d)\n", m_avg_render / (float)m_num_frames, m_num_frames);
 }
+
+}  // ns ocl
+}  // ns ph

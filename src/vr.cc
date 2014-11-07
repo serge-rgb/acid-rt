@@ -12,6 +12,8 @@ static int g_warpsize[] = {10, 16};
 namespace ph {
 namespace vr {
 
+static bool                      m_has_initted = false;
+
 static GLuint                    m_quad_vao;
 static GLuint                    m_quad_program;
 static GLuint                    m_compute_program;
@@ -32,8 +34,11 @@ static bool                      m_skybox_enabled = true;
 static ovrEyeRenderDesc          m_render_desc_l;
 static ovrEyeRenderDesc          m_render_desc_r;
 
-ovrHmd                    m_hmd;
+ovrHmd                           m_hmd;
 
+vr::HMDConsts                    m_cached_consts;
+
+#ifndef GL_DEPRECATED
 void init(int width, int height) {
     const char* paths[] = {
         "src/tracing.glsl",
@@ -42,13 +47,16 @@ void init(int width, int height) {
 }
 
 void init_with_shaders(int width, int height, const char** shader_paths, int num_shaders) {
+#else
+void init() {
+#endif
     // Safety net.
-    static bool is_init = false;
-    if (is_init) {
+    if (m_has_initted) {
         phatal_error("vr::init called twice");
     }
-    is_init = true;
+    m_has_initted = true;
 
+#ifndef GL_DEPRECATED
     enum Location {
         Location_pos = 0,
         Location_screen_size = 0,
@@ -195,8 +203,8 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
         float fsize[2] = {(float)width / 2, (float)height};
         glUniform2fv(Location_screen_size, 1, &fsize[0]);
     }
+#endif // GL_DEPRECATED
 
-#if 1
     if (!ovr_Initialize()) {
         ph::phatal_error("Could not initialize OVR\n");
     }
@@ -210,7 +218,6 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     if (!succ) {
         phatal_error("Could not initialize OVR sensors!");
     }
-#endif
 
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
 
@@ -243,26 +250,24 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
     /*     printf("K[%d] = %f\n", i, lens_config.K[i]); */
     /* } */
 
+    //////////////////////////////////////////////
+    // Set up our cached constants
+    //////////////////////////////////////////////
+
+    memcpy(m_cached_consts.lens_centers[EYE_Left], m_lens_center_l, 2 * sizeof(float));
+    memcpy(m_cached_consts.lens_centers[EYE_Right], m_lens_center_r, 2 * sizeof(float));
+
+    m_cached_consts.eye_to_screen = m_default_eye_z;
+
+    m_cached_consts.viewport_size_m[0] = m_screen_size_m[0] / 2;
+    m_cached_consts.viewport_size_m[1] = m_screen_size_m[1];
+
+
+#ifndef GL_DEPRECATED
     GLfloat size_m[2] = {
         m_screen_size_m[0] / 2,
         m_screen_size_m[1],
     };
-
-
-#if 0
-    {  // Try to trick by calling ConfigureRendering
-        ovrRenderAPIConfig cfg;
-        cfg.Header.API = ovrRenderAPI_OpenGL;
-        cfg.Header.RTSize.w = width;
-        cfg.Header.RTSize.h = height;
-        cfg.Header.Multisample = 0;
-        //cfg.OGL.Window             = Window;
-        ovrFovPort fovs[2] = {fovPort_l, fovPort_l};
-        ovrEyeRenderDesc descs[2];
-        ovrHmd_ConfigureRendering(vr::m_hmd, &cfg, vr::m_hmd->DistortionCaps, fovs, descs);
-    }
-#endif
-
 
     glUseProgram(m_postprocess_program);
 
@@ -275,6 +280,14 @@ void init_with_shaders(int width, int height, const char** shader_paths, int num
 
     glUniform2fv(5, 1, size_m);     // screen_size_m
     glUniform1f(8, true);           // Cull?
+#endif
+}
+
+const HMDConsts get_hmd_constants() {
+    if (!m_has_initted) {
+        phatal_error("Trying to get hmd info without initting module");
+    }
+    return m_cached_consts;
 }
 
 void toggle_postproc() {
@@ -297,6 +310,7 @@ void disable_skybox() {
     glUniform1i(14, m_skybox_enabled);
 }
 
+#ifndef GL_DEPRECATED
 void draw(int* resolution) {
     glActiveTexture(GL_TEXTURE0);
     glUseProgram(m_program);
@@ -398,6 +412,7 @@ void draw(int* resolution) {
     window::swap_buffers();
 
 }
+#endif //GL_DEPRECATED
 
 void deinit() {
     ovrHmd_Destroy(m_hmd);
