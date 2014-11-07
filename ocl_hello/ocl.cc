@@ -21,6 +21,8 @@ static cl_mem           m_cl_texture;
 static cl_program       m_cl_program;
 static cl_kernel        m_cl_kernel;
 
+static int64 num_frames = 1;
+static float avg_render = 0.0f;
 
 void __stdcall context_callback(
         const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/) {
@@ -40,17 +42,24 @@ void ocl_idle() {
     }
 
     cl_event event;
+
+    auto t_send = io::get_microseconds();
+
+#define VP_TEST
     size_t global_size[2] = {
+#ifdef VP_TEST
+        960,
+#else
         1920,
+#endif
         1080,
     };
     size_t local_size[2] = {
         8,
         8,
     };
-
-    auto t_send = io::get_microseconds();
-
+    cl_int off = 0;
+    clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
     err = clEnqueueNDRangeKernel(  // Run the kernel
             m_queue,
             m_cl_kernel,
@@ -59,6 +68,20 @@ void ocl_idle() {
             global_size,
             local_size,
             0, NULL, &event);
+
+#ifdef VP_TEST
+    off = 960;
+    clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
+
+    err |= clEnqueueNDRangeKernel(  // Run the kernel
+            m_queue,
+            m_cl_kernel,
+            2, //dim
+            NULL, // offset
+            global_size,
+            local_size,
+            0, NULL, &event);
+#endif
 
 
     // Wait and release
@@ -92,6 +115,8 @@ void ocl_idle() {
             float(t_end - t_draw) / 1000.0f
             );
 
+    avg_render += float(t_draw - t_send) / 1000.0f;
+    num_frames++;
 
     window::swap_buffers();
 }
@@ -415,6 +440,7 @@ int main() {
 
     window::deinit();
 
+    logf("average opencl time is %f(%d)\n", avg_render / (float)num_frames, num_frames);
     puts("Done.");
     return 0;
 }
