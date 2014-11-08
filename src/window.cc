@@ -45,7 +45,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         for (int i = 0; i < num_monitors; ++i) {
             GLFWmonitor* monitor = monitors[i];
             auto* vidmode = glfwGetVideoMode(monitor);
-            if (vidmode->refreshRate >= 75 &&
+            if (/*vidmode->refreshRate >= 75 &&*/
                     vidmode->width == 1920 &&
                     vidmode->height == 1080) {
                 m_rift_monitor = monitor;

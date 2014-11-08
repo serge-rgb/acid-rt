@@ -211,7 +211,12 @@ void init() {
         ph::phatal_error("Could not initialize OVR\n");
     }
 
+
     m_hmd = ovrHmd_Create(0);
+    /*
+     * create window here when direct mode works.
+     */
+    //ovrHmd_AttachToWindow(vr::m_hmd, glfwGetWin32Window(window::m_window), NULL, NULL);
 
     unsigned int sensor_caps =
         ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
