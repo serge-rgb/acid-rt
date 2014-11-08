@@ -46,9 +46,48 @@ float lambert(Light l, float3 point, float3 norm) {
     return c;
 }
 
-// TODO: impl
-float catmull(float rsq) {
-    return 1.0;
+
+float catmull(float rsq, __constant float* K) {
+    int num_segments = 11;
+
+    /* float scaled_val = 10 * rsq / (max_r_sq); */
+    float scaled_val = 10 * rsq * 3.6;  // 3.6 == 100 * Distortion.Lens.MetersPerTanAngleAtCenter (DK2)
+    float scaled_val_floor = max(0.0f, min(10.0f, floor(scaled_val)));
+
+    int k = (int)(scaled_val_floor);
+    float p0, p1, k0p0, k0p1;
+    float m0, m1, k0m0, k0m1;
+
+    //==== k == 0
+    k0p0 = 1.0f;
+    k0m0 = K[1] - K[0];
+    k0p1 = K[1];
+    k0m1 = 0.5f * (K[2] - K[0]);
+    //====
+
+    //==== 0 < k < 9
+    p0 = K[k];
+    m0 = 0.5 * (K[k + 1] - K[k - 1]);
+    p1 = K[k + 1];
+    m1 = 0.5 * (K[k + 2] - K[k]);
+    //====
+
+    // k >= 9 does not happen for DK2 and would be expensive. Ignore it
+
+    // Pseudo if
+    float k0 = (float)(k == 0);
+
+    p0 = k0 * k0p0 + (1 - k0) * p0;
+    p1 = k0 * k0p1 + (1 - k0) * p1;
+    m0 = k0 * k0m0 + (1 - k0) * m0;
+    m1 = k0 * k0m1 + (1 - k0) * m1;
+
+    float t = scaled_val - scaled_val_floor;
+    float omt = 1 - t;
+    float res  = ( p0 * ( 1.0f + 2.0f * t ) + m0 *   t ) * omt * omt +
+        ( p1 * ( 1.0f + 2.0f * omt ) - m1 * omt ) *   t *   t;
+    return res;
+
 }
 
 __kernel void main(
@@ -58,7 +97,8 @@ __kernel void main(
         float eye_to_screen,
         float2 viewport_size_m,
         int2 viewport_size_px,      // 5
-        Eye eye                     // 6
+        Eye eye,                    // 6
+        __constant float* K         // 7
         //
         ) {
 
@@ -81,7 +121,7 @@ __kernel void main(
 
     const float rsq = point.x * point.x + point.y * point.y;
 
-    point *= (float4)catmull(rsq);
+    point *= (float4)catmull(rsq, K);
 
     point.z -= eye_to_screen;
 
@@ -107,6 +147,7 @@ __kernel void main(
             color = (float4)(1,1,1,1);
             float f = lambert(l, its.point, its.norm);
             color *= f;
+            color += (float4)(0.1);
         }
     }
 

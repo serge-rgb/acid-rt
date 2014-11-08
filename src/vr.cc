@@ -3,6 +3,7 @@
 #include "ph_gl.h"
 #include "window.h"
 
+
 #define PH_DEBUG_FRAMETIME
 
 // Note 2: Workgroup size should be a multiple of workgroup size.
@@ -234,8 +235,6 @@ void init() {
     m_renderinfo                          = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo                             = &m_hmdstate->RenderState.OurHMDInfo;
 
-    // TODO: add this to shader.
-    // float t = m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
 
     m_lens_center_l[0] = (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2);
     m_lens_center_l[1] = vr::m_hmdinfo->CenterFromTopInMeters;
@@ -245,11 +244,6 @@ void init() {
 
     m_render_desc_l = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Left, m_hmd->DefaultEyeFov[0]);
     m_render_desc_r = ovrHmd_GetRenderDesc(m_hmd, ovrEye_Right, m_hmd->DefaultEyeFov[1]);
-    /* auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo); */
-
-    /* for (int i = 0; i < OVR::LensConfig::NumCoefficients; ++i) { */
-    /*     printf("K[%d] = %f\n", i, lens_config.K[i]); */
-    /* } */
 
     //////////////////////////////////////////////
     // Set up our cached constants
@@ -289,6 +283,15 @@ const HMDConsts get_hmd_constants() {
         phatal_error("Trying to get hmd info without initting module");
     }
     return m_cached_consts;
+}
+
+void fill_catmull_K (float* K, int num_coefficients)   {
+    // auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo);
+    ph_assert(num_coefficients == OVR::LensConfig::NumCoefficients);
+
+    for (int i = 0; i < OVR::LensConfig::NumCoefficients; ++i) {
+        K[i] = m_renderinfo->EyeLeft.Distortion.K[i];
+    }
 }
 
 void toggle_postproc() {

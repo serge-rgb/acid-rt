@@ -47,6 +47,10 @@ void draw(int* resolution);
 
 const HMDConsts get_hmd_constants();
 
+// The current (DK2) distortion correction uses a 11-point Catmull-Rom spline with
+// t = radius_from_center_of_lens. This exposes the points for the current Rift relief.
+void fill_catmull_K(float* K, int num_coefficients);
+
 /**
  * The reason this is not simply GetMeAnEyeKPlzThx() is that LibOVR does much of its prediction with
  * `frame_index`, the time it takes us to draw a frame, and VSync time. So this needs to be followed

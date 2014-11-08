@@ -179,7 +179,7 @@ void init() {
     ph::init();
 
     // Creates a GL context, so we need to init the window before doing OpenCL.
-    window::init("OCL", width, height, window::InitFlag_Default);
+    window::init("OCL", width, height, window::InitFlag_NoDecoration);
 
     vr::init();
 
@@ -481,6 +481,20 @@ void init() {
         }
     }
 
+    // Distortion coefficients
+    float K[11];
+    vr::fill_catmull_K(K, 11);
+    // Create / fill CL buffer...
+    cl_mem cl_K;
+    {
+        cl_K = clCreateBuffer(m_context,
+                CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 11 * sizeof(float), (void*)K, &err);
+        if (err != CL_SUCCESS) {
+            phatal_error("Can't create K CL buffer");
+        }
+    }
+
+
     m_hmd_consts = vr::get_hmd_constants();
 
     // Set arguments to the kernel that don't change per frame.
@@ -493,6 +507,8 @@ void init() {
     int size_px[2] = { width / 2, height / 2 };
     err |= clSetKernelArg(m_cl_kernel,
             5, 2 * sizeof(int), (void*)size_px);
+    err |= clSetKernelArg(m_cl_kernel,
+            7, sizeof(cl_mem), (void*)&cl_K);
     if (err != CL_SUCCESS) {
         phatal_error("Some kernel argument was not set at ocl init.");
     }
