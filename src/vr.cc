@@ -33,6 +33,7 @@ static bool                      m_do_interlace_throttling = false;
 static bool                      m_skybox_enabled = true;
 static ovrEyeRenderDesc          m_render_desc_l;
 static ovrEyeRenderDesc          m_render_desc_r;
+static unsigned int              m_frame_index = 0;
 
 ovrHmd                           m_hmd;
 
@@ -310,6 +311,50 @@ void disable_skybox() {
     glUniform1i(14, m_skybox_enabled);
 }
 
+void begin_frame(Eye* left, Eye* right) {
+    ph_assert(left != NULL);
+    ph_assert(right != NULL);
+    ovrHmd_BeginFrameTiming(m_hmd, m_frame_index);
+
+    ovrPosef poses[2];
+    {
+        ovrVector3f offsets[2] = {
+            m_render_desc_l.HmdToEyeViewOffset,
+            m_render_desc_r.HmdToEyeViewOffset
+        };
+        ovrHmd_GetEyePoses(m_hmd, 0, offsets, poses, /*ovrTrackingState*/NULL);
+    }
+
+    Eye* eyes[2] = { left, right };
+
+    for (int i = 0; i < EYE_Count; ++i) {
+        ovrPosef pose = poses[i];
+        auto q = pose.Orientation;
+        GLfloat quat[4] {
+            q.x, q.y, q.z, q.w,
+        };
+        auto p = pose.Position;
+        GLfloat camera_pos[3];
+        io::get_wasd_camera(quat, camera_pos);
+        // add pos
+        camera_pos[0] += p.x;
+        camera_pos[1] += p.y;
+        camera_pos[2] += p.z;
+
+        eyes[i]->position[0] = camera_pos[0];
+        eyes[i]->position[1] = camera_pos[1];
+        eyes[i]->position[2] = camera_pos[2];
+        eyes[i]->orientation[0] = quat[0];
+        eyes[i]->orientation[1] = quat[1];
+        eyes[i]->orientation[2] = quat[2];
+        eyes[i]->orientation[3] = quat[3];
+    }
+}
+
+void end_frame() {
+    ovrHmd_EndFrameTiming(m_hmd);
+    m_frame_index++;
+}
 #ifndef GL_DEPRECATED
 void draw(int* resolution) {
     glActiveTexture(GL_TEXTURE0);
@@ -327,7 +372,7 @@ void draw(int* resolution) {
             m_render_desc_l.HmdToEyeViewOffset,
             m_render_desc_r.HmdToEyeViewOffset
         };
-        ovrHmd_GetEyePoses(m_hmd, frame_index, offsets, poses, /*ovrTrackingState*/NULL);
+        ovrHmd_GetEyePoses(m_hmd, 0, offsets, poses, /*ovrTrackingState*/NULL);
     }
 
 

@@ -16,6 +16,7 @@ namespace vr {
 enum {
     EYE_Left,
     EYE_Right,
+    EYE_Count,  // Works with most humanoid species
 };
 
 // Use get_hmd_constants() after init to get this:
@@ -28,9 +29,10 @@ struct HMDConsts {
 };
 
 // State of eye queried at a point in time.
-struct EyeFrame {
+struct Eye {
     float orientation[4];
     float position[3];
+    float pad;
 };
 
 extern ovrHmd  m_hmd;  // 'extern' because abstraction may leak when we try to use direct mode.
@@ -44,6 +46,15 @@ void draw(int* resolution);
 
 
 const HMDConsts get_hmd_constants();
+
+/**
+ * The reason this is not simply GetMeAnEyeKPlzThx() is that LibOVR does much of its prediction with
+ * `frame_index`, the time it takes us to draw a frame, and VSync time. So this needs to be followed
+ * by a vr::end_frame() after we have done our thang.
+ */
+void begin_frame(Eye* left, Eye* right);
+void end_frame();
+
 
 void enable_skybox();
 

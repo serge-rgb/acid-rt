@@ -56,17 +56,21 @@ void __stdcall context_callback(
 void idle() {
     glFinish();
 
+    vr::Eye left;
+    vr::Eye right;
+    vr::begin_frame(&left, &right);
+
     auto t_start = io::get_microseconds();
 
     cl_int err;
-    // Run OpenCL kernel
+
     err = clEnqueueAcquireGLObjects(
             m_queue, 1, &m_cl_texture, 0, NULL/*event wait list*/, NULL/*event*/);
     if (err != CL_SUCCESS) {
         phatal_error("Could not acquire texture from GL context");
     }
 
-    cl_event event;
+    cl_event event;  // TODO; I don't think I'm gonna need this...
 
     auto t_send = io::get_microseconds();
 
@@ -80,20 +84,20 @@ void idle() {
         8,
     };
 
+    // Kernel arguments that change every frame.
     cl_int off = 0;
-    clSetKernelArg(m_cl_kernel, 1, sizeof(cl_int), (void*) &off);
-    clSetKernelArg(m_cl_kernel,
+    err = clSetKernelArg(m_cl_kernel,
+            1, sizeof(cl_int), (void*) &off);
+    err |= clSetKernelArg(m_cl_kernel,
             2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Left]);
-    clSetKernelArg(m_cl_kernel,
-            3, sizeof(float), (void*)&m_hmd_consts.eye_to_screen);
-    clSetKernelArg(m_cl_kernel,
-            4, 2 * sizeof(float), (void*)&m_hmd_consts.viewport_size_m);
-    int size_px[2] = { width / 2, height / 2 };
-    clSetKernelArg(m_cl_kernel,
-            5, 2 * sizeof(int), (void*)size_px);
+    err |= clSetKernelArg(m_cl_kernel,
+            6, sizeof(vr::Eye), (void*)&left);
+    if (err != CL_SUCCESS) {
+        phatal_error("Error setting kernel argument (left eye)");
+    }
 
-
-    err = clEnqueueNDRangeKernel(  // Run the kernel
+    // Left eye
+    err = clEnqueueNDRangeKernel(
             m_queue,
             m_cl_kernel,
             2, //dim
@@ -101,15 +105,23 @@ void idle() {
             global_size,
             local_size,
             0, NULL, &event);
+    if (err != CL_SUCCESS) {
+        phatal_error("Error enqueuing kernel (left)");
+    }
 
     // Update parameters for right eye
     off = 960;
-    clSetKernelArg(m_cl_kernel,
+    err = clSetKernelArg(m_cl_kernel,
             1, sizeof(cl_int), (void*) &off);
-    clSetKernelArg(m_cl_kernel,
+    err |= clSetKernelArg(m_cl_kernel,
             2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Right]);
+    err |= clSetKernelArg(m_cl_kernel,
+            6, sizeof(vr::Eye), (void*)&right);
+    if (err != CL_SUCCESS) {
+        phatal_error("Error setting kernel argument (right eye)");
+    }
 
-    err |= clEnqueueNDRangeKernel(  // Run the kernel
+    err = clEnqueueNDRangeKernel(
             m_queue,
             m_cl_kernel,
             2, //dim
@@ -117,7 +129,9 @@ void idle() {
             global_size,
             local_size,
             0, NULL, &event);
-
+    if (err != CL_SUCCESS) {
+        phatal_error("Error enqueuing kernel (right)");
+    }
 
     // Wait and release
     clFinish(m_queue);
@@ -152,6 +166,8 @@ void idle() {
 
     m_avg_render += float(t_draw - t_send) / 1000.0f;
     m_num_frames++;
+
+    vr::end_frame();
 
     window::swap_buffers();
 }
@@ -443,7 +459,6 @@ void init() {
             phatal_error("Can't get kernel from program.");
         }
         // Set argument to be the texture.
-        err = clSetKernelArg(m_cl_kernel, 0, sizeof(cl_mem), (void*) &m_cl_texture);
         if (err != CL_SUCCESS) {
             switch(err) {
             case CL_INVALID_SAMPLER:
@@ -467,6 +482,20 @@ void init() {
     }
 
     m_hmd_consts = vr::get_hmd_constants();
+
+    // Set arguments to the kernel that don't change per frame.
+    err = clSetKernelArg(m_cl_kernel,
+            0, sizeof(cl_mem), (void*) &m_cl_texture);
+    err |= clSetKernelArg(m_cl_kernel,
+            3, sizeof(float), (void*)&m_hmd_consts.eye_to_screen);
+    err |= clSetKernelArg(m_cl_kernel,
+            4, 2 * sizeof(float), (void*)&m_hmd_consts.viewport_size_m);
+    int size_px[2] = { width / 2, height / 2 };
+    err |= clSetKernelArg(m_cl_kernel,
+            5, 2 * sizeof(int), (void*)size_px);
+    if (err != CL_SUCCESS) {
+        phatal_error("Some kernel argument was not set at ocl init.");
+    }
 
     log("HMD Info: =======");
     float xl = m_hmd_consts.lens_centers[vr::EYE_Left][0];

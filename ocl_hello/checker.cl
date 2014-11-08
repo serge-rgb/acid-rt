@@ -1,18 +1,28 @@
-typedef struct Light_s {
+typedef struct {
     float3 point;
 } Light;
 
-typedef struct Ray_s {
+typedef struct {
     float3 o;
     float3 d;
 } Ray;
 
-typedef struct Intersection_s {
+typedef struct {
+    float4 orientation;  // Orientation quaternion.
+    float3 position;
+} Eye;
+
+typedef struct {
     float t;
     float3 point;
     float3 norm;
 } Intersection;
 
+float3 rotate_vector_quat(float3 vec, float4 quat) {
+    float3 i = -quat.xyz;
+    float m = quat.w;
+    return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
+}
 
 Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
     Intersection intersection;
@@ -47,11 +57,14 @@ __kernel void main(
         float2 lens_center,
         float eye_to_screen,
         float2 viewport_size_m,
-        int2 viewport_size_px) {
+        int2 viewport_size_px,      // 5
+        Eye eye                     // 6
+        //
+        ) {
 
     float4 color = 1;
 
-    float3 eye = (float3)(0);
+    float3 eye_pos = (float3)(0);
     float3 point = (float3)(
             (float)(get_global_id(0)) / viewport_size_px.x,
             (float)(get_global_id(1)) / viewport_size_px.y,
@@ -72,12 +85,16 @@ __kernel void main(
 
     point.z -= eye_to_screen;
 
-
-    // TODO: rotation & translation
+    // Rotate
+    eye_pos = rotate_vector_quat(eye_pos, eye.orientation);
+    point = rotate_vector_quat(point, eye.orientation);
+    // Translate
+    eye_pos += eye.position;
+    point += eye.position;
 
     Ray ray;
     ray.o = (float3)point;
-    ray.d = normalize(point - eye);
+    ray.d = normalize(point - eye_pos);
 
     Light l;
     l.point = (float3)(0,10,-5);
