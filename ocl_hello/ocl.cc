@@ -154,7 +154,8 @@ void idle() {
         glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
-    glFinish();
+
+    GLCHK ( glFinish() );
 
     auto t_end = io::get_microseconds();
 
@@ -167,9 +168,11 @@ void idle() {
     m_avg_render += float(t_draw - t_send) / 1000.0f;
     m_num_frames++;
 
-    vr::end_frame();
-
     window::swap_buffers();
+
+    GLCHK ( glFinish() );
+
+    vr::end_frame();
 }
 
 // For empty GL_CHECK().

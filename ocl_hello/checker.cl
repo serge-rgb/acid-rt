@@ -102,7 +102,7 @@ __kernel void main(
         //
         ) {
 
-    float4 color = 1;
+    float4 color = 0;
 
     float3 eye_pos = (float3)(0);
     float3 point = (float3)(
@@ -140,8 +140,6 @@ __kernel void main(
     l.point = (float3)(0,10,-5);
 
     if (rsq < 0.25) {
-        color = 0;
-
         Intersection its = ray_sphere(&ray, (float3)(0,0,-2), 0.2);
         if (its.t > 0) {
             color = (float4)(1,1,1,1);

@@ -34,7 +34,7 @@ static bool                      m_do_interlace_throttling = false;
 static bool                      m_skybox_enabled = true;
 static ovrEyeRenderDesc          m_render_desc_l;
 static ovrEyeRenderDesc          m_render_desc_r;
-static unsigned int              m_frame_index = 0;
+static unsigned int              m_frame_index = 1;
 
 ovrHmd                           m_hmd;
 
@@ -456,8 +456,8 @@ void draw(int* resolution) {
 #ifdef PH_DEBUG_FRAMETIME
     printf("Frame time is %f\n", frame_time_ms);
 #endif
-    ovrHmd_EndFrameTiming(m_hmd);
     window::swap_buffers();
+    ovrHmd_EndFrameTiming(m_hmd);
 
 }
 #endif //GL_DEPRECATED
