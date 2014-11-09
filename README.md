@@ -8,17 +8,30 @@ This is what it was looking like before the port to OpenCL (in-progress).
 
 ![old screenshot](http://i.imgur.com/iZVTZX4.png)
 
-This is a real time ray tracing renderer with support for the Oculus Rift.
-It was based on GLSL compute shaders but now those parts are being ported to OpenCL.
+This is a real time ray tracing renderer, designed to be a drop-in substitute for the Oculus Rift's SDK renderer.
 
+This is a work in progress. Not for general consumption, but the aim is to be able to make games using it.
 
-Features / Requirements:
-------------------------
+Features:
+---------
 
-* WIP -- Not for general consumption at the moment :)
-* Young, ray tracing polygon renderer with some samples included.
+* Triangle soup renderer.
+* GLSL compute shader ray tracer. (Being replaced by OpenCL in the opencl branch)
+* Simple lambertian material, texture mapping & materials will be implemented.
+* Crappy OBJ loader (will be replaced by third party lib)
+
+VR Features:
+------------
+
+* Lens distortion correction
+* Chromatic aberration correction
+
+Requirements:
+-------------
+
 * Only Supports DK2 on Windows.
-* Requires OpenGL 4.3
+* Requires OpenGL 4.3  (Will change soon)
+* Requires OpenCL 1.1
 
 How to build
 ------------
@@ -65,11 +78,15 @@ License
 
 BSD-style.
 
-TODO
-----
+To-Do (in no particular order)
+------------------------------
 
-* port to OpenCL
-* use external mesh loader
-* lighting model
-* on screen text
-* desktop mode
+* OpenCL rendering.
+* Mesh loader
+* Lighting model
+* BRDF materials
+* On-screen text
+* Desktop mode
+* Direct3D backend
+* Time Warp
+
