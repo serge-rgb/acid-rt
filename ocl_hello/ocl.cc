@@ -315,6 +315,8 @@ void init() {
     // Do stuff before we block and go to main loop
     // ========================================
 
+    m_hmd_consts = vr::get_hmd_constants();
+
     // Create GL "framebufer".
     {
         // Create texture
@@ -367,24 +369,31 @@ void init() {
         enum {
             vert,
             frag,
+            fxaa,
             shader_count,
         };
         GLuint shaders[shader_count];
-        const char* path[shader_count];
-        path[vert] = "src/quad.v.glsl";
-        path[frag] = "src/quad.f.glsl";
-        shaders[vert] = ph::gl::compile_shader(path[vert], GL_VERTEX_SHADER);
-        shaders[frag] = ph::gl::compile_shader(path[frag], GL_FRAGMENT_SHADER);
+        const char* paths[shader_count];
+        paths[vert] = "src/quad.v.glsl";
+        paths[frag] = "src/postproc.f.glsl";
+        paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
+
+        shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);
+        shaders[frag] = ph::gl::compile_shader(paths[frag], GL_FRAGMENT_SHADER);
+        shaders[fxaa] = ph::gl::compile_shader(paths[fxaa], GL_FRAGMENT_SHADER);
 
         m_quad_program = glCreateProgram();
-
         ph::gl::link_program(m_quad_program, shaders, shader_count);
 
-        ph_expect(Location_pos == glGetAttribLocation(m_quad_program, "position"));
-        ph_expect(Location_tex == glGetUniformLocation(m_quad_program, "tex"));
-
         GLCHK ( glUseProgram(m_quad_program) );
-        GLCHK ( glUniform1i(Location_tex, /*GL_TEXTURE_0*/0) );
+        glUniform1i(1, /*GL_TEXTURE_0*/0);
+        GLfloat rcp_frame[2] = { 1.0f/(float)width, 1.0f/(float)height };
+        glUniform2fv(2, 1, rcp_frame);
+        GLfloat size [2] = { GLfloat(width), GLfloat(height) };
+        glUniform2fv(3, 1, size);
+
+        glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
+        glUniform2fv(5, 1,  m_hmd_consts.lens_centers[vr::EYE_Right]);
     }
 
     // Create OpenCL buffer
@@ -496,10 +505,11 @@ void init() {
         if (err != CL_SUCCESS) {
             phatal_error("Can't create K CL buffer");
         }
+        for (int i = 0; i < 11; ++i) {
+            logf("K[%d] : %f\n", i, K[i]);
+        }
     }
 
-
-    m_hmd_consts = vr::get_hmd_constants();
 
     // Set arguments to the kernel that don't change per frame.
     err = clSetKernelArg(m_cl_kernel,

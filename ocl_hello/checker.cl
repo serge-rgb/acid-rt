@@ -51,7 +51,8 @@ float catmull(float rsq, __constant float* K) {
     int num_segments = 11;
 
     /* float scaled_val = 10 * rsq / (max_r_sq); */
-    float scaled_val = 10 * rsq * 3.6;  // 3.6 == 100 * Distortion.Lens.MetersPerTanAngleAtCenter (DK2)
+    // 3.6 == 100 * Distortion.Lens.MetersPerTanAngleAtCenter (DK2)
+    float scaled_val = 10 * rsq * 3.6;
     float scaled_val_floor = max(0.0f, min(10.0f, floor(scaled_val)));
 
     int k = (int)(scaled_val_floor);
@@ -140,6 +141,7 @@ __kernel void main(
     l.point = (float3)(0,10,-5);
 
     if (rsq < 0.25) {
+        color = 0.0;
         Intersection its = ray_sphere(&ray, (float3)(0,0,-2), 0.2);
         if (its.t > 0) {
             color = (float4)(1,1,1,1);

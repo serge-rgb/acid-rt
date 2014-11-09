@@ -32,7 +32,7 @@ struct HMDConsts {
 struct Eye {
     float orientation[4];
     float position[3];
-    float pad;
+    float pad;  // OpenCL alignment rules (CL 1.1 spec p.163)
 };
 
 extern ovrHmd  m_hmd;  // 'extern' because abstraction may leak when we try to use direct mode.

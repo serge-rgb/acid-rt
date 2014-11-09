@@ -259,6 +259,10 @@ void init() {
 
     m_cached_consts.eye_to_screen = m_default_eye_z;
 
+    m_cached_consts.viewport_size_m[0] =
+        m_screen_size_m[0] / 2;
+    m_cached_consts.viewport_size_m[1] =
+        m_screen_size_m[1];
     m_cached_consts.viewport_size_m[0] = m_screen_size_m[0] / 2;
     m_cached_consts.viewport_size_m[1] = m_screen_size_m[1];
 

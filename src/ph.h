@@ -102,6 +102,7 @@ uint64_t hash(int64 data);
 
 uint64_t hash(const char* s);
 
+/////////////////////////
 // Error handling
 /////////////////////////
 void phatal_error(const char* message);
