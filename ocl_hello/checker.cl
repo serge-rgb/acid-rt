@@ -18,10 +18,27 @@ typedef struct {
     float3 norm;
 } Intersection;
 
-float3 rotate_vector_quat(float3 vec, float4 quat) {
+typedef struct {
+    float3 p0;
+    float3 p1;
+    float3 p2;
+} Triangle;
+
+inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
     float3 i = -quat.xyz;
     float m = quat.w;
     return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
+}
+
+inline float3 barycentric(const Triangle tri, const Ray ray) {
+    float3 e1 = tri.p1 - tri.p0;
+    float3 e2 = tri.p2 - tri.p0;
+    float3 s  = ray.o - tri.p0;
+    float3 m  = cross(s, ray.d);
+    float3 n = cross(e1, e2);
+    float det = dot(-n, ray.d);
+    //if (det <= EPSILON && det >= -EPSILON) return float3(-1);
+    return (1 / det) * (float3)(dot(n, s), dot(m, e2), dot(-m, e1));
 }
 
 Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
@@ -99,11 +116,14 @@ __kernel void main(
         float2 viewport_size_m,
         int2 viewport_size_px,      // 5
         Eye eye,                    // 6
-        __constant float* K         // 7
+        __constant float* K,        // 7
+        __constant Triangle* tris,  // 8
+        __constant Triangle* norms, // 9
+        int num_tris
         //
         ) {
 
-    float4 color = 0;
+    float4 color = 1;
 
     float3 eye_pos = (float3)(0);
     float3 point = (float3)(
@@ -142,12 +162,40 @@ __kernel void main(
 
     if (rsq < 0.25) {
         color = 0.0;
-        Intersection its = ray_sphere(&ray, (float3)(0,0,-2), 0.2);
-        if (its.t > 0) {
-            color = (float4)(1,1,1,1);
-            float f = lambert(l, its.point, its.norm);
-            color *= f;
-            color += (float4)(0.1);
+
+        for (int i = 0; i < num_tris; ++i) {
+            Triangle tri = tris[i];
+
+            Intersection its = ray_sphere(&ray, (float3)tri.p0, 0.2);
+            if (its.t > 0) {
+                color = 0.9;
+                float f = lambert(l, its.point, its.norm);
+                color *= f;
+                color += (float4)(0.1);
+            }
+            its = ray_sphere(&ray, (float3)tri.p1, 0.2);
+            if (its.t > 0) {
+                color = 0.9;
+                float f = lambert(l, its.point, its.norm);
+                color *= f;
+                color += (float4)(0.1);
+            }
+            its = ray_sphere(&ray, (float3)tri.p2, 0.2);
+            if (its.t > 0) {
+                color = 0.9;
+                float f = lambert(l, its.point, its.norm);
+                color *= f;
+                color += (float4)(0.1);
+            }
+            float3 bar = barycentric(tri, ray);
+            if (bar.x > 0 &&
+                    bar.y < 1 && bar.y > 0 &&
+                    bar.z < 1 && bar.z > 0 &&
+                    (bar.y + bar.z) < 1
+                    /*&& bar.x < min_t*/)
+            {
+                color = 1;
+            }
         }
     }
 

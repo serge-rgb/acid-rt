@@ -23,9 +23,10 @@ enum {
 // The minimum info needed to set up our renderer.
 // TODO: Include distortion spline factors instead of hard-coding.
 struct HMDConsts {
-    float lens_centers[2][2];   // Left, Right
-    float eye_to_screen;        // Will get you the optimal FOV when ray tracing.
-    float viewport_size_m[2];     // The physical size of the rift display.
+    float lens_centers[2][2];       // Left, Right
+    float eye_to_screen;            // Will get you the optimal FOV when ray tracing.
+    float viewport_size_m[2];       // The physical size of the rift display.
+    float meters_per_tan_angle;     // See OVR_Stereo.cpp : LoadLensConfig
 };
 
 // State of eye queried at a point in time.

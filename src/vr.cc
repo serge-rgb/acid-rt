@@ -263,8 +263,8 @@ void init() {
         m_screen_size_m[0] / 2;
     m_cached_consts.viewport_size_m[1] =
         m_screen_size_m[1];
-    m_cached_consts.viewport_size_m[0] = m_screen_size_m[0] / 2;
-    m_cached_consts.viewport_size_m[1] = m_screen_size_m[1];
+    m_cached_consts.meters_per_tan_angle =
+        m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
 
 
 #ifndef GL_DEPRECATED

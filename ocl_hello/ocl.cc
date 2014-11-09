@@ -4,6 +4,7 @@
 
 #include "io.h"
 #include "ph_gl.h"
+#include "scene.h"  // Should not be necessary once this is a standalone module
 #include "vr.h"
 #include "window.h"
 
@@ -15,7 +16,19 @@ static const int height = 1080;
 
 namespace ph {
 namespace ocl {
+
+struct CLTriangle {
+    float p0[3];
+    float pad0;
+    float p1[3];
+    float pad1;
+    float p2[3];
+    float pad2;
+};
+
 void init();
+// Set triangle soup to be buffer.
+void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris);
 void idle();
 void deinit();
 }
@@ -24,6 +37,22 @@ void deinit();
 int main() {
     ph::ocl::init();
 
+    ocl::CLTriangle tri;
+    tri.p0[0] = 0;
+    tri.p0[1] = 0;
+    tri.p0[2] = -5;
+
+
+    tri.p1[0] = 1;
+    tri.p1[1] = 0;
+    tri.p1[2] = -5;
+
+
+    tri.p2[0] = 0;
+    tri.p2[1] = 1;
+    tri.p2[2] = -5;
+
+    ph::ocl::set_triangle_soup(&tri, &tri, 1);
 
     window::main_loop(ocl::idle);
 
@@ -41,6 +70,8 @@ static GLuint           m_quad_program;
 static cl_context       m_context;
 static cl_command_queue m_queue;
 static cl_mem           m_cl_texture;
+static cl_mem           m_cl_triangle_soup;
+static cl_mem           m_cl_normal_soup;
 static cl_program       m_cl_program;
 static cl_kernel        m_cl_kernel;
 static vr::HMDConsts    m_hmd_consts;
@@ -51,6 +82,37 @@ static float m_avg_render = 0.0f;
 void __stdcall context_callback(
         const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/) {
     logf("OpenCL context error:  %s\n", errinfo);
+}
+
+void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris) {
+    // If CL triangle soup doesn't exist, create
+    static bool soup_exists = false;
+    cl_int err = CL_SUCCESS;
+    if (!soup_exists) {
+        m_cl_triangle_soup = clCreateBuffer(m_context,
+                CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
+        if (err != CL_SUCCESS) {
+            phatal_error("Could not create buffer for tri soup");
+        }
+        m_cl_triangle_soup = clCreateBuffer(m_context,
+                CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
+        if (err != CL_SUCCESS) {
+            phatal_error("Could not create buffer for normal soup");
+        }
+        soup_exists = true;
+    }
+    // Set arguments.
+    err = clSetKernelArg(m_cl_kernel,
+            8, sizeof(cl_mem), (void*)&m_cl_triangle_soup);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (tri soup)"); }
+
+    err = clSetKernelArg(m_cl_kernel,
+            9, sizeof(cl_mem), (void*)&m_cl_normal_soup);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (normal soup)"); }
+
+    err = clSetKernelArg(m_cl_kernel,
+            10, sizeof(cl_int), (void*) &num_tris);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_tris)"); }
 }
 
 void idle() {
@@ -106,7 +168,7 @@ void idle() {
             local_size,
             0, NULL, &event);
     if (err != CL_SUCCESS) {
-        phatal_error("Error enqueuing kernel (left)");
+        //phatal_error("Error enqueuing kernel (left)");
     }
 
     // Update parameters for right eye
@@ -130,7 +192,7 @@ void idle() {
             local_size,
             0, NULL, &event);
     if (err != CL_SUCCESS) {
-        phatal_error("Error enqueuing kernel (right)");
+        //phatal_error("Error enqueuing kernel (right)");
     }
 
     // Wait and release
@@ -339,10 +401,6 @@ void init() {
 
     // Create GL quad program to fill screen.
     {
-        enum {  // Locations set in shaders.
-            Location_pos = 0,
-            Location_tex = 1,
-        };
         // Create the quad
         {
             glPointSize(3);
@@ -362,8 +420,8 @@ void init() {
 
             GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof(vert_data), vert_data, GL_STATIC_DRAW));
 
-            GLCHK (glEnableVertexAttribArray (Location_pos) );
-            GLCHK (glVertexAttribPointer     (/*attrib location*/Location_pos,
+            GLCHK (glEnableVertexAttribArray (0) );
+            GLCHK (glVertexAttribPointer     (/*attrib location*/0,
                         /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
         }
         enum {
@@ -523,6 +581,12 @@ void init() {
             5, 2 * sizeof(int), (void*)size_px);
     err |= clSetKernelArg(m_cl_kernel,
             7, sizeof(cl_mem), (void*)&cl_K);
+    if (m_hmd_consts.meters_per_tan_angle != 0.036f) {
+        logf("MetersPerTanAngleAtCenter is %f, expected 0.036\n", m_hmd_consts.meters_per_tan_angle);
+        phatal_error("Exiting");
+    }
+
+
     if (err != CL_SUCCESS) {
         phatal_error("Some kernel argument was not set at ocl init.");
     }
