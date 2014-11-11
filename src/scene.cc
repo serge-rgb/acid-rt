@@ -1,6 +1,8 @@
 ﻿#include "scene.h"
 
-#include "ph_gl.h"
+#include <ocl.h>
+#include <ph_gl.h>
+
 
 namespace ph {
 namespace scene {
@@ -10,12 +12,12 @@ static const int kTreeStackLimit = 64;
 
 // Defined below
 struct BVHNode;
-struct GLtriangle;
+struct CLtriangle;
 struct GLlight;
 struct Primitive;
 
-static Slice<GLtriangle>    m_triangle_pool;
-static Slice<GLtriangle>    m_normal_pool;
+static Slice<CLtriangle>    m_triangle_pool;
+static Slice<CLtriangle>    m_normal_pool;
 static Slice<GLlight>       m_light_pool;
 static Slice<Primitive>     m_primitives;
 static BVHNode*             m_flat_tree = NULL;
@@ -28,22 +30,22 @@ static GLuint               m_light_buffer;
 static GLuint               m_prim_buffer;
 
 //TODO: This is OK, should be CLvec3 (and CLtriangle)
-struct GLvec3 {
+struct CLvec3 {
     float x;
     float y;
     float z;
     float _padding;
 };
 
-struct GLtriangle {
-    GLvec3 p0;
-    GLvec3 p1;
-    GLvec3 p2;
+struct CLtriangle {
+    CLvec3 p0;
+    CLvec3 p1;
+    CLvec3 p2;
 };
 
 struct GLlight {
-    GLvec3 position;
-    GLvec3 color;
+    CLvec3 position;
+    CLvec3 color;
 };
 
 struct Light {
@@ -95,8 +97,8 @@ static AABB get_bbox(const Primitive* primitives, int count) {
         }
 
         for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
-            GLtriangle tri = m_triangle_pool[i];
-            GLvec3 points[3] = { tri.p0, tri.p1, tri.p2 };
+            CLtriangle tri = m_triangle_pool[i];
+            CLvec3 points[3] = { tri.p0, tri.p1, tri.p2 };
             for (int j = 0; j < 3; ++j) {
                 auto p = points[j];
                 if (p.x < bbox.xmin) bbox.xmin = p.x;
@@ -631,8 +633,8 @@ static bool validate_flattened_bvh(BVHNode* root, int64 len) {
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
-static GLvec3 to_gl(glm::vec3 in) {
-    GLvec3 out = {in.x, in.y, in.z, 0};
+static CLvec3 to_cl(glm::vec3 in) {
+    CLvec3 out = {in.x, in.y, in.z, 0};
     return out;
 }
 
@@ -682,15 +684,15 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 
     // Vertex data
     glm::vec3 _a,_b,_c,_d,_e,_f,_g,_h;
-    GLvec3 a,b,c,d,e,f,g,h;
+    CLvec3 a,b,c,d,e,f,g,h;
 
     // Normal data for each face
-    GLvec3 nf, nr, nb, nl, nt, nm;
+    CLvec3 nf, nr, nb, nl, nt, nm;
 
 
     // Temp struct, fill-and-submit.
-    GLtriangle tri;
-    GLtriangle norm;
+    CLtriangle tri;
+    CLtriangle norm;
 
     // Return index to the first appended triangle.
     int64 index = -1;
@@ -721,26 +723,26 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     _h = glm::vec3(cube->center + glm::vec3(-cube->sizes.x, -cube->sizes.y, cube->sizes.z));
 
 
-    a = to_gl(_a);
-    b = to_gl(_b);
-    c = to_gl(_c);
-    d = to_gl(_d);
-    e = to_gl(_e);
-    f = to_gl(_f);
-    g = to_gl(_g);
-    h = to_gl(_h);
+    a = to_cl(_a);
+    b = to_cl(_b);
+    c = to_cl(_c);
+    d = to_cl(_d);
+    e = to_cl(_e);
+    f = to_cl(_f);
+    g = to_cl(_g);
+    h = to_cl(_h);
 
 
     // 6 normals
-    nf = to_gl(glm::normalize(glm::cross(_b - _e, _h - _e)));
-    nr = to_gl(glm::normalize(glm::cross(_c - _f, _e - _f)));
-    nb = to_gl(glm::normalize(glm::cross(_d - _g, _f - _g)));
-    nl = to_gl(glm::normalize(glm::cross(_a - _h, _g - _h)));
-    nt = to_gl(glm::normalize(glm::cross(_c - _b, _a - _b)));
-    nm = to_gl(glm::normalize(glm::cross(_e - _f, _g - _f)));
+    nf = to_cl(glm::normalize(glm::cross(_b - _e, _h - _e)));
+    nr = to_cl(glm::normalize(glm::cross(_c - _f, _e - _f)));
+    nb = to_cl(glm::normalize(glm::cross(_d - _g, _f - _g)));
+    nl = to_cl(glm::normalize(glm::cross(_a - _h, _g - _h)));
+    nt = to_cl(glm::normalize(glm::cross(_c - _b, _a - _b)));
+    nm = to_cl(glm::normalize(glm::cross(_e - _f, _g - _f)));
 
     if (flags & SubmitFlags_FlipNormals) {
-        GLvec3* normals[] = {&nf, &nr, &nb, &nl, &nt, &nm};
+        CLvec3* normals[] = {&nf, &nr, &nb, &nl, &nt, &nm};
         for (int i = 0; i < 6; ++i) {
             normals[i]->x *= -1;
             normals[i]->y *= -1;
@@ -897,14 +899,14 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
         e = sign * chunk->norms[i + 1];
         f = sign * chunk->norms[i + 2];
 
-        GLtriangle tri;
-        GLtriangle norm;
-        tri.p0 = to_gl(a);
-        tri.p1 = to_gl(b);
-        tri.p2 = to_gl(c);
-        norm.p0 = to_gl(d);
-        norm.p1 = to_gl(e);
-        norm.p2 = to_gl(f);
+        CLtriangle tri;
+        CLtriangle norm;
+        tri.p0 = to_cl(a);
+        tri.p1 = to_cl(b);
+        tri.p2 = to_cl(c);
+        norm.p0 = to_cl(d);
+        norm.p1 = to_cl(e);
+        norm.p2 = to_cl(f);
 
 #ifdef PH_DEBUG
         auto vi = append(&m_triangle_pool, tri);
@@ -957,8 +959,8 @@ void init() {
         update_structure();
         upload_everything();
     } else {
-        m_triangle_pool = MakeSlice<GLtriangle>(1024);
-        m_normal_pool   = MakeSlice<GLtriangle>(1024);
+        m_triangle_pool = MakeSlice<CLtriangle>(1024);
+        m_normal_pool   = MakeSlice<CLtriangle>(1024);
         m_light_pool    = MakeSlice<GLlight>(8);
         m_primitives    = MakeSlice<Primitive>(1024);
 
@@ -1013,6 +1015,8 @@ void update_structure() {
 void upload_everything() {
     // Upload tree
     // Upload triangles and normals
+    ph_assert(m_triangle_pool.n_elems == m_normal_pool.n_elems);
+    ocl::set_triangle_soup(m_triangle_pool.ptr, m_normal_pool.ptr, m_triangle_pool.n_elems);
     // Upload primitive data
 #if 0
     // Upload flat bvh.
@@ -1029,7 +1033,7 @@ void upload_everything() {
     {
         GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangle_buffer) );
         glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_triangle_pool.n_elems),
+                GLsizeiptr(sizeof(scene::CLtriangle) * scene::m_triangle_pool.n_elems),
                 (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_triangle_buffer) );
     }
@@ -1038,7 +1042,7 @@ void upload_everything() {
     {
         GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_normal_buffer) );
         glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::GLtriangle) * scene::m_normal_pool.n_elems),
+                GLsizeiptr(sizeof(scene::CLtriangle) * scene::m_normal_pool.n_elems),
                 (GLvoid*)scene::m_normal_pool.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_normal_buffer) );
     }

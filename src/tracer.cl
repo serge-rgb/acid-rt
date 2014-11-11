@@ -158,43 +158,26 @@ __kernel void main(
     ray.d = normalize(point - eye_pos);
 
     Light l;
-    l.point = (float3)(0,10,-5);
+    l.point = (float3)(-3,10,5);
 
+    float min_t = 1 << 16;
     if (rsq < 0.25) {
         color = 0.0;
 
         for (int i = 0; i < num_tris; ++i) {
             Triangle tri = tris[i];
-
-            Intersection its = ray_sphere(&ray, (float3)tri.p0, 0.2);
-            if (its.t > 0) {
-                color = 0.9;
-                float f = lambert(l, its.point, its.norm);
-                color *= f;
-                color += (float4)(0.1);
-            }
-            its = ray_sphere(&ray, (float3)tri.p1, 0.2);
-            if (its.t > 0) {
-                color = 0.9;
-                float f = lambert(l, its.point, its.norm);
-                color *= f;
-                color += (float4)(0.1);
-            }
-            its = ray_sphere(&ray, (float3)tri.p2, 0.2);
-            if (its.t > 0) {
-                color = 0.9;
-                float f = lambert(l, its.point, its.norm);
-                color *= f;
-                color += (float4)(0.1);
-            }
             float3 bar = barycentric(tri, ray);
             if (bar.x > 0 &&
+                    bar.x < min_t &&
                     bar.y < 1 && bar.y > 0 &&
                     bar.z < 1 && bar.z > 0 &&
-                    (bar.y + bar.z) < 1
-                    /*&& bar.x < min_t*/)
+                    (bar.y + bar.z) < 1)
             {
-                color = 1;
+                min_t = bar.x;
+                Triangle norm = norms[i];
+                float3 norm_f = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2;
+                float3 point = ray.o + bar.x * ray.d;
+                color = 1 * lambert(l, point, norm_f);
             }
         }
     }

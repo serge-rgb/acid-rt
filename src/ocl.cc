@@ -21,7 +21,7 @@ static const int height = 1080;
 int main() {
     ph::ocl::init();
 
-    ocl::CLTriangle tri;
+    ocl::CLtriangle tri;
     tri.p0[0] = 0;
     tri.p0[1] = 0;
     tri.p0[2] = -5;
@@ -69,7 +69,7 @@ void __stdcall context_callback(
     logf("OpenCL context error:  %s\n", errinfo);
 }
 
-void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris) {
+void set_triangle_soup(scene::CLtriangle* tris, scene::CLtriangle* norms, size_t num_tris) {
     // If CL triangle soup doesn't exist, create
     static bool soup_exists = false;
     cl_int err = CL_SUCCESS;
@@ -83,7 +83,7 @@ void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris) {
     if (err != CL_SUCCESS) {
         phatal_error("Could not create buffer for tri soup");
     }
-    m_cl_triangle_soup = clCreateBuffer(m_context,
+    m_cl_normal_soup = clCreateBuffer(m_context,
             CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
     if (err != CL_SUCCESS) {
