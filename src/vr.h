@@ -2,13 +2,6 @@
 
 #include <ph.h>
 
-////////////////////////////////////////////////
-// GL IS DEPRECATED
-////////////////////////////////////////////////
-
-#define GL_DEPRECATED
-
-////////////////////////////////////////////////
 
 namespace ph {
 namespace vr {
@@ -39,12 +32,6 @@ struct Eye {
 extern ovrHmd  m_hmd;  // 'extern' because abstraction may leak when we try to use direct mode.
 
 void init();
-#ifndef GL_DEPRECATED
-void init(int width, int height);
-void init_with_shaders(int width, int height, const char** shader_paths, int num_shaders);
-void draw(int* resolution);
-#endif
-
 
 const HMDConsts get_hmd_constants();
 

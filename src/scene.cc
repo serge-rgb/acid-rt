@@ -1011,7 +1011,10 @@ void update_structure() {
 
 // =========================  Upload to GPU
 void upload_everything() {
-#ifndef GL_DEPRECATED
+    // Upload tree
+    // Upload triangles and normals
+    // Upload primitive data
+#if 0
     // Upload flat bvh.
     {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvh_buffer);
