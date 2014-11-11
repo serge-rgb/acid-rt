@@ -1,6 +1,7 @@
 // 2014 Sergio Gonzalez
 
 #include <ph.h>
+#include <ocl.h>
 #include <scene.h>
 #include <vr.h>
 
@@ -10,12 +11,16 @@
 using namespace ph;
 
 static void cubes_idle() {
-    vr::draw(g_resolution);  // defined in samples.cc
+    //vr::draw(g_resolution);  // defined in samples.cc
+    ocl::idle();
 }
 
 void cubes_sample() {
+    ocl::init();
     scene::init();
 
+
+#if 0
     // Create test grid of cubes
     scene::Cube thing;
     {
@@ -33,9 +38,36 @@ void cubes_sample() {
         logf("INFO: Submitted %d polygons.\n", x * y * z * 12);
     }
 
-    io::set_wasd_camera(0,-2,3);
 
     vr::disable_skybox();
+#endif
+
+    {
+        ocl::CLTriangle tri;
+        tri.p0[0] = 0;
+        tri.p0[1] = 0;
+        tri.p0[2] = -5;
+
+
+        tri.p1[0] = 1;
+        tri.p1[1] = 0;
+        tri.p1[2] = -5;
+
+
+        tri.p2[0] = 0;
+        tri.p2[1] = 1;
+        tri.p2[2] = -5;
+
+        ph::ocl::set_triangle_soup(&tri, &tri, 1);
+
+    }
+    scene::Cube thing;
+    {
+        thing = scene::make_cube(0, 0, -5, 1.0f);
+        scene::submit_primitive(&thing);
+    }
+
+    io::set_wasd_camera(0,0,0);
 
     scene::update_structure();
     scene::upload_everything();

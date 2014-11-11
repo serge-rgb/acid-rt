@@ -1,7 +1,7 @@
 ::set target=chicken
 ::set target=ph_test
-set target=samples
 set target=ocl_hello
+set target=samples
 
 set config=RelWithDebInfo
 set config=Debug

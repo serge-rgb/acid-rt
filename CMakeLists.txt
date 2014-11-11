@@ -106,6 +106,7 @@ set(acid_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY} y
 set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ocl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ph_gl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vr.cc
@@ -116,6 +117,5 @@ set (renderer_sources
 #===============================================================================
 
 # ---- tests
-add_subdirectory(ocl_hello)
 add_subdirectory(ph_test)
 add_subdirectory(samples)

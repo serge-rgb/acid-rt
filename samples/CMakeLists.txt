@@ -4,9 +4,9 @@ set (sample_sources
 	${renderer_sources}
     samples.cc
     # == sponza
-    sponza.cc
+    #    sponza.cc
     # == bunny obj model
-    bunny.cc
+    #bunny.cc
     # == cube grid
     cubes.cc)
 

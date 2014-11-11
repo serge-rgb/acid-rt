@@ -142,7 +142,7 @@ __kernel void main(
 
     const float rsq = point.x * point.x + point.y * point.y;
 
-    point *= (float4)catmull(rsq, K);
+    point *= (float3)(catmull(rsq, K));
 
     point.z -= eye_to_screen;
 

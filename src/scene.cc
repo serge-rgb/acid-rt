@@ -27,7 +27,7 @@ static GLuint               m_normal_buffer;
 static GLuint               m_light_buffer;
 static GLuint               m_prim_buffer;
 
-
+//TODO: This is OK, should be CLvec3 (and CLtriangle)
 struct GLvec3 {
     float x;
     float y;
@@ -944,7 +944,10 @@ Cube make_cube(float x, float y, float z, float size) {
     return make_cube(x,y,z,size,size,size);
 }
 
+static void no_op() {}
+
 void init() {
+    GLCHK(no_op());  // Window library may have left surprises...
     static bool is_init = false;
     if (is_init) {
         clear(&m_triangle_pool);
@@ -1008,6 +1011,7 @@ void update_structure() {
 
 // =========================  Upload to GPU
 void upload_everything() {
+#ifndef GL_DEPRECATED
     // Upload flat bvh.
     {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvh_buffer);
@@ -1053,7 +1057,7 @@ void upload_everything() {
                 (GLvoid*)scene::m_primitives.ptr, GL_DYNAMIC_COPY);
         GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_prim_buffer) );
     }
-
+#endif
 }
 
 } // ns scene

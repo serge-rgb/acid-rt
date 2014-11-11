@@ -1,3 +1,5 @@
+#include "ocl.h"
+
 #include <ph.h>
 
 #include <opencl.h>
@@ -14,26 +16,8 @@ using namespace ph;
 static const int width = 1920;
 static const int height = 1080;
 
-namespace ph {
-namespace ocl {
 
-struct CLTriangle {
-    float p0[3];
-    float pad0;
-    float p1[3];
-    float pad1;
-    float p2[3];
-    float pad2;
-};
-
-void init();
-// Set triangle soup to be buffer.
-void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris);
-void idle();
-void deinit();
-}
-}
-
+#ifdef OCL_MAIN
 int main() {
     ph::ocl::init();
 
@@ -60,6 +44,7 @@ int main() {
     puts("Done.");
     return 0;
 }
+#endif
 
 namespace ph {
 namespace ocl {
@@ -88,19 +73,23 @@ void set_triangle_soup(CLTriangle* tris, CLTriangle* norms, int num_tris) {
     // If CL triangle soup doesn't exist, create
     static bool soup_exists = false;
     cl_int err = CL_SUCCESS;
-    if (!soup_exists) {
-        m_cl_triangle_soup = clCreateBuffer(m_context,
-                CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
-        if (err != CL_SUCCESS) {
-            phatal_error("Could not create buffer for tri soup");
-        }
-        m_cl_triangle_soup = clCreateBuffer(m_context,
-                CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
-        if (err != CL_SUCCESS) {
-            phatal_error("Could not create buffer for normal soup");
-        }
-        soup_exists = true;
+    if (soup_exists) {
+        phatal_error("Reset not implemented yet");
     }
+    soup_exists = true;
+    m_cl_triangle_soup = clCreateBuffer(m_context,
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
+    if (err != CL_SUCCESS) {
+        phatal_error("Could not create buffer for tri soup");
+    }
+    m_cl_triangle_soup = clCreateBuffer(m_context,
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
+    if (err != CL_SUCCESS) {
+        phatal_error("Could not create buffer for normal soup");
+    }
+
     // Set arguments.
     err = clSetKernelArg(m_cl_kernel,
             8, sizeof(cl_mem), (void*)&m_cl_triangle_soup);
@@ -168,7 +157,7 @@ void idle() {
             local_size,
             0, NULL, &event);
     if (err != CL_SUCCESS) {
-        //phatal_error("Error enqueuing kernel (left)");
+        phatal_error("Error enqueuing kernel (left)");
     }
 
     // Update parameters for right eye
@@ -192,7 +181,7 @@ void idle() {
             local_size,
             0, NULL, &event);
     if (err != CL_SUCCESS) {
-        //phatal_error("Error enqueuing kernel (right)");
+        phatal_error("Error enqueuing kernel (right)");
     }
 
     // Wait and release
@@ -241,14 +230,6 @@ void idle() {
 static void no_op() {}
 
 void init() {
-    ph::init();
-
-    // Creates a GL context, so we need to init the window before doing OpenCL.
-    window::init("OCL", width, height, window::InitFlag_NoDecoration);
-
-    vr::init();
-
-
     // ========================================
     // Get platforms
     // ========================================
@@ -481,7 +462,7 @@ void init() {
 
     // Create program & kernel.
     {
-        static const char* path = "ocl_hello/checker.cl";
+        static const char* path = "src/tracer.cl";
         auto source = io::slurp(path);
         m_cl_program = clCreateProgramWithSource(
                 m_context,

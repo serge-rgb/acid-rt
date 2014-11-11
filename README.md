@@ -19,6 +19,7 @@ Features:
 * GLSL compute shader ray tracer. (Being replaced by OpenCL in the opencl branch)
 * Simple lambertian material, texture mapping & materials will be implemented.
 * Crappy OBJ loader (will be replaced by third party lib)
+* Screen-space antialiasing with FXAA
 
 VR Features:
 ------------

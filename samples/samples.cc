@@ -79,7 +79,7 @@ int main() {
 
     glfwSetKeyCallback(ph::window::m_window, sample_callback);
 
-    vr::init(g_resolution[0], g_resolution[1]);
+    vr::init();
 
     g_sample_func = g_samples[g_curr_sample];
 
