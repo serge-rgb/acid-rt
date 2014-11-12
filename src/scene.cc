@@ -1,6 +1,7 @@
 ﻿#include "scene.h"
 
 #include <ocl.h>
+#include "ocl_interop_structs.h"
 #include <ph_gl.h>
 
 
@@ -10,17 +11,13 @@ namespace scene {
 // For DFS buffers.
 static const int kTreeStackLimit = 64;
 
-// Defined below
-struct BVHNode;
-struct CLtriangle;
 struct GLlight;
-struct Primitive;
 
-static Slice<CLtriangle>    m_triangle_pool;
-static Slice<CLtriangle>    m_normal_pool;
+static Slice<ph::CLtriangle>    m_triangle_pool;
+static Slice<ph::CLtriangle>    m_normal_pool;
 static Slice<GLlight>       m_light_pool;
-static Slice<Primitive>     m_primitives;
-static BVHNode*             m_flat_tree = NULL;
+static Slice<ph::Primitive>     m_primitives;
+static ph::BVHNode*             m_flat_tree = NULL;
 static int64                m_flat_tree_len = 0;
 static int                  m_debug_bvh_height = -1;
 static GLuint               m_bvh_buffer;
@@ -29,19 +26,6 @@ static GLuint               m_normal_buffer;
 static GLuint               m_light_buffer;
 static GLuint               m_prim_buffer;
 
-//TODO: This is OK, should be CLvec3 (and CLtriangle)
-struct CLvec3 {
-    float x;
-    float y;
-    float z;
-    float _padding;
-};
-
-struct CLtriangle {
-    CLvec3 p0;
-    CLvec3 p1;
-    CLvec3 p2;
-};
 
 struct GLlight {
     CLvec3 position;
@@ -57,14 +41,6 @@ enum MaterialType {
     MaterialType_Lambert,
 };
 
-// Note: When brute force ray tracing:
-// The extra level of indirection has no perceivable overhead compared to
-// tracing against a triangle pool.
-struct Primitive {
-    int offset;             // Num of elements into the triangle pool where this primitive begins.
-    int num_triangles;
-    int material;           // Enum (copy in shader).
-};
 
 static const char* str(const glm::vec3& v) {
     char* out = phanaged(char, 16);
@@ -78,7 +54,7 @@ static const char* str(AABB b) {
     return out;
 }
 
-static AABB get_bbox(const Primitive* primitives, int count) {
+static ph::AABB get_bbox(const ph::Primitive* primitives, int count) {
     ph_assert(count > 0);
     AABB bbox;
     { // Fill bbox with not-nonsense
@@ -97,7 +73,7 @@ static AABB get_bbox(const Primitive* primitives, int count) {
         }
 
         for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
-            CLtriangle tri = m_triangle_pool[i];
+            ph::CLtriangle tri = m_triangle_pool[i];
             CLvec3 points[3] = { tri.p0, tri.p1, tri.p2 };
             for (int j = 0; j < 3; ++j) {
                 auto p = points[j];
@@ -138,17 +114,9 @@ static float bbox_area(AABB bbox) {
 // BVH Accel
 ////////////////////////////////////////
 
-// Plain and simple struct for flattened tree.
-struct BVHNode {
-    int primitive_offset;       // >0 when leaf. -1 when not.
-    int left_child_offset;      // should be i + 1
-    int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
-    AABB bbox;
-};
-
 // Big fat struct for tree construction
 struct BVHTreeNode {
-    BVHNode data;  // Fill this and write it to the array
+    ph::BVHNode data;  // Fill this and write it to the array
     // Children
     BVHTreeNode* left;
     BVHTreeNode* right;
@@ -166,9 +134,9 @@ enum SplitPlane {
 // 'indices' keeps the original order of the slice.
 // bbox_cache avoids recomputation of bboxes for single primitives.
 static BVHTreeNode* build_bvh(
-        Slice<Primitive> primitives, const int32* indices, AABB* bbox_cache, int axis_split) {
+        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, int axis_split) {
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
-    BVHNode data;
+    ph::BVHNode data;
     data.primitive_offset = -1;
     data.right_child_offset = -1;
     node->parent = NULL;
@@ -236,8 +204,8 @@ static BVHTreeNode* build_bvh(
         }
 
         // Make two new slices.
-        auto slice_left = MakeSlice<Primitive>(size_t(count(primitives) / 2));
-        auto slice_right = MakeSlice<Primitive>(size_t(count(primitives) / 2));
+        auto slice_left = MakeSlice<ph::Primitive>(size_t(count(primitives) / 2));
+        auto slice_right = MakeSlice<ph::Primitive>(size_t(count(primitives) / 2));
         // These indices keep the old ordering.
         int* new_indices_l = phalloc(int, (size_t)count(primitives));
         int* new_indices_r = phalloc(int, (size_t)count(primitives));
@@ -442,7 +410,7 @@ static BVHTreeNode* build_bvh(
     return node;
 }
 
-static bool validate_bvh(BVHTreeNode* root, Slice<Primitive> data) {
+static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
     bool* checks = phalloc(bool, count(data));  // Every element must be present once.
@@ -545,8 +513,8 @@ static uint64_t hash(BVHTreeNode* data) {
 }
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
-static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
-    auto slice = MakeSlice<BVHNode>(16);
+static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
+    auto slice = MakeSlice<ph::BVHNode>(16);
     auto dict  = MakeDict < BVHTreeNode*, int64> (1000);
 
     BVHTreeNode* stack[kTreeStackLimit];
@@ -555,7 +523,7 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
 
     while(stack_offset > 0) {
         auto fatnode = stack[--stack_offset];
-        BVHNode node = fatnode->data;
+        ph::BVHNode node = fatnode->data;
         int64 index = append(&slice, node);
         insert(&dict, fatnode, index);
         bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
@@ -592,14 +560,14 @@ static BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     return slice.ptr;
 }
 
-static bool validate_flattened_bvh(BVHNode* root, int64 len) {
+static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
     bool* check = phalloc(bool, len);
     for (int64 i = 0; i < len; ++i) {
         check[i] = false;
     }
 
     int64 num_leafs = 0;
-    BVHNode* node = root;
+    ph::BVHNode* node = root;
     for (int64 i = 0; i < len; ++i) {
         /* printf("Node %ld: At its right: %d\n", i, node->right_child_offset); */
         if (node->primitive_offset != -1) {  // Not leaf
@@ -691,8 +659,8 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 
 
     // Temp struct, fill-and-submit.
-    CLtriangle tri;
-    CLtriangle norm;
+    ph::CLtriangle tri;
+    ph::CLtriangle norm;
 
     // Return index to the first appended triangle.
     int64 index = -1;
@@ -862,7 +830,7 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 
     ph_assert(index <= PH_MAX_int32);
     cube->index = (int)index;
-    Primitive prim;
+    ph::Primitive prim;
     prim.offset = cube->index;
     prim.num_triangles = 12;
     prim.material = MaterialType_Lambert;
@@ -899,8 +867,8 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
         e = sign * chunk->norms[i + 1];
         f = sign * chunk->norms[i + 2];
 
-        CLtriangle tri;
-        CLtriangle norm;
+        ph::CLtriangle tri;
+        ph::CLtriangle norm;
         tri.p0 = to_cl(a);
         tri.p1 = to_cl(b);
         tri.p2 = to_cl(c);
@@ -920,7 +888,7 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
 
     ph_assert(chunk->num_verts / 3 < PH_MAX_int64);
 
-    Primitive prim;
+    ph::Primitive prim;
     prim.num_triangles = int(chunk->num_verts / 3);
     prim.offset = int(count(m_triangle_pool) - prim.num_triangles);
     prim.material = MaterialType_Lambert;
@@ -959,10 +927,10 @@ void init() {
         update_structure();
         upload_everything();
     } else {
-        m_triangle_pool = MakeSlice<CLtriangle>(1024);
-        m_normal_pool   = MakeSlice<CLtriangle>(1024);
+        m_triangle_pool = MakeSlice<ph::CLtriangle>(1024);
+        m_normal_pool   = MakeSlice<ph::CLtriangle>(1024);
         m_light_pool    = MakeSlice<GLlight>(8);
-        m_primitives    = MakeSlice<Primitive>(1024);
+        m_primitives    = MakeSlice<ph::Primitive>(1024);
 
         glGenBuffers(1, &m_bvh_buffer);
         glGenBuffers(1, &m_triangle_buffer);
@@ -1018,53 +986,9 @@ void upload_everything() {
     ph_assert(m_triangle_pool.n_elems == m_normal_pool.n_elems);
     ocl::set_triangle_soup(m_triangle_pool.ptr, m_normal_pool.ptr, m_triangle_pool.n_elems);
     // Upload primitive data
-#if 0
+    ocl::set_primitive_array(m_primitives.ptr, (size_t)m_primitives.n_elems);
     // Upload flat bvh.
-    {
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvh_buffer);
-        GLCHK ( glBufferData(GL_SHADER_STORAGE_BUFFER,
-                    GLsizeiptr(sizeof(BVHNode) * (size_t)m_flat_tree_len),
-                    (GLvoid*)m_flat_tree, GL_DYNAMIC_COPY) );
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_bvh_buffer) );
-
-    }
-
-    // Submit triangle pool
-    {
-        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangle_buffer) );
-        glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::CLtriangle) * scene::m_triangle_pool.n_elems),
-                (GLvoid*)scene::m_triangle_pool.ptr, GL_DYNAMIC_COPY);
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_triangle_buffer) );
-    }
-
-    // Submit normal pool
-    {
-        GLCHK ( glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_normal_buffer) );
-        glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::CLtriangle) * scene::m_normal_pool.n_elems),
-                (GLvoid*)scene::m_normal_pool.ptr, GL_DYNAMIC_COPY);
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_normal_buffer) );
-    }
-
-    // Submit light data.
-    {
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_light_buffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::GLlight) * scene::m_light_pool.n_elems),
-                (GLvoid*)scene::m_light_pool.ptr, GL_DYNAMIC_COPY);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer);
-    }
-
-    // Submit primitive pool.
-    {
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_prim_buffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER,
-                GLsizeiptr(sizeof(scene::Primitive) * scene::m_primitives.n_elems),
-                (GLvoid*)scene::m_primitives.ptr, GL_DYNAMIC_COPY);
-        GLCHK ( glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_prim_buffer) );
-    }
-#endif
+    ocl::set_flat_bvh(m_flat_tree, (size_t)m_flat_tree_len);
 }
 
 } // ns scene

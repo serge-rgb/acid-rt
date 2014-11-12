@@ -2,6 +2,8 @@
 
 #include <ph.h>
 
+#include "AABB.h"
+
 ////////////////////////////////////////
 //          -- ph::scene --
 // Handle the creation of primitives
@@ -19,15 +21,6 @@ enum SubmitFlags {
     SubmitFlags_None        = 1 << 0,
     SubmitFlags_FlipNormals = 1 << 1,
     SubmitFlags_Update      = 1 << 2,
-};
-
-struct AABB {
-    float xmin;
-    float xmax;
-    float ymin;
-    float ymax;
-    float zmin;
-    float zmax;
 };
 
 glm::vec3 get_centroid(AABB b);

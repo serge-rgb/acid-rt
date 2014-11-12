@@ -24,10 +24,61 @@ typedef struct {
     float3 p2;
 } Triangle;
 
+typedef struct {
+    float xmin;
+    float xmax;
+    float ymin;
+    float ymax;
+    float zmin;
+    float zmax;
+} AABB;
+
+typedef struct {
+    int primitive_offset;       // >0 when leaf. -1 when not.
+    int left_child_offset;      // should be i + 1
+    int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
+    AABB bbox;
+} BVHNode;
+
+typedef struct {
+    int offset;             // Num of elements into the triangle pool where this primitive begins.
+    int num_triangles;
+    int material;           // Enum (copy in shader).
+} Primitive ;
+
 inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
     float3 i = -quat.xyz;
     float m = quat.w;
     return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
+}
+
+float bbox_collision(AABB box, Ray ray, float3 inv_dir, float* far_t) {
+    float t0 = 0;
+    float t1 = 1 >> 16;
+
+    float rmin, rmax;
+    ray.o *= inv_dir;
+
+    rmin = box.xmin * inv_dir.x - ray.o.x;
+    rmax = box.xmax * inv_dir.x - ray.o.x;
+
+    t0 = min(rmin, rmax);
+    t1 = max(rmin, rmax);
+
+    rmin = box.ymin * inv_dir.y - ray.o.y;
+    rmax = box.ymax * inv_dir.y - ray.o.y;
+
+    t0 = max(t0, min(rmin, rmax));
+    t1 = min(t1, max(rmin, rmax));
+
+    rmin = box.zmin * inv_dir.z - ray.o.z;
+    rmax = box.zmax * inv_dir.z - ray.o.z;
+
+    t0 = max(t0, min(rmin, rmax));
+    t1 = min(t1, max(rmin, rmax));
+
+    *far_t = t1;
+    return t0;
 }
 
 inline float3 barycentric(const Triangle tri, const Ray ray) {
@@ -114,12 +165,16 @@ __kernel void main(
         float2 lens_center,
         float eye_to_screen,
         float2 viewport_size_m,
-        int2 viewport_size_px,      // 5
-        Eye eye,                    // 6
-        __constant float* K,        // 7
-        __constant Triangle* tris,  // 8
-        __constant Triangle* norms, // 9
-        int num_tris
+        int2 viewport_size_px,       // 5
+        Eye eye,                     // 6
+        __constant float* K,         // 7
+        __constant Triangle* tris,   // 8
+        __constant Triangle* norms,  // 9
+        int num_tris,
+        __constant Primitive* prims, // 11
+        int num_prims,               // 12
+        __constant BVHNode* nodes,    // 13
+        int num_nodes                // 14
         //
         ) {
 
@@ -164,22 +219,38 @@ __kernel void main(
     if (rsq < 0.25) {
         color = 0.0;
 
-        for (int i = 0; i < num_tris; ++i) {
-            Triangle tri = tris[i];
-            float3 bar = barycentric(tri, ray);
-            if (bar.x > 0 &&
-                    bar.x < min_t &&
-                    bar.y < 1 && bar.y > 0 &&
-                    bar.z < 1 && bar.z > 0 &&
-                    (bar.y + bar.z) < 1)
-            {
-                min_t = bar.x;
-                Triangle norm = norms[i];
-                float3 norm_f = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2;
-                float3 point = ray.o + bar.x * ray.d;
-                color = 1 * lambert(l, point, norm_f);
-            }
+        BVHNode root = nodes[0];
+        AABB bbox = root.bbox;
+        float n, f;
+        float3 inv_dir = 1 / normalize(ray.d);
+        n = bbox_collision(bbox, ray, inv_dir, &f);
+
+        if (n < f) {
+            color = 1;
         }
+
+        /* for (int i = 0; i < num_prims; ++i) { */
+        /*     Primitive prim = prims[i]; */
+        /*     for (int j = 0; j < prim.num_triangles; ++j) { */
+        /*         int offset = prim.offset + j; */
+        /*         Triangle tri = tris[offset]; */
+
+        /*         float3 bar = barycentric(tri, ray); */
+        /*         if (bar.x > 0 && */
+        /*                 bar.x < min_t && */
+        /*                 bar.y < 1 && bar.y > 0 && */
+        /*                 bar.z < 1 && bar.z > 0 && */
+        /*                 (bar.y + bar.z) < 1) */
+        /*         { */
+        /*             min_t = bar.x; */
+        /*             Triangle norm = norms[offset]; */
+        /*             float3 norm_f = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2; */
+        /*             float3 point = ray.o + bar.x * ray.d; */
+        /*             color = 1 * lambert(l, point, norm_f); */
+        /*         } */
+
+        /*     } */
+        /* } */
     }
 
     size_t i, j;

@@ -4,6 +4,8 @@
 
 #include <opencl.h>
 
+#include "ocl_interop_structs.h"
+
 #include "io.h"
 #include "ph_gl.h"
 #include "scene.h"  // Should not be necessary once this is a standalone module
@@ -57,6 +59,8 @@ static cl_command_queue m_queue;
 static cl_mem           m_cl_texture;
 static cl_mem           m_cl_triangle_soup;
 static cl_mem           m_cl_normal_soup;
+static cl_mem           m_cl_primitives;
+static cl_mem           m_cl_bvh;
 static cl_program       m_cl_program;
 static cl_kernel        m_cl_kernel;
 static vr::HMDConsts    m_hmd_consts;
@@ -69,7 +73,52 @@ void __stdcall context_callback(
     logf("OpenCL context error:  %s\n", errinfo);
 }
 
-void set_triangle_soup(scene::CLtriangle* tris, scene::CLtriangle* norms, size_t num_tris) {
+void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
+    cl_int err = CL_SUCCESS;
+    m_cl_bvh = clCreateBuffer(m_context,
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            num_nodes * sizeof(BVHNode), (void*) tree, &err);
+    static bool been_called = false;
+    if (been_called) {
+        phatal_error("set_primitive_array called twice");
+    }
+    been_called = true;
+    if (err != CL_SUCCESS) {
+        phatal_error("I couldn't create flat bvh CL buffer");
+    }
+    err = clSetKernelArg(m_cl_kernel,
+            13, sizeof(cl_mem), (void*)&m_cl_bvh);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (bvh)"); }
+
+    err = clSetKernelArg(m_cl_kernel,
+            14, sizeof(cl_int), (void*)&num_nodes);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_nodes)"); }
+}
+
+void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
+    cl_int err = CL_SUCCESS;
+    m_cl_primitives = clCreateBuffer(m_context,
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            num_prims * sizeof(ph::Primitive), (void*) prims, &err);
+    static bool been_called = false;
+    if (been_called) {
+        phatal_error("set_primitive_array called twice");
+    }
+    been_called = true;
+    if (err != CL_SUCCESS) {
+        phatal_error("I couldn't create primitive CL buffer");
+    }
+    err = clSetKernelArg(m_cl_kernel,
+            11, sizeof(cl_mem), (void*)&m_cl_primitives);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (prims)"); }
+
+    err = clSetKernelArg(m_cl_kernel,
+            12, sizeof(cl_int), (void*)&num_prims);
+    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_prims)"); }
+
+}
+
+void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_tris) {
     // If CL triangle soup doesn't exist, create
     static bool soup_exists = false;
     cl_int err = CL_SUCCESS;

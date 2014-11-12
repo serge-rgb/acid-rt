@@ -1,5 +1,7 @@
 #include "mesh.h"
 
+#include "AABB.h"
+
 namespace ph {
 namespace mesh {
 
@@ -213,7 +215,7 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
         auto b = bound.b;
         ph_assert(((b - a) % 3) == 0);
         // Find bbox and centroid.
-        scene::AABB bbox;
+        ph::AABB bbox;
         scene::bbox_fill(&bbox);
         for (auto i = a; i < b; i+=3) {
             auto a = big_chunk.verts[i + 0];
