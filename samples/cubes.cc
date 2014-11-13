@@ -22,9 +22,9 @@ void cubes_sample() {
     // Create test grid of cubes
     scene::Cube thing;
     {
-        int x = 2;
-        int y = 2;
-        int z = 1;
+        int x = 20;
+        int y = 10;
+        int z = 100;
         for (int i = 0; i < z; ++i) {
             for (int j = -4; j < y - 4; ++j) {
                 for (int k = -x/2; k < x; ++k) {

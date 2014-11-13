@@ -108,6 +108,89 @@ Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
     return intersection;
 }
 
+Intersection trace(
+        __constant BVHNode* nodes,
+        __constant Primitive* prims,
+        __constant Triangle* tris,
+        __constant Triangle* norms,
+        Ray ray) {
+    Intersection its;
+    its.t = -1;
+    float n, f;
+    float3 inv_dir = 1 / normalize(ray.d);
+
+    int stack[32];
+    int stack_offset = 0;
+    BVHNode node = nodes[0];
+    int cnt = 0;
+
+    float min_t = 1 << 16;
+    while (true) {
+        if (cnt > 3000) break;
+        cnt++;
+        if (node.primitive_offset >= 0) {  // ==== LEAF ===============
+            Primitive prim = prims[node.primitive_offset];
+            for (int j = 0; j < prim.num_triangles; ++j) {
+                int offset = prim.offset + j;
+                Triangle tri = tris[offset];
+
+                float3 bar = barycentric(tri, ray);
+                if (bar.x > 0 &&
+                        bar.x < min_t &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1)
+                {
+                    min_t = bar.x;
+                    Triangle norm = norms[offset];
+                    its.norm = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2;
+                    its.point = ray.o + bar.x * ray.d;
+                    its.t = bar.x;
+                }
+            }
+        } else {  // ==== ITERNAL NODE ======================
+            BVHNode left = nodes[node.left_child_offset];
+            BVHNode right = nodes[node.right_child_offset];
+
+            int other = node.right_child_offset;
+            int other_l = node.left_child_offset;
+
+            float l_n, l_f, r_n, r_f;
+            l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
+            r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
+
+            bool hit_l = (l_n < l_f) && (l_n < min_t);
+            bool hit_r = (r_n < r_f) && (r_n < min_t);
+
+            // If anyone got hit
+            if ((hit_l || hit_r)) {
+                node = left;
+                // When *both* children are hits choose the nearest
+                if (hit_l && hit_r) {
+                    float near = min(l_n, r_n);
+                    if (near == r_n) {
+                        node = right;
+                        other = other_l;
+                    }
+                    // We will need to traverse the other node later.
+                    stack[stack_offset++] = other;
+                } else if (hit_r) {  // If just one... traverse
+                    node = right;
+                }
+                continue;
+            }
+        }
+        // Reaching this only when there was no hit. Get from stack.
+
+        if (stack_offset > 0) {
+            node = nodes[stack[--stack_offset]];
+        } else {
+            return its;
+        }
+    }
+    return its;
+}
+
 float lambert(Light l, float3 point, float3 norm) {
     float3 dir = normalize(l.point - point);
     const float c = max(dot(norm, dir), (float)0);
@@ -219,37 +302,17 @@ __kernel void main(
     if (rsq < 0.25) {
         color = 0.0;
 
-        BVHNode root = nodes[0];
-        AABB bbox = root.bbox;
-        float n, f;
-        float3 inv_dir = 1 / normalize(ray.d);
-        n = bbox_collision(bbox, ray, inv_dir, &f);
-
-        if (n < f) {
-            color = 1;
+        Intersection its = trace(
+                nodes,
+                prims,
+                tris,
+                norms,
+                ray);
+        if (its.t > 0) {
+            color = 1 * lambert(l, its.point, its.norm);
         }
 
         /* for (int i = 0; i < num_prims; ++i) { */
-        /*     Primitive prim = prims[i]; */
-        /*     for (int j = 0; j < prim.num_triangles; ++j) { */
-        /*         int offset = prim.offset + j; */
-        /*         Triangle tri = tris[offset]; */
-
-        /*         float3 bar = barycentric(tri, ray); */
-        /*         if (bar.x > 0 && */
-        /*                 bar.x < min_t && */
-        /*                 bar.y < 1 && bar.y > 0 && */
-        /*                 bar.z < 1 && bar.z > 0 && */
-        /*                 (bar.y + bar.z) < 1) */
-        /*         { */
-        /*             min_t = bar.x; */
-        /*             Triangle norm = norms[offset]; */
-        /*             float3 norm_f = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2; */
-        /*             float3 point = ray.o + bar.x * ray.d; */
-        /*             color = 1 * lambert(l, point, norm_f); */
-        /*         } */
-
-        /*     } */
         /* } */
     }
 
