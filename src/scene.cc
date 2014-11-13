@@ -236,6 +236,7 @@ static BVHTreeNode* build_bvh(
         }
 
         bool use_sah = count(primitives) > 8;
+        /* bool use_sah = true; */
         // ============================================================
         // SAH
         // ============================================================
@@ -245,7 +246,7 @@ static BVHTreeNode* build_bvh(
                 AABB bbox;
             };
 
-            const int kNumBuckets = 8;
+            const int kNumBuckets = 12;
             Bucket buckets[kNumBuckets];
 
             auto bbox = data.bbox;  // Bounding box for primitives.

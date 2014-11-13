@@ -180,8 +180,8 @@ void idle() {
     };
 
     size_t local_size[2] = {
-        8,
-        8,
+        16,
+        10,
     };
 
     // Kernel arguments that change every frame.
@@ -525,9 +525,9 @@ void init() {
             ph::quit(EXIT_FAILURE);
         }
         // Build program
-        const char* options = "";  // 5.6.3.3 p117
+        /* const char* options = "";  // 5.6.3.3 p117 */
         //const char* options = "-cl-opt-disable";  // 5.6.3.3 p117
-        /* const char* options = "-cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros";  // 5.6.3.3 p117 */
+        const char* options = "-cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros";  // 5.6.3.3 p117
         err = clBuildProgram(
                 m_cl_program,
                 1,
