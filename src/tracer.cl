@@ -16,6 +16,7 @@ typedef struct {
     float t;
     float3 point;
     float3 norm;
+    int depth;  // For debug heat map
 } Intersection;
 
 typedef struct {
@@ -115,6 +116,7 @@ Intersection trace(
         __constant Triangle* norms,
         Ray ray) {
     Intersection its;
+    its.depth = 0;
     its.t = -1;
     float n, f;
     float3 inv_dir = 1 / normalize(ray.d);
@@ -148,7 +150,7 @@ Intersection trace(
                     its.t = bar.x;
                 }
             }
-        } else {  // ==== ITERNAL NODE ======================
+        } else {  // ==== INTERNAL NODE ======================
             const BVHNode left = nodes[node.left_child_offset];
             const BVHNode right = nodes[node.right_child_offset];
 
@@ -158,6 +160,7 @@ Intersection trace(
             float l_n, l_f, r_n, r_f;
             l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
             r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
+            its.depth += 2;
 
             const bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
             const bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
@@ -181,11 +184,10 @@ Intersection trace(
             }
         }
         // Reaching this only when there was no hit. Get from stack.
-
-        if (stack_offset > 0) {
-            node = nodes[stack[--stack_offset]];
-        } else {
+        if (stack_offset == 0) {
             return its;
+        } else {
+            node = nodes[stack[--stack_offset]];
         }
     }
     return its;
@@ -300,7 +302,8 @@ __kernel void main(
     l.point = (float3)(-3,10,5);
 
     float min_t = 1 << 16;
-    if (rsq < 0.25) {
+    //if (rsq < 0.25) {
+    if (rsq < 0.20) {
         color = 0.0;
 
         Intersection its = trace(
@@ -311,6 +314,7 @@ __kernel void main(
                 ray);
         if (its.t > 0) {
             color = 1 * lambert(l, its.point, its.norm);
+            color.x += (float)(its.depth) / 200.0f;
         }
 
         /* for (int i = 0; i < num_prims; ++i) { */
