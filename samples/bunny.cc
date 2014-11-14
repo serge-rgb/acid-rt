@@ -14,11 +14,10 @@
 using namespace ph;
 
 static void bunny_idle() {
-    ocl::idle();
+    ocl::draw();
 }
 
 void bunny_sample() {
-    ocl::init();
     scene::init();
 
     auto big_chunk = mesh::load_obj(
@@ -27,7 +26,7 @@ void bunny_sample() {
     auto chunks = mesh::shatter(big_chunk, 8);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
-        scene::submit_primitive(&chunks[i], scene::SubmitFlags_FlipNormals);
+        scene::submit_primitive(&chunks[i], scene::SubmitFlags_None);
     }
 
     scene::update_structure();

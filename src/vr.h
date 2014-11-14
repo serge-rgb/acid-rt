@@ -14,7 +14,6 @@ enum {
 
 // Use get_hmd_constants() after init to get this:
 // The minimum info needed to set up our renderer.
-// TODO: Include distortion spline factors instead of hard-coding.
 struct HMDConsts {
     float lens_centers[2][2];       // Left, Right
     float eye_to_screen;            // Will get you the optimal FOV when ray tracing.

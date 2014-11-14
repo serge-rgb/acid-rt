@@ -12,11 +12,10 @@ using namespace ph;
 
 static void cubes_idle() {
     //vr::draw(g_resolution);  // defined in samples.cc
-    ocl::idle();
+    ocl::draw();
 }
 
 void cubes_sample() {
-    ocl::init();
     scene::init();
 
     // Create test grid of cubes

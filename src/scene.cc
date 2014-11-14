@@ -928,6 +928,10 @@ void init() {
         update_structure();
         upload_everything();
     } else {
+
+        // Init the OpenCL backend
+        ocl::init();
+
         m_triangle_pool = MakeSlice<ph::CLtriangle>(1024);
         m_normal_pool   = MakeSlice<ph::CLtriangle>(1024);
         m_light_pool    = MakeSlice<GLlight>(8);

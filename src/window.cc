@@ -27,7 +27,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -45,7 +45,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         for (int i = 0; i < num_monitors; ++i) {
             GLFWmonitor* monitor = monitors[i];
             auto* vidmode = glfwGetVideoMode(monitor);
-            if (/*vidmode->refreshRate >= 75 &&*/
+            if (vidmode->refreshRate == 75 &&
                     vidmode->width == 1920 &&
                     vidmode->height == 1080) {
                 m_rift_monitor = monitor;
@@ -74,7 +74,7 @@ void init(const char* title, int width, int height, InitFlag flags) {
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MINOR),
     };
     ph_assert(gl_version[0] == 4);
-    ph_assert(gl_version[1] >= 3);
+    ph_assert(gl_version[1] >= 1);
     printf("GL version is %d.%d\n", gl_version[0], gl_version[1]);
 
     glfwSetErrorCallback(error_callback);

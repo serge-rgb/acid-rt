@@ -10,11 +10,10 @@
 using namespace ph;
 
 static void sponza_idle() {
-    ocl::idle();
+    ocl::draw();
 }
 
 void sponza_sample() {
-    ocl::init();
     scene::init();
 
     auto big_chunk = mesh::load_obj("third_party/ASSETS/sponza.obj", 0.02f);

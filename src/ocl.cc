@@ -75,14 +75,17 @@ void __stdcall context_callback(
 
 void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
     cl_int err = CL_SUCCESS;
+    static bool been_called = false;
+    if (been_called) {
+        clReleaseMemObject(m_cl_bvh);
+    }
+    been_called = true;
+    if (num_nodes == 0) {
+        return;
+    }
     m_cl_bvh = clCreateBuffer(m_context,
             CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             num_nodes * sizeof(BVHNode), (void*) tree, &err);
-    static bool been_called = false;
-    if (been_called) {
-        phatal_error("set_primitive_array called twice");
-    }
-    been_called = true;
     if (err != CL_SUCCESS) {
         phatal_error("I couldn't create flat bvh CL buffer");
     }
@@ -97,14 +100,20 @@ void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
 
 void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
     cl_int err = CL_SUCCESS;
+    static bool been_called = false;
+    if (been_called) {
+        if (m_cl_primitives != NULL) {
+            clReleaseMemObject(m_cl_primitives);
+            m_cl_primitives = NULL;
+        }
+    }
+    been_called = true;
+    if (num_prims == 0) {
+        return;
+    }
     m_cl_primitives = clCreateBuffer(m_context,
             CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             num_prims * sizeof(ph::Primitive), (void*) prims, &err);
-    static bool been_called = false;
-    if (been_called) {
-        phatal_error("set_primitive_array called twice");
-    }
-    been_called = true;
     if (err != CL_SUCCESS) {
         phatal_error("I couldn't create primitive CL buffer");
     }
@@ -123,18 +132,28 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     static bool soup_exists = false;
     cl_int err = CL_SUCCESS;
     if (soup_exists) {
-        phatal_error("Reset not implemented yet");
+        if (m_cl_triangle_soup != NULL) {
+            clReleaseMemObject(m_cl_triangle_soup);
+            m_cl_triangle_soup = NULL;
+        }
+        if (m_cl_normal_soup != NULL) {
+            clReleaseMemObject(m_cl_normal_soup);
+            m_cl_normal_soup = NULL;
+        }
     }
     soup_exists = true;
+    if (num_tris == 0) {
+        return;
+    }
     m_cl_triangle_soup = clCreateBuffer(m_context,
-            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-            12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
+                                        CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                        12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
     if (err != CL_SUCCESS) {
         phatal_error("Could not create buffer for tri soup");
     }
     m_cl_normal_soup = clCreateBuffer(m_context,
-            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-            12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
+                                      CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                      12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
     if (err != CL_SUCCESS) {
         phatal_error("Could not create buffer for normal soup");
     }
@@ -153,7 +172,7 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_tris)"); }
 }
 
-void idle() {
+void draw() {
     glFinish();
 
     vr::Eye left;
@@ -274,9 +293,6 @@ void idle() {
 
     vr::end_frame();
 }
-
-// For empty GL_CHECK().
-static void no_op() {}
 
 void init() {
     // ========================================
@@ -425,8 +441,6 @@ void init() {
         // Pass a null pointer, texture will be filled by opencl ray tracer
         GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
                     0, GL_RGBA, GL_FLOAT, NULL) );
-
-        GLCHK ( no_op() );
     }
 
     // Create GL quad program to fill screen.

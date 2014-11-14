@@ -68,7 +68,6 @@ void init() {
 
     auto fovPort_l = m_hmd->DefaultEyeFov[0];
 
-    // TODO: take relief into account.
     float theta = atanf(fovPort_l.DownTan);
     m_default_eye_z =  2 * abs(cosf(2 * theta));
 
