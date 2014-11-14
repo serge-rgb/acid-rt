@@ -17,6 +17,8 @@ using namespace ph;
 
 static const int width = 1920;
 static const int height = 1080;
+/* static const int width = 960; */
+/* static const int height = 540; */
 
 
 #ifdef OCL_MAIN
@@ -229,7 +231,7 @@ void draw() {
     }
 
     // Update parameters for right eye
-    off = 960;
+    off = width / 2;
     err = clSetKernelArg(m_cl_kernel,
             1, sizeof(cl_int), (void*) &off);
     err |= clSetKernelArg(m_cl_kernel,

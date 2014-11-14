@@ -3,9 +3,9 @@
 set target=ocl_hello
 set target=samples
 
+set config=Release
 set config=RelWithDebInfo
 set config=Debug
-::set config=Release
 
 :: /nr prevents creation of persitent msbuild processes
 msbuild build\acid.sln /nologo /v:q /m /nr:true /t:%target% /p:Configuration=%config%

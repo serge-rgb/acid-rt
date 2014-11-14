@@ -126,7 +126,7 @@ Intersection trace(
 
     float min_t = 1 << 16;
     while (true) {
-        if (cnt > 3000) break;
+        if (cnt > 1000) break;
         cnt++;
         if (node.primitive_offset >= 0) {  // ==== LEAF ===============
             Primitive prim = prims[node.primitive_offset];
@@ -149,25 +149,25 @@ Intersection trace(
                 }
             }
         } else {  // ==== ITERNAL NODE ======================
-            BVHNode left = nodes[node.left_child_offset];
-            BVHNode right = nodes[node.right_child_offset];
+            const BVHNode left = nodes[node.left_child_offset];
+            const BVHNode right = nodes[node.right_child_offset];
 
             int other = node.right_child_offset;
-            int other_l = node.left_child_offset;
+            const int other_l = node.left_child_offset;
 
             float l_n, l_f, r_n, r_f;
             l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
             r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
 
-            bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
-            bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
+            const bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
+            const bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
 
             // If anyone got hit
             if ((hit_l || hit_r)) {
                 node = left;
                 // When *both* children are hits choose the nearest
                 if (hit_l && hit_r) {
-                    float near = min(l_n, r_n);
+                    const float near = min(l_n, r_n);
                     if (near == r_n) {
                         node = right;
                         other = other_l;

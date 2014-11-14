@@ -198,7 +198,7 @@ static BVHTreeNode* build_bvh(
                 }
             }
             if (v == 0.0f) {
-                //log("Two objets have the same centroid. Using default axis split");
+                //logf("Two objets have the same centroid. Using default axis split (%d)\n", c);
                 split = axis_split;
             }
         }
@@ -352,7 +352,7 @@ static BVHTreeNode* build_bvh(
             else {
                 static int even_count = 0;
                 even_count++;
-                logf("========= spliting evenly ========= %d vs %d\n", even_count, noteven_count);
+                logf("========= spliting evenly ========= %d vs %d (split %d)\n", even_count, noteven_count, split);
                 for (int i = 0; i < count(primitives); ++i) {
                     auto centroid = centroids[i];
                     if (centroid[split] < midpoint[split]) {
@@ -384,7 +384,23 @@ static BVHTreeNode* build_bvh(
             }
 
         }
-        ph_assert(!(offset_r != 0 && offset_l == 0) && !(offset_l != 0 && offset_r == 0));
+        // Either both are 0 or both are non zero.. Else, fix it
+        // Can happen when a bunch of triangles have the same bbox...
+        if ((offset_r != 0 && offset_l == 0) || (offset_l != 0 && offset_r == 0)) {
+            if (offset_r != 0) {
+                auto times = count(slice_right) / 2;
+                for (int i = 0; i < times; ++i) {
+                    append(&slice_left, pop(&slice_right));
+                    new_indices_l[offset_l++] = new_indices_r[--offset_r];
+                }
+            } else {
+                auto times = count(slice_left) / 2;
+                for (int i = 0; i < times; ++i) {
+                    append(&slice_right, pop(&slice_left));
+                    new_indices_r[offset_r++] = new_indices_l[--offset_l];
+                }
+            }
+        }
 
         node->left = node->right = NULL;
         if (count(slice_left)) {

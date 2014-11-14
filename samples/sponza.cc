@@ -18,8 +18,7 @@ void sponza_sample() {
 
     auto big_chunk = mesh::load_obj("third_party/ASSETS/sponza.obj", 0.02f);
     logf("Num verts in sponza: %ld\n", big_chunk.num_verts);
-    auto small_chunks = mesh::shatter(big_chunk, 10);
-    logf("Small chunks: %lu\n", count(small_chunks));
+    auto small_chunks = mesh::shatter(big_chunk, 3);
     for (int i = 0; i < count(small_chunks); ++i) {
         scene::submit_primitive(&small_chunks[i]);
     }
@@ -29,6 +28,8 @@ void sponza_sample() {
 
     scene::update_structure();
     scene::upload_everything();
+
+    logf("Small chunks: %lu\n", count(small_chunks));
 
     window::main_loop(sponza_idle);
 }

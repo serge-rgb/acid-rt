@@ -23,7 +23,7 @@ void bunny_sample() {
     auto big_chunk = mesh::load_obj(
             "third_party/ASSETS/bunny.obj", /*scale=*/10);
 
-    auto chunks = mesh::shatter(big_chunk, 8);
+    auto chunks = mesh::shatter(big_chunk, 5);
     for (int i = 0; i < count(chunks); ++i) {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_None);

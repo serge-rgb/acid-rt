@@ -117,7 +117,7 @@ void fill_catmull_K (float* K, int num_coefficients)   {
     // auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo);
     ph_assert(num_coefficients == OVR::LensConfig::NumCoefficients);
 
-    for (int i = 0; i < OVR::LensConfig::NumCoefficients; ++i) {
+    for (int i = 0; i < num_coefficients; ++i) {
         K[i] = m_renderinfo->EyeLeft.Distortion.K[i];
     }
 }
