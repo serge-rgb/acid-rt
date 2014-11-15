@@ -134,7 +134,7 @@ enum SplitPlane {
 // 'indices' keeps the original order of the slice.
 // bbox_cache avoids recomputation of bboxes for single primitives.
 static BVHTreeNode* build_bvh(
-        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, int axis_split) {
+        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, int depth) {
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     ph::BVHNode data;
     data.primitive_offset = -1;
@@ -187,7 +187,7 @@ static BVHTreeNode* build_bvh(
         }
 
         int split = SplitPlane_X;
-        split = axis_split;
+        split = depth % 3;
 
         { // Choose split plane
             float v = -1;
@@ -199,7 +199,7 @@ static BVHTreeNode* build_bvh(
             }
             if (v == 0.0f) {
                 //logf("Two objets have the same centroid. Using default axis split (%d)\n", c);
-                split = axis_split;
+                split = depth % 3;
             }
         }
 
@@ -219,8 +219,8 @@ static BVHTreeNode* build_bvh(
             append(&slice_right, primitives[1]);
             new_indices_l[offset_l++] = indices[0];
             new_indices_r[offset_r++] = indices[1];
-            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, (split + 1) % 3);
-            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, (split + 1) % 3);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, depth + 1);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, depth + 1);
             release(&slice_left);
             release(&slice_right);
             node->data = data;
@@ -404,10 +404,10 @@ static BVHTreeNode* build_bvh(
 
         node->left = node->right = NULL;
         if (count(slice_left)) {
-            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, (split + 1) % 3);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, depth + 1);
         }
         if (count(slice_right)) {
-            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, (split + 1) % 3);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, depth + 1);
         }
         if(node->left) {
             node->left->parent = node;

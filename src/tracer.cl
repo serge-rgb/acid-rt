@@ -170,8 +170,8 @@ Intersection trace(
                 node = left;
                 // When *both* children are hits choose the nearest
                 if (hit_l && hit_r) {
-                    const float near = min(l_n, r_n);
-                    if (near == r_n) {
+                    const float near = min(l_f, r_f);
+                    if (near == r_f) {
                         node = right;
                         other = other_l;
                     }
@@ -188,6 +188,15 @@ Intersection trace(
             return its;
         } else {
             node = nodes[stack[--stack_offset]];
+            /* while (stack_offset > 0) { */
+            /*     node = nodes[stack[--stack_offset]]; */
+            /*     float n, f; */
+            /*     n = bbox_collision(node.bbox, ray, inv_dir, &f); */
+            /*     if (n < min_t) { */
+            /*         break; */
+            /*     } */
+            /*     if (stack_offset == 0) return its; */
+            /* } */
         }
     }
     return its;
@@ -302,8 +311,7 @@ __kernel void main(
     l.point = (float3)(-3,10,5);
 
     float min_t = 1 << 16;
-    //if (rsq < 0.25) {
-    if (rsq < 0.20) {
+    if (rsq < 0.25) {
         color = 0.0;
 
         Intersection its = trace(
@@ -314,11 +322,8 @@ __kernel void main(
                 ray);
         if (its.t > 0) {
             color = 1 * lambert(l, its.point, its.norm);
-            color.x += (float)(its.depth) / 200.0f;
+            //color.x += (float)(its.depth) / 200.0f;
         }
-
-        /* for (int i = 0; i < num_prims; ++i) { */
-        /* } */
     }
 
     size_t i, j;
