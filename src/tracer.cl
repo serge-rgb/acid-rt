@@ -151,38 +151,39 @@ Intersection trace(
                 }
             }
         } else {  // ==== INTERNAL NODE ======================
-            const BVHNode left = nodes[node.left_child_offset];
-            const BVHNode right = nodes[node.right_child_offset];
-
             int other = node.right_child_offset;
             const int other_l = node.left_child_offset;
 
             float l_n, l_f, r_n, r_f;
-            l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
-            r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
+            l_n = bbox_collision(nodes[node.left_child_offset].bbox, ray, inv_dir, &l_f);
+            r_n = bbox_collision(nodes[node.right_child_offset].bbox, ray, inv_dir, &r_f);
             its.depth += 2;
 
             const bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
             const bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
 
             // If anyone got hit
-            if ((hit_l || hit_r)) {
-                node = left;
-                // When *both* children are hits choose the nearest
-                if (hit_l && hit_r) {
-                    const float near = min(l_f, r_f);
-                    if (near == r_f) {
-                        node = right;
-                        other = other_l;
-                    }
-                    // We will need to traverse the other node later.
-                    stack[stack_offset++] = other;
-                } else if (hit_r) {
-                    node = right;
+
+            if (hit_l && hit_r) {
+                const float near = min(l_f, r_f);
+                if (near == r_f) {
+                    node = nodes[node.right_child_offset];
+                    other = other_l;
+                } else {
+                    node = nodes[node.left_child_offset];
                 }
+                // We will need to traverse the other node later.
+                stack[stack_offset++] = other;
+                continue;
+            } else if (hit_r) {
+                node = nodes[node.right_child_offset];
+                continue;
+            } else if (hit_l) {
+                node = nodes[node.left_child_offset];
                 continue;
             }
         }
+
         // Reaching this only when there was no hit. Get from stack.
         if (stack_offset == 0) {
             return its;
@@ -198,6 +199,113 @@ Intersection trace(
             /*     if (stack_offset == 0) return its; */
             /* } */
         }
+    }
+    return its;
+}
+
+Intersection whwh(
+        __constant BVHNode* nodes,
+        __constant Primitive* prims,
+        __constant Triangle* tris,
+        __constant Triangle* norms,
+        Ray ray) {
+    Intersection its;
+    its.depth = 0;
+    its.t = 1;  //========``````````````````````
+    float3 inv_dir = 1 / normalize(ray.d);
+
+    int stack[32];
+    int stack_offset = 0;
+    int node_i = 0;
+    BVHNode node = nodes[node_i];
+    int cnt = 0;
+    float min_t = 1 << 16;
+    // while true
+    // while node is internal
+    //  traverse.
+    // while node has primitives
+    //  intesect
+    while (true) {
+        if (cnt > 10000) { its.depth = 1 << 16; break;}
+        cnt++;
+        while (node.primitive_offset < 0) {  // Inner nodes.
+            const AABB bbox_l = nodes[node_i + 1].bbox;
+            const AABB bbox_r = nodes[node.right_child_offset].bbox;
+            float nr, nl, fr, fl;
+            nl = bbox_collision(bbox_l, ray, inv_dir, &fl);
+            nr = bbox_collision(bbox_r, ray, inv_dir, &fr);
+
+            bool hit_l = (nl < fl) && (nl < min_t) && (fl > 0);
+            bool hit_r = (nr < fr) && (nr < min_t) && (fr > 0);
+
+            if (hit_l || hit_r) {
+                its.depth += 1;
+                if (hit_l && hit_r) {
+                    float near = min(fl, fr);
+                    if (near == fr) {
+                        stack[stack_offset++] = node_i + 1;
+                        node_i = node.right_child_offset;
+                    } else {
+                        node_i = node_i + 1;
+                        stack[stack_offset++] = node.right_child_offset;
+                    }
+                } else {
+                    if (hit_r) {
+                        node_i = node.right_child_offset;
+                    } else {
+                        node_i = node_i + 1;
+                    }
+                }
+            } else {  // NO HIT
+                if (stack_offset == 0) {
+                    return its;
+                } else {
+                    node_i = stack[--stack_offset];
+                }
+            }
+
+            node = nodes[node_i];
+        }
+        //============== LEAF =================
+        Primitive prim = prims[node.primitive_offset];
+        for (int j = 0; j < prim.num_triangles; ++j) {
+            int offset = prim.offset + j;
+            Triangle tri = tris[offset];
+            float3 e1 = tri.p1 - tri.p0;
+            float3 e2 = tri.p2 - tri.p0;
+            float3 s  = ray.o - tri.p0;
+            float3 m  = cross(s, ray.d);
+            float3 n = cross(e1, e2);
+            float det = dot(-n, ray.d);
+            float t = dot(n, s);
+            float u = dot(m, e2);
+            float v = dot(-m, e1);
+            if (t < min_t && u < 1 && u > 0 && v < 1 && v > 0 && u + v < 1) min_t = t;
+        }
+        /* Primitive prim = prims[node.primitive_offset]; */
+        /* for (int j = 0; j < prim.num_triangles; ++j) { */
+        /*     int offset = prim.offset + j; */
+        /*     Triangle tri = tris[offset]; */
+
+        /*     float3 bar = barycentric(tri, ray); */
+        /*     if (bar.x > 0 && */
+        /*             bar.x < min_t && */
+        /*             bar.y < 1 && bar.y > 0 && */
+        /*             bar.z < 1 && bar.z > 0 && */
+        /*             (bar.y + bar.z) < 1) */
+        /*     { */
+        /*         min_t = bar.x; */
+        /*         Triangle norm = norms[offset]; */
+        /*         its.norm = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2; */
+        /*         its.point = ray.o + bar.x * ray.d; */
+        /*         its.t = bar.x; */
+        /*     } */
+        /* } */
+        if (stack_offset == 0) {
+            return its;
+        }
+        node_i = stack[--stack_offset];
+        node = nodes[node_i];
     }
     return its;
 }
@@ -314,15 +422,16 @@ __kernel void main(
     if (rsq < 0.25) {
         color = 0.0;
 
-        Intersection its = trace(
+        //Intersection its = trace(
+        Intersection its = whwh(
                 nodes,
                 prims,
                 tris,
                 norms,
                 ray);
         if (its.t > 0) {
-            color = 1 * lambert(l, its.point, its.norm);
-            //color.x += (float)(its.depth) / 200.0f;
+            //color = 1 * lambert(l, its.point, its.norm);
+            color.x += (float)(its.depth) / 100.0f;
         }
     }
 

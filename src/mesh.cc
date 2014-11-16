@@ -172,10 +172,19 @@ scene::Chunk load_obj(const char* path, float scale) {
         for (int64 i = 0; i < count(faces); ++i) {
             auto face = faces[i];
             for (int j = 0; j < 3; ++j) {
-                auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
-                auto norm = norms[face.norm_i[j] - 1];
-                append(&in_verts, vert);
-                append(&in_norms, norm);
+                if (face.vert_i[j] != 0)
+                {
+                    auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
+                    auto norm = norms[face.norm_i[j] - 1];
+                    append(&in_verts, vert);
+                    append(&in_norms, norm);
+                }
+                else {
+                    auto vert = verts[0];  // OBJ format indices are 1-based.
+                    auto norm = norms[0];
+                    append(&in_verts, vert);
+                    append(&in_norms, norm);
+                }
             }
         }
         ph_assert(count(in_norms) == count(in_verts));
