@@ -53,7 +53,7 @@ inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
     return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
 }
 
-float bbox_collision(AABB box, Ray ray, float3 inv_dir, float* far_t) {
+inline float bbox_collision(AABB box, Ray ray, float3 inv_dir, float* far_t) {
     float t0 = 0;
     float t1 = 1 >> 16;
 
@@ -271,36 +271,21 @@ Intersection whwh(
         for (int j = 0; j < prim.num_triangles; ++j) {
             int offset = prim.offset + j;
             Triangle tri = tris[offset];
-            float3 e1 = tri.p1 - tri.p0;
-            float3 e2 = tri.p2 - tri.p0;
-            float3 s  = ray.o - tri.p0;
-            float3 m  = cross(s, ray.d);
-            float3 n = cross(e1, e2);
-            float det = dot(-n, ray.d);
-            float t = dot(n, s);
-            float u = dot(m, e2);
-            float v = dot(-m, e1);
-            if (t < min_t && u < 1 && u > 0 && v < 1 && v > 0 && u + v < 1) min_t = t;
-        }
-        /* Primitive prim = prims[node.primitive_offset]; */
-        /* for (int j = 0; j < prim.num_triangles; ++j) { */
-        /*     int offset = prim.offset + j; */
-        /*     Triangle tri = tris[offset]; */
 
-        /*     float3 bar = barycentric(tri, ray); */
-        /*     if (bar.x > 0 && */
-        /*             bar.x < min_t && */
-        /*             bar.y < 1 && bar.y > 0 && */
-        /*             bar.z < 1 && bar.z > 0 && */
-        /*             (bar.y + bar.z) < 1) */
-        /*     { */
-        /*         min_t = bar.x; */
-        /*         Triangle norm = norms[offset]; */
-        /*         its.norm = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2; */
-        /*         its.point = ray.o + bar.x * ray.d; */
-        /*         its.t = bar.x; */
-        /*     } */
-        /* } */
+            float3 bar = barycentric(tri, ray);
+            if (bar.x > 0 &&
+                    bar.x < min_t &&
+                    bar.y < 1 && bar.y > 0 &&
+                    bar.z < 1 && bar.z > 0 &&
+                    (bar.y + bar.z) < 1)
+            {
+                min_t = bar.x;
+                Triangle norm = norms[offset];
+                its.norm = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2;
+                its.point = ray.o + bar.x * ray.d;
+                its.t = bar.x;
+            }
+        }
         if (stack_offset == 0) {
             return its;
         }
@@ -422,7 +407,7 @@ __kernel void main(
     if (rsq < 0.25) {
         color = 0.0;
 
-        //Intersection its = trace(
+        /* Intersection its = trace( */
         Intersection its = whwh(
                 nodes,
                 prims,
@@ -430,7 +415,7 @@ __kernel void main(
                 norms,
                 ray);
         if (its.t > 0) {
-            //color = 1 * lambert(l, its.point, its.norm);
+            color = 1 * lambert(l, its.point, its.norm);
             color.x += (float)(its.depth) / 100.0f;
         }
     }

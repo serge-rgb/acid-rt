@@ -134,7 +134,7 @@ enum SplitPlane {
 // 'indices' keeps the original order of the slice.
 // bbox_cache avoids recomputation of bboxes for single primitives.
 static BVHTreeNode* build_bvh(
-        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, int depth) {
+        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, glm::vec3* centroids, int depth) {
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     ph::BVHNode data;
     data.primitive_offset = -1;
@@ -150,58 +150,35 @@ static BVHTreeNode* build_bvh(
         node->left = NULL;
         node->right = NULL;
     } else {                                // ---- Inner node
-        auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
+        //auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
         glm::vec3 midpoint;
+        midpoint = get_centroid(data.bbox);
 
-        { // Fill centroids. Calculate midpoint.
-            for (int i = 0; i < count(primitives); ++i) {
-                auto bbox = bbox_cache[indices[i]];
-                auto ci = append(&centroids, get_centroid(bbox));
-                midpoint.x += centroids[ci].x;
-                midpoint.y += centroids[ci].y;
-                midpoint.z += centroids[ci].z;
-            }
-            ph_assert(count(centroids) == count(primitives));
-            midpoint /= count(primitives);
-        }
-
-        // Fill variations.
-
-        float variation[3] = { 0, 0, 0 };  // Used to choose split axis
+        AABB centroid_bounds;
+        bbox_fill(&centroid_bounds);
+        float centroid_span[3];
         {
-            float minx, maxx, miny, maxy, minz, maxz;
-            minx = maxx = centroids[0].x;
-            miny = maxy = centroids[0].y;
-            minz = maxz = centroids[0].z;
-            for (int i = 1; i < count(centroids); ++i) {
-                if (centroids[i].x < minx) minx = centroids[i].x;
-                if (centroids[i].x > maxx) maxx = centroids[i].x;
-                if (centroids[i].y < miny) miny = centroids[i].y;
-                if (centroids[i].y > maxy) maxy = centroids[i].y;
-                if (centroids[i].z < minz) minz = centroids[i].z;
-                if (centroids[i].z > maxz) maxz = centroids[i].z;
+            for (int i = 0; i < count(primitives); ++i) {
+                if (centroids[indices[i]].x < centroid_bounds.xmin) centroid_bounds.xmin = centroids[indices[i]].x;
+                if (centroids[indices[i]].x > centroid_bounds.xmax) centroid_bounds.xmax = centroids[indices[i]].x;
+                if (centroids[indices[i]].y < centroid_bounds.ymin) centroid_bounds.ymin = centroids[indices[i]].y;
+                if (centroids[indices[i]].y > centroid_bounds.ymax) centroid_bounds.ymax = centroids[indices[i]].y;
+                if (centroids[indices[i]].z < centroid_bounds.zmin) centroid_bounds.zmin = centroids[indices[i]].z;
+                if (centroids[indices[i]].z > centroid_bounds.zmax) centroid_bounds.zmax = centroids[indices[i]].z;
             }
-            variation[0] = fabs(maxx - minx);
-            variation[1] = fabs(maxy - miny);
-            variation[2] = fabs(maxz - minz);
+            centroid_span[0] = fabs(centroid_bounds.xmax - centroid_bounds.xmin);
+            centroid_span[1] = fabs(centroid_bounds.ymax - centroid_bounds.ymin);
+            centroid_span[2] = fabs(centroid_bounds.zmax - centroid_bounds.zmin);
         }
 
-        int split = SplitPlane_X;
-        split = depth % 3;
-
-        { // Choose split plane
-            float v = -1;
-            for (int i = 0; i < 3; i++) {
-                if (v < variation[i]) {
-                    v = variation[i];
-                    split = SplitPlane(i);
-                }
-            }
-            if (v == 0.0f) {
-                //logf("Two objets have the same centroid. Using default axis split (%d)\n", c);
-                split = depth % 3;
+        int split = depth % 3;
+        // Choose split
+        for (int i = 0; i < 3; ++i) {
+            if (centroid_span[i] > centroid_span[split]) {
+                split = i;
             }
         }
+
 
         // Make two new slices.
         auto slice_left = MakeSlice<ph::Primitive>(size_t(count(primitives) / 2));
@@ -219,8 +196,8 @@ static BVHTreeNode* build_bvh(
             append(&slice_right, primitives[1]);
             new_indices_l[offset_l++] = indices[0];
             new_indices_r[offset_r++] = indices[1];
-            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, depth + 1);
-            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, depth + 1);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, centroids,depth + 1);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, centroids, depth + 1);
             release(&slice_left);
             release(&slice_right);
             node->data = data;
@@ -235,8 +212,8 @@ static BVHTreeNode* build_bvh(
             return node;
         }
 
-        bool use_sah = count(primitives) > 8;
-        /* bool use_sah = true; */
+        bool use_sah = count(primitives) > 4;
+        //bool use_sah = true;
         // ============================================================
         // SAH
         // ============================================================
@@ -251,15 +228,15 @@ static BVHTreeNode* build_bvh(
 
             auto bbox = data.bbox;  // Bounding box for primitives.
 
-            // bbox as two vectors:
+            // centroid_bounds as two vectors:
             glm::vec3 bbox_vmin;
             glm::vec3 bbox_vmax;
-            bbox_vmin.x = bbox.xmin;
-            bbox_vmin.y = bbox.ymin;
-            bbox_vmin.z = bbox.zmin;
-            bbox_vmax.x = bbox.xmax;
-            bbox_vmax.y = bbox.ymax;
-            bbox_vmax.z = bbox.zmax;
+            bbox_vmin.x = centroid_bounds.xmin;
+            bbox_vmin.y = centroid_bounds.ymin;
+            bbox_vmin.z = centroid_bounds.zmin;
+            bbox_vmax.x = centroid_bounds.xmax;
+            bbox_vmax.y = centroid_bounds.ymax;
+            bbox_vmax.z = centroid_bounds.zmax;
 
 
             // 1) Initialize info (bounds & count) for each bucket
@@ -267,15 +244,14 @@ static BVHTreeNode* build_bvh(
                 bbox_fill(&buckets[i].bbox);
                 buckets[i].num = 0;
             }
-            auto bbox_centroid = get_centroid(bbox);
 
             int* assign = phalloc(int, (size_t)count(primitives));
             // ^--- Store which primitive is assigned to which bucket.
 
             for (int i = 0; i < count(primitives); ++i) {
-                glm::vec3 centroid = centroids[i];
+                ph_assert(split < 3 && split >= 0);
                 int b = (int)(kNumBuckets *
-                        (centroid[split] - bbox_vmin[split]) /
+                        (centroids[indices[i]][split] - bbox_vmin[split]) /
                         (bbox_vmax[split] - bbox_vmin[split]));
                 if (b == kNumBuckets) { b--; }
                 buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[indices[i]]);
@@ -283,8 +259,8 @@ static BVHTreeNode* build_bvh(
                 assign[i] = b;
             }
             // 2) compute cost for each permutation: Sum of (bucketBbox / primitivesBbox)
-            float cost[kNumBuckets];
-            for (int i = 0; i < kNumBuckets; ++i) {
+            float cost[kNumBuckets - 1];
+            for (int i = 0; i < kNumBuckets - 1; ++i) {
                 AABB b0, b1;
                 int count0 = 0;
                 int count1 = 0;
@@ -310,7 +286,7 @@ static BVHTreeNode* build_bvh(
             // 3) find minimal cost split
             int min_split = 0;
             float min_cost = cost[0];
-            for (int i = 1; i < kNumBuckets; ++i) {
+            for (int i = 1; i < kNumBuckets -1; ++i) {
                 if (cost[i] < min_cost) {
                     min_cost = cost[i];
                     min_split = i;
@@ -318,10 +294,10 @@ static BVHTreeNode* build_bvh(
             }
             // 4) split
             // Use the assign array to send them left or right
-            bool will_split = false;
             int c_left = 0;
             int c_right = 0;
             for (int i = 0; i < count(primitives); ++i) {
+                //logf("primitive %d goes %d and minsplit is %d\n", i, assign[i], min_split);
                 if (assign[i] <= min_split) {
                     c_left++;
                 }
@@ -329,40 +305,19 @@ static BVHTreeNode* build_bvh(
                     c_right++;
                 }
             }
-            if (c_left != 0 && c_right != 0) {
-                will_split = true;
-            }
+            ph_assert (c_left != 0 && c_right != 0);
 
             static int noteven_count = 0;
-            if (will_split) {
-                noteven_count++;
-                for (int i = 0; i < count(primitives); ++i) {
-                    if (assign[i] <= min_split) {
-                        /* log("left"); */
-                        append(&slice_left, primitives[i]);
-                        new_indices_l[offset_l++] = indices[i];
-                    }
-                    else {
-                        /* log("right"); */
-                        append(&slice_right, primitives[i]);
-                        new_indices_r[offset_r++] = indices[i];
-                    }
+            for (int i = 0; i < count(primitives); ++i) {
+                if (assign[i] <= min_split) {
+                    /* log("left"); */
+                    append(&slice_left, primitives[i]);
+                    new_indices_l[offset_l++] = indices[i];
                 }
-            }
-            else {
-                static int even_count = 0;
-                even_count++;
-                logf("========= spliting evenly ========= %d vs %d (split %d)\n", even_count, noteven_count, split);
-                for (int i = 0; i < count(primitives); ++i) {
-                    auto centroid = centroids[i];
-                    if (centroid[split] < midpoint[split]) {
-                        append(&slice_left, primitives[i]);
-                        new_indices_l[offset_l++] = indices[i];
-                    }
-                    else {  // Default: to the right
-                        append(&slice_right, primitives[i]);
-                        new_indices_r[offset_r++] = indices[i];
-                    }
+                else {
+                    /* log("right"); */
+                    append(&slice_right, primitives[i]);
+                    new_indices_r[offset_r++] = indices[i];
                 }
             }
             phree(assign);
@@ -372,7 +327,7 @@ static BVHTreeNode* build_bvh(
         } else {
             // Partition two slices based on which side of the midpoint.
             for (int i = 0; i < count(primitives); ++i) {
-                auto centroid = centroids[i];
+                auto centroid = centroids[indices[i]];
                 if (centroid[split] < midpoint[split]) {
                     append(&slice_left, primitives[i]);
                     new_indices_l[offset_l++] = indices[i];
@@ -386,7 +341,10 @@ static BVHTreeNode* build_bvh(
         }
         // Either both are 0 or both are non zero.. Else, fix it
         // Can happen when a bunch of triangles have the same bbox...
+        static int a,b; // TODO: debug
         if ((offset_r != 0 && offset_l == 0) || (offset_l != 0 && offset_r == 0)) {
+            a++;
+            logf("Ugly fix +++++++++++++++++++++++++++++++++++++++++++ %d of %d\n", a, b);
             if (offset_r != 0) {
                 auto times = count(slice_right) / 2;
                 for (int i = 0; i < times; ++i) {
@@ -400,14 +358,14 @@ static BVHTreeNode* build_bvh(
                     new_indices_r[offset_r++] = new_indices_l[--offset_l];
                 }
             }
-        }
+        } else {b++;}
 
         node->left = node->right = NULL;
         if (count(slice_left)) {
-            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, depth + 1);
+            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, centroids, depth + 1);
         }
         if (count(slice_right)) {
-            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, depth + 1);
+            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, centroids, depth + 1);
         }
         if(node->left) {
             node->left->parent = node;
@@ -421,7 +379,6 @@ static BVHTreeNode* build_bvh(
         release(&slice_right);
         phree(new_indices_l);
         phree(new_indices_r);
-        release(&centroids);
     }
     node->data = data;
     return node;
@@ -976,13 +933,14 @@ void update_structure() {
 
     int32* indices = phalloc(int32, count(m_primitives));
     AABB* bbox_cache = phalloc(AABB, count(m_primitives));
-
+    glm::vec3* centroids = phalloc(glm::vec3, count(m_primitives));
     for (int i = 0; i < count(m_primitives); ++i) {
         indices[i] = i;
         bbox_cache[i] = get_bbox(&m_primitives[i], 1);
+        centroids[i] = get_centroid(bbox_cache[i]);
     }
 
-    BVHTreeNode* root = build_bvh(m_primitives, indices, bbox_cache, 0);
+    BVHTreeNode* root = build_bvh(m_primitives, indices, bbox_cache, centroids, 0);
 
 #ifdef PH_DEBUG
     validate_bvh(root, m_primitives);
@@ -996,6 +954,7 @@ void update_structure() {
 #endif
 
     phree(indices);
+    phree(centroids);
     phree(bbox_cache);
     release(root);
 }
