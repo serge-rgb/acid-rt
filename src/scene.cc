@@ -191,27 +191,6 @@ static BVHTreeNode* build_bvh(
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
 
-        if (count(primitives) == 2) {
-            append(&slice_left, primitives[0]);
-            append(&slice_right, primitives[1]);
-            new_indices_l[offset_l++] = indices[0];
-            new_indices_r[offset_r++] = indices[1];
-            node->left = build_bvh(slice_left, new_indices_l, bbox_cache, centroids,depth + 1);
-            node->right = build_bvh(slice_right, new_indices_r, bbox_cache, centroids, depth + 1);
-            release(&slice_left);
-            release(&slice_right);
-            node->data = data;
-            if(node->left) {
-                node->left->parent = node;
-                node->left->sibling = node->right;
-            }
-            if (node->right) {
-                node->right->parent = node;
-                node->right->sibling = node->left;
-            }
-            return node;
-        }
-
         bool use_sah = count(primitives) > 4;
         //bool use_sah = true;
         // ============================================================
@@ -249,7 +228,6 @@ static BVHTreeNode* build_bvh(
             // ^--- Store which primitive is assigned to which bucket.
 
             for (int i = 0; i < count(primitives); ++i) {
-                ph_assert(split < 3 && split >= 0);
                 int b = (int)(kNumBuckets *
                         (centroids[indices[i]][split] - bbox_vmin[split]) /
                         (bbox_vmax[split] - bbox_vmin[split]));
@@ -305,7 +283,6 @@ static BVHTreeNode* build_bvh(
                     c_right++;
                 }
             }
-            ph_assert (c_left != 0 && c_right != 0);
 
             static int noteven_count = 0;
             for (int i = 0; i < count(primitives); ++i) {
@@ -341,10 +318,7 @@ static BVHTreeNode* build_bvh(
         }
         // Either both are 0 or both are non zero.. Else, fix it
         // Can happen when a bunch of triangles have the same bbox...
-        static int a,b; // TODO: debug
         if ((offset_r != 0 && offset_l == 0) || (offset_l != 0 && offset_r == 0)) {
-            a++;
-            logf("Ugly fix +++++++++++++++++++++++++++++++++++++++++++ %d of %d\n", a, b);
             if (offset_r != 0) {
                 auto times = count(slice_right) / 2;
                 for (int i = 0; i < times; ++i) {
@@ -358,7 +332,7 @@ static BVHTreeNode* build_bvh(
                     new_indices_r[offset_r++] = new_indices_l[--offset_l];
                 }
             }
-        } else {b++;}
+        }
 
         node->left = node->right = NULL;
         if (count(slice_left)) {

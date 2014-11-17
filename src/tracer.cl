@@ -232,8 +232,10 @@ Intersection whwh(
             const AABB bbox_l = nodes[node_i + 1].bbox;
             const AABB bbox_r = nodes[node.right_child_offset].bbox;
             float nr, nl, fr, fl;
-            nl = bbox_collision(bbox_l, ray, inv_dir, &fl);
-            nr = bbox_collision(bbox_r, ray, inv_dir, &fr);
+            /* nl = bbox_collision(bbox_l, ray, inv_dir, &fl); */
+            /* nr = bbox_collision(bbox_r, ray, inv_dir, &fr); */
+            nl = max(0.0, bbox_collision(bbox_l, ray, inv_dir, &fl));
+            nr = max(0.0, bbox_collision(bbox_r, ray, inv_dir, &fr));
 
             bool hit_l = (nl < fl) && (nl < min_t) && (fl > 0);
             bool hit_r = (nr < fr) && (nr < min_t) && (fr > 0);
@@ -241,13 +243,14 @@ Intersection whwh(
             if (hit_l || hit_r) {
                 its.depth += 1;
                 if (hit_l && hit_r) {
-                    float near = min(fl, fr);
-                    if (near == fr) {
+                    float near = min(nl, nr);
+
+                    if (near == nr) {
                         stack[stack_offset++] = node_i + 1;
-                        node_i = node.right_child_offset;
+                        node_i                = node.right_child_offset;
                     } else {
-                        node_i = node_i + 1;
                         stack[stack_offset++] = node.right_child_offset;
+                        node_i                = node_i + 1;
                     }
                 } else {
                     if (hit_r) {
