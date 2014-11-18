@@ -201,8 +201,7 @@ Intersection whwh(
         Ray ray) {
     Intersection its;
     its.depth = 0;
-    its.t = 1;  //========``````````````````````
-    float3 inv_dir = 1 / normalize(ray.d);
+    float3 inv_dir = 1 / ray.d;
 
     int stack[32];
     int stack_offset = 0;
@@ -222,37 +221,37 @@ Intersection whwh(
             const AABB bbox_l = nodes[node_i + 1].bbox;
             const AABB bbox_r = nodes[node.right_child_offset].bbox;
             float nr, nl, fr, fl;
-            /* nl = bbox_collision(bbox_l, ray, inv_dir, &fl); */
-            /* nr = bbox_collision(bbox_r, ray, inv_dir, &fr); */
-            nl = max(0.0, bbox_collision(bbox_l, ray, inv_dir, &fl));
-            nr = max(0.0, bbox_collision(bbox_r, ray, inv_dir, &fr));
+            nl = bbox_collision(bbox_l, ray, inv_dir, &fl);
+            nr = bbox_collision(bbox_r, ray, inv_dir, &fr);
 
             bool hit_l = (nl < fl) && (nl < min_t) && (fl > 0);
             bool hit_r = (nr < fr) && (nr < min_t) && (fr > 0);
 
-            if (hit_l || hit_r) {
-                its.depth += 1;
-                if (hit_l && hit_r) {
+            node_i = node_i + 1;
+            int other_i = node.right_child_offset;
+            // If it hits just one
+            if (hit_l != hit_r) {
+                if (hit_r) {
+                    node_i = other_i;
+                }
+            }
+            // Either both or none
+            else {
+                if (!hit_l) {  // No hit.
+                    if (stack_offset == 0) {
+                        return its;
+                    } else {
+                        node_i = stack[--stack_offset];
+                    }
+                } else {  // Both hit
                     if (nr < nl) {
-                        stack[stack_offset++] = node_i + 1;
-                        node_i                = node.right_child_offset;
-                    } else {
-                        stack[stack_offset++] = node.right_child_offset;
-                        node_i                = node_i + 1;
+                        int tmp = node_i;
+                        node_i = other_i;
+                        other_i = tmp;
                     }
-                } else {
-                    if (hit_r) {
-                        node_i = node.right_child_offset;
-                    } else {
-                        node_i = node_i + 1;
-                    }
+                    stack[stack_offset++] = other_i;
                 }
-            } else {  // NO HIT
-                if (stack_offset == 0) {
-                    return its;
-                } else {
-                    node_i = stack[--stack_offset];
-                }
+
             }
 
             node = nodes[node_i];
