@@ -151,53 +151,43 @@ Intersection trace(
                 }
             }
         } else {  // ==== INTERNAL NODE ======================
+            const BVHNode left = nodes[node.left_child_offset];
+            const BVHNode right = nodes[node.right_child_offset];
+
             int other = node.right_child_offset;
             const int other_l = node.left_child_offset;
 
             float l_n, l_f, r_n, r_f;
-            l_n = bbox_collision(nodes[node.left_child_offset].bbox, ray, inv_dir, &l_f);
-            r_n = bbox_collision(nodes[node.right_child_offset].bbox, ray, inv_dir, &r_f);
-            its.depth += 2;
+            l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
+            r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
+            its.depth += 1;
 
             const bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
             const bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
 
             // If anyone got hit
-
-            if (hit_l && hit_r) {
-                const float near = min(l_f, r_f);
-                if (near == r_f) {
-                    node = nodes[node.right_child_offset];
-                    other = other_l;
-                } else {
-                    node = nodes[node.left_child_offset];
+            if ((hit_l || hit_r)) {
+                node = left;
+                // When *both* children are hits choose the nearest
+                if (hit_l && hit_r) {
+                    const float near = min(l_n, r_n);
+                    if (near == r_n) {
+                        node = right;
+                        other = other_l;
+                    }
+                    // We will need to traverse the other node later.
+                    stack[stack_offset++] = other;
+                } else if (hit_r) {
+                    node = right;
                 }
-                // We will need to traverse the other node later.
-                stack[stack_offset++] = other;
-                continue;
-            } else if (hit_r) {
-                node = nodes[node.right_child_offset];
-                continue;
-            } else if (hit_l) {
-                node = nodes[node.left_child_offset];
                 continue;
             }
         }
-
         // Reaching this only when there was no hit. Get from stack.
         if (stack_offset == 0) {
             return its;
         } else {
             node = nodes[stack[--stack_offset]];
-            /* while (stack_offset > 0) { */
-            /*     node = nodes[stack[--stack_offset]]; */
-            /*     float n, f; */
-            /*     n = bbox_collision(node.bbox, ray, inv_dir, &f); */
-            /*     if (n < min_t) { */
-            /*         break; */
-            /*     } */
-            /*     if (stack_offset == 0) return its; */
-            /* } */
         }
     }
     return its;
@@ -243,9 +233,7 @@ Intersection whwh(
             if (hit_l || hit_r) {
                 its.depth += 1;
                 if (hit_l && hit_r) {
-                    float near = min(nl, nr);
-
-                    if (near == nr) {
+                    if (nr < nl) {
                         stack[stack_offset++] = node_i + 1;
                         node_i                = node.right_child_offset;
                     } else {
