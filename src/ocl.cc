@@ -15,10 +15,9 @@
 using namespace ph;
 
 
-static const int width = 1920;
-static const int height = 1080;
-/* static const int width = 960; */
-/* static const int height = 540; */
+static const int kSubsampling = 1;
+static const int width = 1920 / kSubsampling;
+static const int height = 1080 / kSubsampling;
 
 
 #ifdef OCL_MAIN
@@ -491,9 +490,9 @@ void init() {
 
         GLCHK ( glUseProgram(m_quad_program) );
         glUniform1i(1, /*GL_TEXTURE_0*/0);
-        GLfloat rcp_frame[2] = { 1.0f/(float)width, 1.0f/(float)height };
+        GLfloat rcp_frame[2] = { 1.0f/(float)(kSubsampling * width), 1.0f/(float)(kSubsampling * height) };
         glUniform2fv(2, 1, rcp_frame);
-        GLfloat size [2] = { GLfloat(width), GLfloat(height) };
+        GLfloat size [2] = { GLfloat(kSubsampling * width), GLfloat(kSubsampling * height) };
         glUniform2fv(3, 1, size);
 
         glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
@@ -624,7 +623,7 @@ void init() {
             3, sizeof(float), (void*)&m_hmd_consts.eye_to_screen);
     err |= clSetKernelArg(m_cl_kernel,
             4, 2 * sizeof(float), (void*)&m_hmd_consts.viewport_size_m);
-    int size_px[2] = { width / 2, height / 2 };
+    int size_px[2] = { width / 2, height };
     err |= clSetKernelArg(m_cl_kernel,
             5, 2 * sizeof(int), (void*)size_px);
     err |= clSetKernelArg(m_cl_kernel,

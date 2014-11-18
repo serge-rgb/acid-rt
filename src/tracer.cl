@@ -367,7 +367,7 @@ __kernel void main(
     // Point is in [0, 1] x [0, 1]
 
     // Translate to center ( in screen space. )
-    point.xy -= lens_center / (float2)(viewport_size_m.x, viewport_size_m.y / 2);
+    point.xy -= lens_center / (float2)(viewport_size_m.x, viewport_size_m.y);
 
     // Correct for aspect ratio
     const float ar = (float)(viewport_size_px.y) / viewport_size_px.x;
