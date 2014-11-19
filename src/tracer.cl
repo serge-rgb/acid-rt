@@ -35,10 +35,17 @@ typedef struct {
 } AABB;
 
 typedef struct {
-    int triangle_offset;       // >0 when leaf. -1 when not.
+    int primitive_offset;       // >0 when leaf. -1 when not.
+    int left_child_offset;      // should be i + 1
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
 } BVHNode;
+
+typedef struct {
+    int offset;             // Num of elements into the triangle pool where this primitive begins.
+    int num_triangles;
+    int material;           // Enum (copy in shader).
+} Primitive ;
 
 inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
     float3 i = -quat.xyz;
@@ -102,8 +109,93 @@ Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
     return intersection;
 }
 
+Intersection trace(
+        __constant BVHNode* nodes,
+        __constant Primitive* prims,
+        __constant Triangle* tris,
+        __constant Triangle* norms,
+        Ray ray) {
+    Intersection its;
+    its.depth = 0;
+    its.t = -1;
+    float n, f;
+    float3 inv_dir = 1 / normalize(ray.d);
+
+    int stack[32];
+    int stack_offset = 0;
+    BVHNode node = nodes[0];
+    int cnt = 0;
+
+    float min_t = 1 << 16;
+    while (true) {
+        if (cnt > 1000) break;
+        cnt++;
+        if (node.primitive_offset >= 0) {  // ==== LEAF ===============
+            Primitive prim = prims[node.primitive_offset];
+            for (int j = 0; j < prim.num_triangles; ++j) {
+                int offset = prim.offset + j;
+                Triangle tri = tris[offset];
+
+                float3 bar = barycentric(tri, ray);
+                if (bar.x > 0 &&
+                        bar.x < min_t &&
+                        bar.y < 1 && bar.y > 0 &&
+                        bar.z < 1 && bar.z > 0 &&
+                        (bar.y + bar.z) < 1)
+                {
+                    min_t = bar.x;
+                    Triangle norm = norms[offset];
+                    its.norm = (1 - bar.y - bar.z) * norm.p0 + bar.y * norm.p1 + bar.z * norm.p2;
+                    its.point = ray.o + bar.x * ray.d;
+                    its.t = bar.x;
+                }
+            }
+        } else {  // ==== INTERNAL NODE ======================
+            const BVHNode left = nodes[node.left_child_offset];
+            const BVHNode right = nodes[node.right_child_offset];
+
+            int other = node.right_child_offset;
+            const int other_l = node.left_child_offset;
+
+            float l_n, l_f, r_n, r_f;
+            l_n = bbox_collision(left.bbox, ray, inv_dir, &l_f);
+            r_n = bbox_collision(right.bbox, ray, inv_dir, &r_f);
+            its.depth += 1;
+
+            const bool hit_l = (l_n < l_f) && (l_n < min_t) && l_f > 0;
+            const bool hit_r = (r_n < r_f) && (r_n < min_t) && r_f > 0;
+
+            // If anyone got hit
+            if ((hit_l || hit_r)) {
+                node = left;
+                // When *both* children are hits choose the nearest
+                if (hit_l && hit_r) {
+                    const float near = min(l_n, r_n);
+                    if (near == r_n) {
+                        node = right;
+                        other = other_l;
+                    }
+                    // We will need to traverse the other node later.
+                    stack[stack_offset++] = other;
+                } else if (hit_r) {
+                    node = right;
+                }
+                continue;
+            }
+        }
+        // Reaching this only when there was no hit. Get from stack.
+        if (stack_offset == 0) {
+            return its;
+        } else {
+            node = nodes[stack[--stack_offset]];
+        }
+    }
+    return its;
+}
+
 Intersection whwh(
         __constant BVHNode* nodes,
+        __constant Primitive* prims,
         __constant Triangle* tris,
         __constant Triangle* norms,
         Ray ray) {
@@ -125,7 +217,7 @@ Intersection whwh(
     while (true) {
         if (cnt > 10000) { its.depth = 1 << 16; break;}
         cnt++;
-        while (node.triangle_offset < 0) {  // Inner nodes.
+        while (node.primitive_offset < 0) {  // Inner nodes.
             const AABB bbox_l = nodes[node_i + 1].bbox;
             const AABB bbox_r = nodes[node.right_child_offset].bbox;
             float nr, nl, fr, fl;
@@ -165,9 +257,9 @@ Intersection whwh(
             node = nodes[node_i];
         }
         //============== LEAF =================
-        int num_triangles = node.right_child_offset;
-        for (int j = 0; j < num_triangles; ++j) {
-            int offset = node.triangle_offset + j;
+        Primitive prim = prims[node.primitive_offset];
+        for (int j = 0; j < prim.num_triangles; ++j) {
+            int offset = prim.offset + j;
             Triangle tri = tris[offset];
 
             float3 bar = barycentric(tri, ray);
@@ -255,7 +347,11 @@ __kernel void main(
         __constant float* K,         // 7
         __constant Triangle* tris,   // 8
         __constant Triangle* norms,  // 9
-        __constant BVHNode* nodes    // 10
+        int num_tris,
+        __constant Primitive* prims, // 11
+        int num_prims,               // 12
+        __constant BVHNode* nodes,    // 13
+        int num_nodes                // 14
         //
         ) {
 
@@ -304,6 +400,7 @@ __kernel void main(
         /* Intersection its = trace( */
         Intersection its = whwh(
                 nodes,
+                prims,
                 tris,
                 norms,
                 ray);
