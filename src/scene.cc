@@ -137,7 +137,7 @@ static BVHTreeNode* build_bvh(
         Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, glm::vec3* centroids, int depth) {
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     ph::BVHNode data;
-    data.primitive_offset = -1;
+    data.triangle_offset = -1;
     data.right_child_offset = -1;
     node->parent = NULL;
     node->sibling = NULL;
@@ -146,7 +146,9 @@ static BVHTreeNode* build_bvh(
     data.bbox = get_bbox(primitives.ptr, (int)count(primitives));
 
     if (count(primitives) == 1) {           // ---- Leaf
-        data.primitive_offset = *indices;
+        Primitive prim = primitives[0];
+        data.triangle_offset = prim.offset;
+        data.right_child_offset = prim.num_triangles;
         node->left = NULL;
         node->right = NULL;
     } else {                                // ---- Inner node
@@ -371,15 +373,15 @@ static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
 
     while (stack_offset > 0) {
         BVHTreeNode* node = stack[--stack_offset];
-        if (node->left == NULL && node->right == NULL) {
-            int i = node->data.primitive_offset;
+        if (node->left == NULL && node->right == NULL) {  // Is leaf
+            int i = node->data.triangle_offset;
             if (checks[i]) {
                 printf("Found double leaf %d\n", i);
                 return false;
             } else {
                 checks[i] = true;
                 /* printf("Leaf bounding box: \n%s", str(node->data.bbox)); */
-                /* printf("Leaf prim: %d\n\n", node->data.primitive_offset); */
+                /* printf("Leaf prim: %d\n\n", node->data.triangle_offset); */
             }
             auto bbox = node->data.bbox;
             auto bbox0 = get_bbox(&data[i], 1);
@@ -396,7 +398,7 @@ static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
                 return false;
             }
         } else {
-            if (node->data.primitive_offset != -1) {
+            if (node->data.triangle_offset != -1) {
                 printf("Non-leaf node has primitive!\n");
                 return false;
             }
@@ -443,7 +445,7 @@ void release(BVHTreeNode* root) {
 static uint64_t hash(BVHTreeNode* data) {
     uint64_t hash = 5381;
     uint64_t hash_data[] = {
-        (uint64_t)(data->data.primitive_offset),
+        (uint64_t)(data->data.triangle_offset),
         (uint64_t)(data->data.right_child_offset),
         (uint64_t)floorf(1000 * data->data.bbox.xmin),
         (uint64_t)floorf(1000 * data->data.bbox.xmax),
@@ -497,7 +499,6 @@ static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
             ph_assert(found_i >= 0);
             ph_assert(found_i < int64(1) << 31);
             slice.ptr[i].right_child_offset = (int)found_i;
-            slice.ptr[i].left_child_offset = i + 1;
         }
         i++;
     }
@@ -518,20 +519,17 @@ static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
     ph::BVHNode* node = root;
     for (int64 i = 0; i < len; ++i) {
         /* printf("Node %ld: At its right: %d\n", i, node->right_child_offset); */
-        if (node->primitive_offset != -1) {  // Not leaf
+        if (node->triangle_offset != -1) {  // Not leaf
             num_leafs++;
-            /* printf("  Leaf! %d\n", node->primitive_offset); */
-            if (check[node->primitive_offset]) {
-                printf("Double leaf %d\n", node->primitive_offset);
+            /* printf("  Leaf! %d\n", node->triangle_offset); */
+            if (check[node->triangle_offset]) {
+                printf("Double leaf %d\n", node->triangle_offset);
                 return false;
             }
-            check[node->primitive_offset] = true;
+            check[node->triangle_offset] = true;
 
         } else {
-            if (node->left_child_offset != i + 1) {
-                log("Flat validation failed: Left child offset");
-                return false;
-            }
+            // Doin' nothin'
         }
         node++;
     }
@@ -939,8 +937,6 @@ void upload_everything() {
     // Upload triangles and normals
     ph_assert(m_triangle_pool.n_elems == m_normal_pool.n_elems);
     ocl::set_triangle_soup(m_triangle_pool.ptr, m_normal_pool.ptr, m_triangle_pool.n_elems);
-    // Upload primitive data
-    ocl::set_primitive_array(m_primitives.ptr, (size_t)m_primitives.n_elems);
     // Upload flat bvh.
     ocl::set_flat_bvh(m_flat_tree, (size_t)m_flat_tree_len);
 }

@@ -7,8 +7,7 @@ namespace ph {
 
 // Plain and simple struct for flattened tree.
 struct BVHNode {
-    int primitive_offset;       // >0 when leaf. -1 when not.
-    int left_child_offset;      // should be i + 1
+    int triangle_offset;        // >0 when leaf. -1 when not.
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
 };
