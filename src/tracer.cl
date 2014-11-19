@@ -50,34 +50,54 @@ typedef struct {
 inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
     float3 i = -quat.xyz;
     float m = quat.w;
-    return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
+    //return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
+    return vec + 2.0 * cross( mad(m, vec, cross( vec, i )), i );
 }
 
-inline float bbox_collision(AABB box, Ray ray, float3 inv_dir, float* far_t) {
-    float t0, t1;
+#define BBOX_USE_MAD
+inline float bbox_collision(const AABB box, const Ray ray, const float3 inv_dir, float* far_t) {
+    float t0;
 
     float rmin, rmax;
-    ray.o *= inv_dir;
+    float3 o = ray.o * inv_dir;
 
-    rmin = box.xmin * inv_dir.x - ray.o.x;
-    rmax = box.xmax * inv_dir.x - ray.o.x;
+    float mx = -(o.x);
+    float my = -(o.y);
+    float mz = -(o.z);
+
+#ifndef BBOX_USE_MAD
+    rmin = box.xmin * inv_dir.x - o.x;
+    rmax = box.xmax * inv_dir.x - o.x;
+#else
+    rmin = mad(box.xmin, inv_dir.x, mx);
+    rmax = mad(box.xmax, inv_dir.x, mx);
+#endif
 
     t0 = min(rmin, rmax);
-    t1 = max(rmin, rmax);
+    *far_t = max(rmin, rmax);
 
-    rmin = box.ymin * inv_dir.y - ray.o.y;
-    rmax = box.ymax * inv_dir.y - ray.o.y;
+#ifndef BBOX_USE_MAD
+    rmin = box.ymin * inv_dir.y - o.y;
+    rmax = box.ymax * inv_dir.y - o.y;
+#else
+    rmin = mad(box.ymin, inv_dir.y, my);
+    rmax = mad(box.ymax, inv_dir.y, my);
+#endif
 
     t0 = max(t0, min(rmin, rmax));
-    t1 = min(t1, max(rmin, rmax));
+    *far_t = min(*far_t, max(rmin, rmax));
 
-    rmin = box.zmin * inv_dir.z - ray.o.z;
-    rmax = box.zmax * inv_dir.z - ray.o.z;
+#ifndef BBOX_USE_MAD
+    rmin = box.zmin * inv_dir.z - o.z;
+    rmax = box.zmax * inv_dir.z - o.z;
+#else
+    rmin = mad(box.zmin, inv_dir.z, mz);
+    rmax = mad(box.zmax, inv_dir.z, mz);
+#endif
 
     t0 = max(t0, min(rmin, rmax));
-    t1 = min(t1, max(rmin, rmax));
+    *far_t = min(*far_t, max(rmin, rmax));
 
-    *far_t = t1;
     return t0;
 }
 
