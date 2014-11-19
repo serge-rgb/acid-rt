@@ -139,13 +139,13 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     }
     m_cl_triangle_soup = clCreateBuffer(m_context,
                                         CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                        12 * sizeof(float) * (size_t)num_tris, (void*)tris, &err);
+                                        sizeof(CLtriangle) * (size_t)num_tris, (void*)tris, &err);
     if (err != CL_SUCCESS) {
         phatal_error("Could not create buffer for tri soup");
     }
     m_cl_normal_soup = clCreateBuffer(m_context,
                                       CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                      12 * sizeof(float) * (size_t)num_tris, (void*)norms, &err);
+                                      sizeof(CLtriangle) * (size_t)num_tris, (void*)norms, &err);
     if (err != CL_SUCCESS) {
         phatal_error("Could not create buffer for normal soup");
     }

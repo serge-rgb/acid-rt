@@ -23,6 +23,7 @@ typedef struct {
     float3 p0;
     float3 p1;
     float3 p2;
+    float3 _padding;
 } Triangle;
 
 typedef struct {
@@ -53,8 +54,7 @@ inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
 }
 
 inline float bbox_collision(AABB box, Ray ray, float3 inv_dir, float* far_t) {
-    float t0 = 0;
-    float t1 = 1 >> 16;
+    float t0, t1;
 
     float rmin, rmax;
     ray.o *= inv_dir;
@@ -122,7 +122,6 @@ Intersection trace(
     int stack_offset = 0;
     int node_i = 0;
     BVHNode node = nodes[node_i];
-    int cnt = 0;
     float min_t = 1 << 16;
     // while true
     // while node is internal
@@ -130,8 +129,6 @@ Intersection trace(
     // while node has primitives
     //  intesect
     while (true) {
-        if (cnt > 10000) { its.depth = 1 << 16; break;}
-        cnt++;
         while (node.primitive_offset < 0) {  // Inner nodes.
             const AABB bbox_l = nodes[node_i + 1].bbox;
             const AABB bbox_r = nodes[node.right_child_offset].bbox;
