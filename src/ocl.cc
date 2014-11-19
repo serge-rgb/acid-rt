@@ -91,12 +91,8 @@ void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
         phatal_error("I couldn't create flat bvh CL buffer");
     }
     err = clSetKernelArg(m_cl_kernel,
-            13, sizeof(cl_mem), (void*)&m_cl_bvh);
+            11, sizeof(cl_mem), (void*)&m_cl_bvh);
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (bvh)"); }
-
-    err = clSetKernelArg(m_cl_kernel,
-            14, sizeof(cl_int), (void*)&num_nodes);
-    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_nodes)"); }
 }
 
 void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
@@ -119,13 +115,8 @@ void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
         phatal_error("I couldn't create primitive CL buffer");
     }
     err = clSetKernelArg(m_cl_kernel,
-            11, sizeof(cl_mem), (void*)&m_cl_primitives);
+            10, sizeof(cl_mem), (void*)&m_cl_primitives);
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (prims)"); }
-
-    err = clSetKernelArg(m_cl_kernel,
-            12, sizeof(cl_int), (void*)&num_prims);
-    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_prims)"); }
-
 }
 
 void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_tris) {
@@ -167,10 +158,6 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     err = clSetKernelArg(m_cl_kernel,
             9, sizeof(cl_mem), (void*)&m_cl_normal_soup);
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (normal soup)"); }
-
-    err = clSetKernelArg(m_cl_kernel,
-            10, sizeof(cl_int), (void*) &num_tris);
-    if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (num_tris)"); }
 }
 
 void draw() {

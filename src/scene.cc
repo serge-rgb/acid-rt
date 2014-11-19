@@ -497,7 +497,6 @@ static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
             ph_assert(found_i >= 0);
             ph_assert(found_i < int64(1) << 31);
             slice.ptr[i].right_child_offset = (int)found_i;
-            slice.ptr[i].left_child_offset = i + 1;
         }
         i++;
     }
@@ -526,12 +525,6 @@ static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
                 return false;
             }
             check[node->primitive_offset] = true;
-
-        } else {
-            if (node->left_child_offset != i + 1) {
-                log("Flat validation failed: Left child offset");
-                return false;
-            }
         }
         node++;
     }
