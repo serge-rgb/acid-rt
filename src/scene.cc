@@ -89,7 +89,8 @@ static ph::AABB get_bbox(const ph::Primitive* primitives, int count) {
     return bbox;
 }
 
-static AABB bbox_union(AABB a, AABB b) {
+// Perf node: This is the bottleneck of build_bvh.
+static inline AABB bbox_union(AABB a, AABB b) {
     AABB res;
     res.xmin = fmin(a.xmin, b.xmin);
     res.ymin = fmin(a.ymin, b.ymin);
@@ -270,6 +271,19 @@ static BVHTreeNode* build_bvh(
                     min_split = i;
                 }
             }
+
+            // pbrt splits leafs when the triangle count is greater than the min cost.
+            /* static int tcnt = 0; */
+            /* for (int i = 0; i < count(primitives); ++i) { */
+            /*     if (m_primitives[i].num_triangles > min_cost) { */
+            /*         static int cnt = 0; */
+            /*         cnt++; */
+            /*         logf("Should be leaf! %d out of %d (%f)\n", cnt, tcnt, min_cost); */
+            /*     } else { */
+            /*         tcnt++; */
+            /*     } */
+            /* } */
+
             // 4) split
             // Use the assign array to send them left or right
             int c_left = 0;

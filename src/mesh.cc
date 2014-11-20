@@ -330,7 +330,7 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
             long bsize = (long)new_bounds[q].b - (long)new_bounds[q].a;
             if (bsize == 0) {
                 // do nothing
-            } else if (bsize < 3 * limit) {  // limit is in triangles, not vertices.
+            } else if (bsize <= 3 * limit) {  // limit is in triangles, not vertices.
                 ph_assert (!(new_bounds[q].b == b && new_bounds[q].a == a));
                 scene::Chunk chunk;
                 chunk.verts = phalloc(glm::vec3, bsize);

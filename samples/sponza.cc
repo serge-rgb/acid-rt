@@ -19,7 +19,7 @@ void sponza_sample() {
     auto big_chunk = mesh::load_obj("third_party/ASSETS/sponza.obj", 0.02f);
     //auto big_chunk = mesh::load_obj("third_party/ASSETS/sibenik.obj", 0.8f);
     logf("Num verts in sponza: %ld\n", big_chunk.num_verts);
-    auto small_chunks = mesh::shatter(big_chunk, 3);
+    auto small_chunks = mesh::shatter(big_chunk, 4);
     for (int i = 0; i < count(small_chunks); ++i) {
         scene::submit_primitive(&small_chunks[i]);
     }

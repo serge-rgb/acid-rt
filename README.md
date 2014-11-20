@@ -57,7 +57,7 @@ Use cmake to create a visual studio solution.
 
     $> cd build && cmake -G "Visual Studio 12" ..
 
-I recommend running `build.bat` to build and run the project. At least the first time, because it copies the necessary DLLs into the target's directory.
+I recommend running `build.bat` to build the project. At least the first time, because it copies the necessary DLLs into the target's directory.
 
 Run samples
 -----------
@@ -78,9 +78,10 @@ To-Do (in no particular order)
 
 * Mesh loader (find third party lib)
 * Lighting model
-* BRDF materials
+* Physically based materials
 * On-screen text
 * Desktop mode
 * Direct3D backend
 * Time Warp
-
+* Texture mapping
+* Implicit surfaces?

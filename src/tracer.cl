@@ -190,6 +190,7 @@ Intersection trace(
         }
         //============== LEAF =================
         Primitive prim = prims[node.primitive_offset];
+#pragma unroll 2
         for (int j = 0; j < prim.num_triangles; ++j) {
             int offset = prim.offset + j;
             Triangle tri = tris[offset];
