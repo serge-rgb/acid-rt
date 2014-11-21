@@ -163,6 +163,7 @@ Intersection trace(
             int other_i = node.right_child_offset;
             // If it hits just one
             if (hit_l != hit_r) {
+                its.depth += 1;
                 if (hit_r) {
                     node_i = other_i;
                 }
@@ -176,6 +177,7 @@ Intersection trace(
                         node_i = stack[--stack_offset];
                     }
                 } else {  // Both hit
+                    its.depth += 2;
                     if (nr < nl) {
                         int tmp = node_i;
                         node_i = other_i;
@@ -324,7 +326,7 @@ __kernel void main(
     l.point = (float3)(-3,10,5);
 
     float min_t = 1 << 16;
-    if (rsq < 0.25) {
+    if (rsq < 0.22) {
         color = 0.0;
 
         Intersection its = trace(
@@ -335,7 +337,7 @@ __kernel void main(
                 ray);
         if (its.t > 0) {
             color = 1 * lambert(l, its.point, its.norm);
-            color.x += (float)(its.depth) / 100.0f;
+            //color.x += (float)(its.depth) / 100.0f;
         }
     }
 

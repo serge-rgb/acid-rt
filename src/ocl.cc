@@ -187,8 +187,8 @@ void draw() {
     };
 
     size_t local_size[2] = {
-        16,
-        10,
+        8,
+        8,
     };
 
     // Kernel arguments that change every frame.

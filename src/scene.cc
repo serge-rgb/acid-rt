@@ -192,8 +192,8 @@ static BVHTreeNode* build_bvh(
         memcpy(new_indices_l, indices, sizeof(int) * (size_t)count(primitives));
         memcpy(new_indices_r, indices, sizeof(int) * (size_t)count(primitives));
 
-        bool use_sah = count(primitives) > 4;
-        //bool use_sah = true;
+        /* bool use_sah = count(primitives) > 4; */
+        bool use_sah = true;
         // ============================================================
         // SAH
         // ============================================================
