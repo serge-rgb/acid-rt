@@ -128,6 +128,8 @@ Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
     return intersection;
 }
 
+// Perf note: No measurable difference. Might matter in other architectures, so leaving it here.
+#define USE_SELECT_FUNC
 Intersection trace(
         __constant BVHNode* nodes,
         __constant Primitive* prims,
@@ -156,17 +158,26 @@ Intersection trace(
             nl = bbox_collision(bbox_l, ray, inv_dir, &fl);
             nr = bbox_collision(bbox_r, ray, inv_dir, &fr);
 
+#ifdef USE_SELECT_FUNC
+            int hit_l = (int)((nl < fl) && (nl < min_t) && (fl > 0)) * 0xffffffff;
+            int hit_r = (int)((nr < fr) && (nr < min_t) && (fr > 0)) * 0xffffffff;
+#else
             bool hit_l = (nl < fl) && (nl < min_t) && (fl > 0);
             bool hit_r = (nr < fr) && (nr < min_t) && (fr > 0);
+#endif
 
             node_i = node_i + 1;
             int other_i = node.right_child_offset;
             // If it hits just one
             if (hit_l != hit_r) {
                 its.depth += 1;
+#ifdef USE_SELECT_FUNC
+                node_i = select(node_i, other_i, hit_r);
+#else
                 if (hit_r) {
                     node_i = other_i;
                 }
+#endif
             }
             // Either both or none
             else {
@@ -178,11 +189,16 @@ Intersection trace(
                     }
                 } else {  // Both hit
                     its.depth += 2;
+                    int tmp = node_i;
+#ifdef USE_SELECT_FUNC
+                    node_i = select(node_i, other_i, (int)(nr < nl) * 0xffffffff);
+                    other_i = select(other_i, tmp, (int)(nr < nl) * 0xffffffff);
+#else
                     if (nr < nl) {
-                        int tmp = node_i;
                         node_i = other_i;
                         other_i = tmp;
                     }
+#endif
                     stack[stack_offset++] = other_i;
                 }
 
@@ -192,6 +208,7 @@ Intersection trace(
         }
         //============== LEAF =================
         Primitive prim = prims[node.primitive_offset];
+// Perf note(GTX770): 2x gives speed boost. 4x does not.
 #pragma unroll 2
         for (int j = 0; j < prim.num_triangles; ++j) {
             int offset = prim.offset + j;
