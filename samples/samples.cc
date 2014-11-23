@@ -11,8 +11,7 @@ using namespace ph;
 
 static GLuint g_program;
 
-int g_sample_factor = 1;
-int g_resolution[] = {1920 / g_sample_factor, 1080 / g_sample_factor};  // DK2 res
+int g_resolution[] = {1920, 1080};  // DK2 res
 
 static int        g_curr_sample = 2;
 static SampleFunc g_sample_func;
@@ -69,7 +68,7 @@ int main() {
         phatal_error("Could not initialize OVR sensors!");
     }
 #endif
-    window::init("Samples", g_sample_factor * g_resolution[0], g_sample_factor * g_resolution[1],
+    window::init("Samples", g_resolution[0], g_resolution[1],
                  window::InitFlag(
                  /* window::InitFlag_IgnoreRift | */
                  window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));

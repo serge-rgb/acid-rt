@@ -28,7 +28,7 @@ vec4 FxaaPixelShader(
     float fxaaConsoleEdgeSharpness,
     float fxaaConsoleEdgeThreshold,
     float fxaaConsoleEdgeThresholdMin,
-     vec4 fxaaConsole360ConstDir
+    vec4 fxaaConsole360ConstDir
     );
 
 vec3 chroma(float rsq) {
@@ -100,6 +100,7 @@ void main() {
     vec2 coord_g = coord;
     vec2 coord_b = point_b;
 
+// NOTE: Using 0.063 ("overkill") as edge threshold because we may be downsampling..
     vec4 aa_color = FxaaPixelShader(
         coord_g,
         coord_r,
@@ -113,8 +114,8 @@ void main() {
         vec4(0), //fxaaConsoleRcpFrameOpt2
         vec4(0), //fxaaConsole360RcpFrameOpt2
         0.000, //fxaaQualitySubpix (default: 0.75)
-        0.166, //fxaaQualityEdgeThreshold
-        0.000, //fxaaQualityEdgeThresholdMin
+        0.063, //fxaaQualityEdgeThreshold
+        0.0312, //fxaaQualityEdgeThresholdMin
         -1, //fxaaConsoleEdgeSharpness
         -1, //fxaaConsoleEdgeThreshold
         -1, //fxaaConsoleEdgeThresholdMin

@@ -15,9 +15,17 @@
 using namespace ph;
 
 
-static const int kSubsampling = 1;
-static const int width = 1920 / kSubsampling;
-static const int height = 1080 / kSubsampling;
+//////////
+// 16:9 resolutions:
+//////////
+/* static const int width = 1920;        /// 8 x 8 */
+/* static const int height = 1080; */
+/* static const int width = 1600;       /// 16 x 4 */
+/* static const int height = 900; */
+static const int width = 1280;        /// 8 x 8
+static const int height = 720;
+/* static const int width = 960; */
+/* static const int height = 540; */
 
 
 #ifdef OCL_MAIN
@@ -187,8 +195,8 @@ void draw() {
     };
 
     size_t local_size[2] = {
-        8,
-        8,
+        16,
+        4,
     };
 
     // Kernel arguments that change every frame.
@@ -477,9 +485,9 @@ void init() {
 
         GLCHK ( glUseProgram(m_quad_program) );
         glUniform1i(1, /*GL_TEXTURE_0*/0);
-        GLfloat rcp_frame[2] = { 1.0f/(float)(kSubsampling * width), 1.0f/(float)(kSubsampling * height) };
+        GLfloat rcp_frame[2] = { 1.0f/(float)(width), 1.0f/(float)(height) };
         glUniform2fv(2, 1, rcp_frame);
-        GLfloat size [2] = { GLfloat(kSubsampling * width), GLfloat(kSubsampling * height) };
+        GLfloat size [2] = { GLfloat(width), GLfloat(height) };
         glUniform2fv(3, 1, size);
 
         glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
