@@ -5,6 +5,8 @@ add_subdirectory(third_party/glfw)
 add_subdirectory(third_party/bdwgc)
 add_subdirectory(third_party/yajl)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
+
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "..")
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "..")
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "..")
@@ -40,10 +42,7 @@ find_package(OpenGL REQUIRED)
 if (WIN32)
     set(OPENCL_INCLUDE_DIR "third_party/CL")
 
-    find_package_handle_standard_args(
-        OpenCL
-        DEFAULT_MSG
-        OPENCL_LIBRARY OPENCL_INCLUDE_DIR)
+    find_package(OpenCL)
 
     if(OPENCL_FOUND)
         set(OPENCL_LIBRARIES ${OPENCL_LIBRARY})

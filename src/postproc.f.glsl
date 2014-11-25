@@ -113,7 +113,7 @@ void main() {
         vec4(0), //fxaaConsoleRcpFrameOpt
         vec4(0), //fxaaConsoleRcpFrameOpt2
         vec4(0), //fxaaConsole360RcpFrameOpt2
-        0.000, //fxaaQualitySubpix (default: 0.75)
+        1.000, //fxaaQualitySubpix (default: 0.75)
         0.063, //fxaaQualityEdgeThreshold
         0.0312, //fxaaQualityEdgeThresholdMin
         -1, //fxaaConsoleEdgeSharpness
