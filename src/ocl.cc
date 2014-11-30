@@ -14,7 +14,14 @@
 
 using namespace ph;
 
+struct RenderTarget {
+    GLuint color;
+    GLuint depth;
+    GLuint fbo;
+};
 
+static const int k_rift_width = 1920;
+static const int k_rift_height = 1080;
 //////////
 // 16:9 resolutions:
 //////////
@@ -27,6 +34,7 @@ static const int height = 720;
 /* static const int width = 960; */
 /* static const int height = 540; */
 
+RenderTarget g_rendertarget;
 
 #ifdef OCL_MAIN
 int main() {
@@ -262,8 +270,24 @@ void draw() {
 
     auto t_draw = io::get_microseconds();
 
+    // Bind rendertarget
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, g_rendertarget.fbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
+    }
+    // Draw texture to rendertarget
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glUseProgram(m_quad_program);
+        glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+        glBindVertexArray(m_quad_vao);
+        GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     // Draw texture to screen
     {
+        glActiveTexture(GL_TEXTURE0);
         glUseProgram(m_quad_program);
         glBindTexture(GL_TEXTURE_2D, m_gl_texture);
         glBindVertexArray(m_quad_vao);
@@ -421,10 +445,43 @@ void init() {
 
     m_hmd_consts = vr::get_hmd_constants();
 
+    // Create renderuffer
+    {
+
+        GLCHK (glActiveTexture (GL_TEXTURE1) );
+
+        glGenTextures(1, &g_rendertarget.color);
+        glBindTexture(GL_TEXTURE_2D, g_rendertarget.color);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glTexImage2D(GL_TEXTURE_2D,
+                0, GL_RGBA, k_rift_width, k_rift_height,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        GLCHK ( glBindTexture(GL_TEXTURE_2D, 0) );
+
+        glGenRenderbuffers(1, &g_rendertarget.depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+        glGenFramebuffers(
+                1, &g_rendertarget.fbo);
+        glBindFramebuffer(
+                GL_FRAMEBUFFER, g_rendertarget.fbo);
+        glFramebufferTexture2D(
+                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_rendertarget.color, 0);
+        glFramebufferRenderbuffer(
+                GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, g_rendertarget.depth);
+        GLCHK ( glBindFramebuffer(GL_FRAMEBUFFER, 0) );
+    }
     // Create GL "framebufer".
     {
-        // Create texture
         GLCHK (glActiveTexture (GL_TEXTURE0) );
+        // Create texture
         glGenTextures   (1, &m_gl_texture);
         glBindTexture   (GL_TEXTURE_2D, m_gl_texture);
 
