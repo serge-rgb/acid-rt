@@ -25,12 +25,12 @@ static const int k_rift_height = 1080;
 //////////
 // 16:9 resolutions:
 //////////
-static const int width = 1920;        /// 8 x 8
-static const int height = 1080;
+/* static const int width = 1920;        /// 8 x 8 */
+/* static const int height = 1080; */
 /* static const int width = 1600;       /// 16 x 4 */
 /* static const int height = 900; */
-/* static const int width = 1280;        /// 8 x 8 */
-/* static const int height = 720; */
+static const int width = 1280;        /// 8 x 8
+static const int height = 720;
 /* static const int width = 960; */
 /* static const int height = 540; */
 
@@ -278,8 +278,9 @@ void draw() {
     }
     // Draw texture to rendertarget
     {
-        glUseProgram(m_quad_program);
+        glActiveTexture (GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+        glUseProgram(m_quad_program);
         glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
@@ -287,8 +288,10 @@ void draw() {
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     // Draw texture to screen
     {
-        glUseProgram(m_quad_program);
-        glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+        glActiveTexture (GL_TEXTURE1);
+        //glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+        glBindTexture(GL_TEXTURE_2D, g_rendertarget.color);
+        glUseProgram(m_postproc_program);
         glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
@@ -475,8 +478,8 @@ void init() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
         glTexImage2D(GL_TEXTURE_2D,
-                0, GL_RGBA, k_rift_width, k_rift_height,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                0, GL_RGBA32F, k_rift_width, k_rift_height,
+                0, GL_RGBA, GL_FLOAT, NULL);
 
         GLCHK ( glBindTexture(GL_TEXTURE_2D, 0) );
 
@@ -549,14 +552,14 @@ void init() {
 
         GLuint postproc_shaders[postproc_shader_count];
         m_postproc_program = glCreateProgram();
-        postproc_shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);
-        postproc_shaders[frag] = ph::gl::compile_shader(paths[frag], GL_FRAGMENT_SHADER);
-        postproc_shaders[fxaa] = ph::gl::compile_shader(paths[fxaa], GL_FRAGMENT_SHADER);
+        postproc_shaders[vert] = ph::gl::compile_shader(pp_paths[vert], GL_VERTEX_SHADER);
+        postproc_shaders[frag] = ph::gl::compile_shader(pp_paths[frag], GL_FRAGMENT_SHADER);
+        postproc_shaders[fxaa] = ph::gl::compile_shader(pp_paths[fxaa], GL_FRAGMENT_SHADER);
         gl::link_program(m_postproc_program, postproc_shaders, postproc_shader_count);
 
         GLCHK ( glUseProgram(m_quad_program) );
         {
-            glUniform1i(1, /*GL_TEXTURE_0*/1);
+            glUniform1i(1, /*GL_TEXTURE_0*/0);
             GLfloat rcp_frame[2] = { 1.0f/(float)(width), 1.0f/(float)(height) };
             glUniform2fv(2, 1, rcp_frame);
             GLfloat size [2] = { GLfloat(width), GLfloat(height) };
