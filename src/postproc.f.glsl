@@ -122,8 +122,8 @@ void main() {
         vec4(0)); //fxaaConsole360ConstDir
 
     //color.a = texture(fbo_texture, coord).a;
-    color.rgb = aa_color.rgb;
+    /* color.rgb = aa_color.rgb; */
     color.a = 1.0;
-    /* color = texture(fbo_texture, coord); */
+    color = texture(fbo_texture, coord);
 }
 

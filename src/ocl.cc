@@ -25,12 +25,12 @@ static const int k_rift_height = 1080;
 //////////
 // 16:9 resolutions:
 //////////
-/* static const int width = 1920;        /// 8 x 8 */
-/* static const int height = 1080; */
+static const int width = 1920;        /// 8 x 8
+static const int height = 1080;
 /* static const int width = 1600;       /// 16 x 4 */
 /* static const int height = 900; */
-static const int width = 1280;        /// 8 x 8
-static const int height = 720;
+/* static const int width = 1280;        /// 8 x 8 */
+/* static const int height = 720; */
 /* static const int width = 960; */
 /* static const int height = 540; */
 
@@ -71,6 +71,7 @@ namespace ocl {
 static GLuint           m_gl_texture;
 static GLuint           m_quad_vao;
 static GLuint           m_quad_program;
+static GLuint           m_postproc_program;
 static cl_context       m_context;
 static cl_command_queue m_queue;
 static cl_mem           m_cl_texture;
@@ -277,7 +278,6 @@ void draw() {
     }
     // Draw texture to rendertarget
     {
-        glActiveTexture(GL_TEXTURE1);
         glUseProgram(m_quad_program);
         glBindTexture(GL_TEXTURE_2D, m_gl_texture);
         glBindVertexArray(m_quad_vao);
@@ -287,7 +287,6 @@ void draw() {
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     // Draw texture to screen
     {
-        glActiveTexture(GL_TEXTURE0);
         glUseProgram(m_quad_program);
         glBindTexture(GL_TEXTURE_2D, m_gl_texture);
         glBindVertexArray(m_quad_vao);
@@ -445,40 +444,7 @@ void init() {
 
     m_hmd_consts = vr::get_hmd_constants();
 
-    // Create renderuffer
-    {
-
-        GLCHK (glActiveTexture (GL_TEXTURE1) );
-
-        glGenTextures(1, &g_rendertarget.color);
-        glBindTexture(GL_TEXTURE_2D, g_rendertarget.color);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glTexImage2D(GL_TEXTURE_2D,
-                0, GL_RGBA, k_rift_width, k_rift_height,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        GLCHK ( glBindTexture(GL_TEXTURE_2D, 0) );
-
-        glGenRenderbuffers(1, &g_rendertarget.depth);
-        glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-        glGenFramebuffers(
-                1, &g_rendertarget.fbo);
-        glBindFramebuffer(
-                GL_FRAMEBUFFER, g_rendertarget.fbo);
-        glFramebufferTexture2D(
-                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_rendertarget.color, 0);
-        glFramebufferRenderbuffer(
-                GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, g_rendertarget.depth);
-        GLCHK ( glBindFramebuffer(GL_FRAMEBUFFER, 0) );
-    }
-    // Create GL "framebufer".
+    // Create ray tracing target
     {
         GLCHK (glActiveTexture (GL_TEXTURE0) );
         // Create texture
@@ -494,6 +460,40 @@ void init() {
         // Pass a null pointer, texture will be filled by opencl ray tracer
         GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
                     0, GL_RGBA, GL_FLOAT, NULL) );
+    }
+
+    // Create renderbuffer, on which we do post-processing.
+    {
+        GLCHK (glActiveTexture (GL_TEXTURE1) );
+        glGenTextures   (1, &g_rendertarget.color);
+        glBindTexture   (GL_TEXTURE_2D, g_rendertarget.color);
+
+        // Note for the future: These are needed.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glTexImage2D(GL_TEXTURE_2D,
+                0, GL_RGBA, k_rift_width, k_rift_height,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+        GLCHK ( glBindTexture(GL_TEXTURE_2D, 0) );
+
+        glGenRenderbuffers(1, &g_rendertarget.depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, k_rift_width, k_rift_height);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+        glGenFramebuffers(
+                1, &g_rendertarget.fbo);
+        glBindFramebuffer(
+                GL_FRAMEBUFFER, g_rendertarget.fbo);
+        glFramebufferTexture2D(
+                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_rendertarget.color, 0);
+        glFramebufferRenderbuffer(
+                GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, g_rendertarget.depth);
+        GLCHK ( glBindFramebuffer(GL_FRAMEBUFFER, 0) );
     }
 
     // Create GL quad program to fill screen.
@@ -530,7 +530,7 @@ void init() {
         GLuint shaders[shader_count];
         const char* paths[shader_count];
         paths[vert] = "src/quad.v.glsl";
-        paths[frag] = "src/postproc.f.glsl";
+        paths[frag] = "src/quad.f.glsl";
         paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
 
         shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);
@@ -540,15 +540,42 @@ void init() {
         m_quad_program = glCreateProgram();
         ph::gl::link_program(m_quad_program, shaders, shader_count);
 
-        GLCHK ( glUseProgram(m_quad_program) );
-        glUniform1i(1, /*GL_TEXTURE_0*/0);
-        GLfloat rcp_frame[2] = { 1.0f/(float)(width), 1.0f/(float)(height) };
-        glUniform2fv(2, 1, rcp_frame);
-        GLfloat size [2] = { GLfloat(width), GLfloat(height) };
-        glUniform2fv(3, 1, size);
+        const int postproc_shader_count = 3;
+        const char* pp_paths[postproc_shader_count];
 
-        glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
-        glUniform2fv(5, 1,  m_hmd_consts.lens_centers[vr::EYE_Right]);
+        pp_paths[vert] = "src/quad.v.glsl";
+        pp_paths[frag] = "src/postproc.f.glsl";
+        pp_paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
+
+        GLuint postproc_shaders[postproc_shader_count];
+        m_postproc_program = glCreateProgram();
+        postproc_shaders[vert] = ph::gl::compile_shader(paths[vert], GL_VERTEX_SHADER);
+        postproc_shaders[frag] = ph::gl::compile_shader(paths[frag], GL_FRAGMENT_SHADER);
+        postproc_shaders[fxaa] = ph::gl::compile_shader(paths[fxaa], GL_FRAGMENT_SHADER);
+        gl::link_program(m_postproc_program, postproc_shaders, postproc_shader_count);
+
+        GLCHK ( glUseProgram(m_quad_program) );
+        {
+            glUniform1i(1, /*GL_TEXTURE_0*/1);
+            GLfloat rcp_frame[2] = { 1.0f/(float)(width), 1.0f/(float)(height) };
+            glUniform2fv(2, 1, rcp_frame);
+            GLfloat size [2] = { GLfloat(width), GLfloat(height) };
+            glUniform2fv(3, 1, size);
+
+            glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
+            glUniform2fv(5, 1,  m_hmd_consts.lens_centers[vr::EYE_Right]);
+        }
+        GLCHK ( glUseProgram(m_postproc_program) );
+        {
+            glUniform1i(1, /*GL_TEXTURE_0*/1);
+            GLfloat rcp_frame[2] = { 1.0f/(float)(width), 1.0f/(float)(height) };
+            glUniform2fv(2, 1, rcp_frame);
+            GLfloat size [2] = { GLfloat(width), GLfloat(height) };
+            glUniform2fv(3, 1, size);
+
+            glUniform2fv(4, 1, m_hmd_consts.lens_centers[vr::EYE_Left]);
+            glUniform2fv(5, 1,  m_hmd_consts.lens_centers[vr::EYE_Right]);
+        }
     }
 
     // Create OpenCL buffer
