@@ -10,27 +10,6 @@ in vec2 coord;
 
 out vec4 color;
 
-vec4 FxaaPixelShader(
-        vec2 pos,
-        vec2 pos_r,
-        vec2 pos_b,
-        vec4 fxaaConsolePosPos,
-        sampler2D tex,
-        sampler2D fxaaConsole360TexExpBiasNegOne,
-        sampler2D fxaaConsole360TexExpBiasNegTwo,
-        vec2 fxaaQualityRcpFrame,
-        vec4 fxaaConsoleRcpFrameOpt,
-        vec4 fxaaConsoleRcpFrameOpt2,
-        vec4 fxaaConsole360RcpFrameOpt2,
-        float fxaaQualitySubpix,
-        float fxaaQualityEdgeThreshold,
-        float fxaaQualityEdgeThresholdMin,
-        float fxaaConsoleEdgeSharpness,
-        float fxaaConsoleEdgeThreshold,
-        float fxaaConsoleEdgeThresholdMin,
-        vec4 fxaaConsole360ConstDir
-        );
-
 vec3 chroma(float rsq)
 {
     return vec3(rsq - 0.006, rsq, rsq + 0.014);
@@ -105,33 +84,15 @@ void main()
     }
 
     vec3 scale = chroma(rsq);
+
     vec2 coord_r = point_r;
     vec2 coord_g = coord;
     vec2 coord_b = point_b;
 
-    // NOTE: Using 0.063 ("overkill") as edge threshold because we may be downsampling..
-    vec4 aa_color = FxaaPixelShader(
-            coord_g,
-            coord_r,
-            coord_b,
-            vec4(0), //fxaaConsolePosPos
-            fbo_texture, //tex
-            fbo_texture, //fxaaConsole360TexExpBiasNegOne
-            fbo_texture, //fxaaConsole360TexExpBiasNegTwo
-            rcp_frame,  //fxaaQualityRcpFrame  (1 / window_size)
-            vec4(0), //fxaaConsoleRcpFrameOpt
-            vec4(0), //fxaaConsoleRcpFrameOpt2
-            vec4(0), //fxaaConsole360RcpFrameOpt2
-            1.000, //fxaaQualitySubpix (default: 0.75)
-            0.063, //fxaaQualityEdgeThreshold
-            0.0312, //fxaaQualityEdgeThresholdMin
-            -1, //fxaaConsoleEdgeSharpness
-            -1, //fxaaConsoleEdgeThreshold
-            -1, //fxaaConsoleEdgeThresholdMin
-            vec4(0)); //fxaaConsole360ConstDir
+    color.r = texture(fbo_texture, coord_r).r;
+    color.g = texture(fbo_texture, coord_g).g;
+    color.b = texture(fbo_texture, coord_b).b;
 
-    //color.a = texture(fbo_texture, coord).a;
-    color.rgb = aa_color.rgb;
     color.a = 1.0;
 }
 
