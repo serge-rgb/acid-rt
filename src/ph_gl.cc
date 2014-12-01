@@ -18,11 +18,14 @@
 #include "io.h"
 
 
-namespace ph {
-namespace gl {
+namespace ph
+{
+namespace gl
+{
 
 
-GLuint compile_shader(const char* path, GLuint type) {
+GLuint compile_shader(const char* path, GLuint type)
+{
     GLuint obj = glCreateShader(type);
     const char* src = ph::io::slurp(path);
     GLCHK ( glShaderSource(obj, 1, &src, NULL) );
@@ -31,7 +34,8 @@ GLuint compile_shader(const char* path, GLuint type) {
 #ifdef PH_DEBUG
     int res = 0;
     GLCHK ( glGetShaderiv(obj, GL_COMPILE_STATUS, &res) );
-    if (!res) {
+    if (!res)
+    {
         logf("%s\n", src);
         GLint length;
         GLCHK ( glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &length) );
@@ -40,15 +44,19 @@ GLuint compile_shader(const char* path, GLuint type) {
         GLCHK ( glGetShaderInfoLog(obj, length, &written_len, log) );
         logf("Shader compilation failed. \n    ---- Info log:\n%s", log);
         phatal_error("Exiting: Error compiling shader");
-    } else {
+    }
+    else
+    {
         logf("INFO: Compiled shader: %s\n", path);
     }
 #endif
     return obj;
 }
-void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
+void link_program(GLuint obj, GLuint shaders[], int64 num_shaders)
+{
     ph_assert(glIsProgram(obj));
-    for (int i = 0; i < num_shaders; ++i) {
+    for (int i = 0; i < num_shaders; ++i)
+    {
         ph_assert(glIsShader(shaders[i]));
         GLCHK ( glAttachShader(obj, shaders[i]) );
     }
@@ -58,7 +66,8 @@ void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
 #ifdef PH_DEBUG
     int res = 0;
     GLCHK ( glGetProgramiv(obj, GL_LINK_STATUS, &res) );
-    if (!res) {
+    if (!res)
+    {
         logf("ERROR: program did not link.\n");
         GLint len;
         glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &len);
@@ -66,14 +75,17 @@ void link_program(GLuint obj, GLuint shaders[], int64 num_shaders) {
         char* log = phalloc(char, len);
         glGetProgramInfoLog(obj, (GLsizei)len, &written_len, log);
         logf("%s\n", log);
-    } else {
+    }
+    else
+    {
         logf("INFO: Linked program %u\n", obj);
     }
     GLCHK ( glValidateProgram(obj) );
 #endif
 }
 
-GLuint create_cubemap(GLuint texture_unit, const char* paths[6]) {
+GLuint create_cubemap(GLuint texture_unit, const char* paths[6])
+{
     GLuint tex;
     GLCHK ( glActiveTexture(texture_unit) );
     GLCHK ( glGenTextures(1, &tex) );
@@ -83,7 +95,8 @@ GLuint create_cubemap(GLuint texture_unit, const char* paths[6]) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    static const GLenum directions[6] = {
+    static const GLenum directions[6] =
+    {
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
@@ -93,7 +106,8 @@ GLuint create_cubemap(GLuint texture_unit, const char* paths[6]) {
     };
 
     uint8_t* image_data[6];
-    for(int i = 0; i < 6; ++i) {
+    for(int i = 0; i < 6; ++i)
+    {
         int w, h;
         const char* fname = paths[i];
         image_data[i] = stbi_load(fname, (int*)&w, (int*)&h, NULL, 4);
@@ -107,11 +121,14 @@ GLuint create_cubemap(GLuint texture_unit, const char* paths[6]) {
     return tex;
 }
 
-inline void query_error(const char* expr, const char* file, int line) {
+inline void query_error(const char* expr, const char* file, int line)
+{
     GLenum err = glGetError();
     const char* str = "";
-    if (err != GL_NO_ERROR) {
-        switch(err) {
+    if (err != GL_NO_ERROR)
+    {
+        switch(err)
+        {
         case GL_INVALID_ENUM:
             str = "GL_INVALID_ENUM";
             break;

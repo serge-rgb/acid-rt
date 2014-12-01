@@ -28,13 +28,15 @@
 
 #endif
 
-extern "C" {
+extern "C"
+{
     // LOCAL
 #include <gc.h>
 #define GL_GLEXT_PROTOTYPES
 #include <lauxlib.h>
 #include <lualib.h>
 #include <lua.h>
+#include <opencl.h>
     // Cross platform
 #ifdef _WIN32
 #include <Windows.h>

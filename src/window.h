@@ -5,13 +5,16 @@
 #include <ph.h>
 
 
-namespace ph {
-namespace window {
+namespace ph
+{
+namespace window
+{
 
 
 extern GLFWwindow* m_window;
 
-enum InitFlag {
+enum InitFlag
+{
     InitFlag_Default             = 1 << 0,
     InitFlag_NoDecoration        = 1 << 1,
     InitFlag_OverrideKeyCallback = 1 << 2,

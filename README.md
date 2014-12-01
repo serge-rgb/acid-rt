@@ -55,9 +55,9 @@ Make a directory called "build" (can't be another name)
 
 Use cmake to create a visual studio solution.
 
-    $> cd build && cmake -G "Visual Studio 12" ..
+    $> cd build && cmake -G "Visual Studio 12 2013 Win64" ..
 
-I recommend running `build.bat` to build the project. At least the first time, because it copies the necessary DLLs into the target's directory.
+Run `build.bat` to build the project. It's recommended to do it at least the first time, so that it copies the necessary DLLs into the target's directory.
 
 Run samples
 -----------
@@ -67,6 +67,8 @@ Build and run the 'samples' project. Left and right arrows switch between sample
 1. Cube grid
 2. Stanford Bunny
 3. Crytek Sponza
+
+If running from Visual Studio, set `Samples` as "startup project" and in the project properties, append `\..\..\..` to the working directory.
 
 License
 -------

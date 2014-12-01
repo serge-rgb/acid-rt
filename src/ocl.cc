@@ -2,8 +2,6 @@
 
 #include <ph.h>
 
-#include <opencl.h>
-
 #include "ocl_interop_structs.h"
 
 #include "io.h"
@@ -14,7 +12,8 @@
 
 using namespace ph;
 
-struct RenderTarget {
+struct RenderTarget
+{
     GLuint color;
     GLuint depth;
     GLuint fbo;
@@ -37,7 +36,8 @@ static const int height = 720;
 RenderTarget g_rendertarget;
 
 #ifdef OCL_MAIN
-int main() {
+int main()
+{
     ph::ocl::init();
 
     ocl::CLtriangle tri;
@@ -65,8 +65,10 @@ int main() {
 }
 #endif
 
-namespace ph {
-namespace ocl {
+namespace ph
+{
+namespace ocl
+{
 
 static GLuint           m_gl_texture;
 static GLuint           m_quad_vao;
@@ -87,24 +89,29 @@ static int64 m_num_frames = 1;
 static float m_avg_render = 0.0f;
 
 void __stdcall context_callback(
-        const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/) {
+        const char* errinfo, const void* /*private_info*/, size_t /*cb*/, void* /*user_data*/)
+{
     logf("OpenCL context error:  %s\n", errinfo);
 }
 
-void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
+void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes)
+{
     cl_int err = CL_SUCCESS;
     static bool been_called = false;
-    if (been_called) {
+    if (been_called)
+    {
         clReleaseMemObject(m_cl_bvh);
     }
     been_called = true;
-    if (num_nodes == 0) {
+    if (num_nodes == 0)
+    {
         return;
     }
     m_cl_bvh = clCreateBuffer(m_context,
             CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             num_nodes * sizeof(BVHNode), (void*) tree, &err);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("I couldn't create flat bvh CL buffer");
     }
     err = clSetKernelArg(m_cl_kernel,
@@ -112,23 +119,28 @@ void set_flat_bvh(ph::BVHNode* tree, size_t num_nodes) {
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (bvh)"); }
 }
 
-void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
+void set_primitive_array(ph::Primitive* prims, size_t num_prims)
+{
     cl_int err = CL_SUCCESS;
     static bool been_called = false;
-    if (been_called) {
-        if (m_cl_primitives != NULL) {
+    if (been_called)
+    {
+        if (m_cl_primitives != NULL)
+        {
             clReleaseMemObject(m_cl_primitives);
             m_cl_primitives = NULL;
         }
     }
     been_called = true;
-    if (num_prims == 0) {
+    if (num_prims == 0)
+    {
         return;
     }
     m_cl_primitives = clCreateBuffer(m_context,
             CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             num_prims * sizeof(ph::Primitive), (void*) prims, &err);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("I couldn't create primitive CL buffer");
     }
     err = clSetKernelArg(m_cl_kernel,
@@ -136,34 +148,41 @@ void set_primitive_array(ph::Primitive* prims, size_t num_prims) {
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (prims)"); }
 }
 
-void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_tris) {
+void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_tris)
+{
     // If CL triangle soup doesn't exist, create
     static bool soup_exists = false;
     cl_int err = CL_SUCCESS;
-    if (soup_exists) {
-        if (m_cl_triangle_soup != NULL) {
+    if (soup_exists)
+    {
+        if (m_cl_triangle_soup != NULL)
+        {
             clReleaseMemObject(m_cl_triangle_soup);
             m_cl_triangle_soup = NULL;
         }
-        if (m_cl_normal_soup != NULL) {
+        if (m_cl_normal_soup != NULL)
+        {
             clReleaseMemObject(m_cl_normal_soup);
             m_cl_normal_soup = NULL;
         }
     }
     soup_exists = true;
-    if (num_tris == 0) {
+    if (num_tris == 0)
+    {
         return;
     }
     m_cl_triangle_soup = clCreateBuffer(m_context,
-                                        CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                        sizeof(CLtriangle) * (size_t)num_tris, (void*)tris, &err);
-    if (err != CL_SUCCESS) {
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            sizeof(CLtriangle) * (size_t)num_tris, (void*)tris, &err);
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Could not create buffer for tri soup");
     }
     m_cl_normal_soup = clCreateBuffer(m_context,
-                                      CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                      sizeof(CLtriangle) * (size_t)num_tris, (void*)norms, &err);
-    if (err != CL_SUCCESS) {
+            CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            sizeof(CLtriangle) * (size_t)num_tris, (void*)norms, &err);
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Could not create buffer for normal soup");
     }
 
@@ -177,7 +196,8 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (normal soup)"); }
 }
 
-void draw() {
+void draw()
+{
     glFinish();
 
     vr::Eye left;
@@ -190,7 +210,8 @@ void draw() {
 
     err = clEnqueueAcquireGLObjects(
             m_queue, 1, &m_cl_texture, 0, NULL/*event wait list*/, NULL/*event*/);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Could not acquire texture from GL context");
     }
 
@@ -198,12 +219,14 @@ void draw() {
 
     auto t_send = io::get_microseconds();
 
-    size_t global_size[2] = {
+    size_t global_size[2] =
+    {
         width/2,
         height,
     };
 
-    size_t local_size[2] = {
+    size_t local_size[2] =
+    {
         16,
         4,
     };
@@ -216,7 +239,8 @@ void draw() {
             2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Left]);
     err |= clSetKernelArg(m_cl_kernel,
             6, sizeof(vr::Eye), (void*)&left);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Error setting kernel argument (left eye)");
     }
 
@@ -229,7 +253,8 @@ void draw() {
             global_size,
             local_size,
             0, NULL, &event);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Error enqueuing kernel (left)");
     }
 
@@ -241,7 +266,8 @@ void draw() {
             2, 2 * sizeof(float), (void*)&m_hmd_consts.lens_centers[vr::EYE_Right]);
     err |= clSetKernelArg(m_cl_kernel,
             6, sizeof(vr::Eye), (void*)&right);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Error setting kernel argument (right eye)");
     }
 
@@ -253,7 +279,8 @@ void draw() {
             global_size,
             local_size,
             0, NULL, &event);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Error enqueuing kernel (right)");
     }
 
@@ -265,7 +292,8 @@ void draw() {
             1,
             &m_cl_texture,
             0, NULL, NULL);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("could not release texture");
     }
 
@@ -304,7 +332,7 @@ void draw() {
             float(t_end - t_start) / 1000.0f,
             float(t_draw - t_send) / 1000.0f,
             float(t_end - t_draw) / 1000.0f
-            );
+        );
 
     m_avg_render += float(t_draw - t_send) / 1000.0f;
     m_num_frames++;
@@ -316,7 +344,8 @@ void draw() {
     vr::end_frame();
 }
 
-void init() {
+void init()
+{
     // ========================================
     // Get platforms
     // ========================================
@@ -327,13 +356,16 @@ void init() {
     clGetPlatformIDs(num_platforms, platforms, NULL);
 
     // TODO: check platform for respective GL interop extension.
-    for (cl_uint i = 0; i < num_platforms; ++i) {
+    for (cl_uint i = 0; i < num_platforms; ++i)
+    {
         ph::log("==== platform: ");
-        cl_platform_info info_type[2] = {
+        cl_platform_info info_type[2] =
+        {
             CL_PLATFORM_PROFILE,
             CL_PLATFORM_VERSION,
         };
-        for (int j = 0; j < 2; ++j) {
+        for (int j = 0; j < 2; ++j)
+        {
             size_t sz = 0;
             clGetPlatformInfo(platforms[i], info_type[j], 0, NULL, &sz);
             char* str = phalloc(char, sz);
@@ -344,7 +376,8 @@ void init() {
         ph::log("================\n\n");
     }
 
-    if (num_platforms == 0) {
+    if (num_platforms == 0)
+    {
         ph::phatal_error("No OpenCL platforms found.");
     }
 
@@ -353,21 +386,25 @@ void init() {
     cl_uint num_devices = 0;
     clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices);
 
-    if (num_devices == 0) {
+    if (num_devices == 0)
+    {
         phatal_error("Did not find OpenCL devices.");
     }
 
     cl_device_id* devices = phalloc(cl_device_id, num_devices);
     clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, num_devices, devices, &num_devices);
 
-    for (cl_uint i = 0; i < num_devices; ++i) {
+    for (cl_uint i = 0; i < num_devices; ++i)
+    {
         log("==== OpenCL Device:");
-        cl_device_info infos[] = {
+        cl_device_info infos[] =
+        {
             CL_DEVICE_NAME,
             CL_DEVICE_VENDOR,
             CL_DEVICE_VERSION,
         };
-        for (int j = 0; j < sizeof(infos) / sizeof(cl_device_info); j++) {
+        for (int j = 0; j < sizeof(infos) / sizeof(cl_device_info); j++)
+        {
             size_t sz = 0;
             clGetDeviceInfo(devices[i], infos[j], 0, NULL, &sz);
             char* value = phalloc(char, sz);
@@ -426,7 +463,8 @@ void init() {
             /*user_data=*/NULL,
             &err);
 
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         logf("err num %d\n", err);
         phatal_error("Cannot create context");
     }
@@ -436,7 +474,8 @@ void init() {
     // ========================================
 
     m_queue = clCreateCommandQueue(m_context, device, 0, &err);
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         logf("err num %d\n", err);
         phatal_error("Cannot create command queue");
     }
@@ -505,7 +544,8 @@ void init() {
         {
             glPointSize(3);
             const GLfloat u = 1.0f;
-            GLfloat vert_data[] = {
+            GLfloat vert_data[] =
+            {
                 -u, u,
                 -u, -u,
                 u, -u,
@@ -524,7 +564,8 @@ void init() {
             GLCHK (glVertexAttribPointer     (/*attrib location*/0,
                         /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
         }
-        enum {
+        enum
+        {
             vert,
             frag,
             fxaa,
@@ -591,8 +632,10 @@ void init() {
                 /*miplevel*/0,
                 m_gl_texture,
                 &err);
-        if (err != CL_SUCCESS) {
-            switch (err) {
+        if (err != CL_SUCCESS)
+        {
+            switch (err)
+            {
             case CL_INVALID_CONTEXT:
                 log("CL_INVALID_CONTEXT");
                 break;
@@ -617,7 +660,8 @@ void init() {
                 NULL, /*lengths, NULL means lines end in \0*/
                 &err
                 );
-        if (err != CL_SUCCESS) {
+        if (err != CL_SUCCESS)
+        {
             logf("could not create program from source %s", path);
             ph::quit(EXIT_FAILURE);
         }
@@ -633,7 +677,8 @@ void init() {
                 NULL, // callback
                 NULL  // user data
                 );
-        if (err != CL_SUCCESS) {
+        if (err != CL_SUCCESS)
+        {
             // Write build result.
             size_t sz;
             clGetProgramBuildInfo(
@@ -653,14 +698,18 @@ void init() {
             phatal_error("Could not build program");
         }
     }
+
     {  // Get kernel
         m_cl_kernel = clCreateKernel(m_cl_program, "main", &err);
-        if (err != CL_SUCCESS) {
+        if (err != CL_SUCCESS)
+        {
             phatal_error("Can't get kernel from program.");
         }
         // Set argument to be the texture.
-        if (err != CL_SUCCESS) {
-            switch(err) {
+        if (err != CL_SUCCESS)
+        {
+            switch(err)
+            {
             case CL_INVALID_SAMPLER:
                 log("invalid sampler");
                 break;
@@ -689,10 +738,12 @@ void init() {
     {
         cl_K = clCreateBuffer(m_context,
                 CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 11 * sizeof(float), (void*)K, &err);
-        if (err != CL_SUCCESS) {
+        if (err != CL_SUCCESS)
+        {
             phatal_error("Can't create K CL buffer");
         }
-        for (int i = 0; i < 11; ++i) {
+        for (int i = 0; i < 11; ++i)
+        {
             logf("K[%d] : %f\n", i, K[i]);
         }
     }
@@ -710,13 +761,15 @@ void init() {
             5, 2 * sizeof(int), (void*)size_px);
     err |= clSetKernelArg(m_cl_kernel,
             7, sizeof(cl_mem), (void*)&cl_K);
-    if (m_hmd_consts.meters_per_tan_angle != 0.036f) {
+    if (m_hmd_consts.meters_per_tan_angle != 0.036f)
+    {
         logf("MetersPerTanAngleAtCenter is %f, expected 0.036\n", m_hmd_consts.meters_per_tan_angle);
         phatal_error("Exiting");
     }
 
 
-    if (err != CL_SUCCESS) {
+    if (err != CL_SUCCESS)
+    {
         phatal_error("Some kernel argument was not set at ocl init.");
     }
 
@@ -737,7 +790,8 @@ void init() {
     phree(devices);
 }
 
-void deinit() {
+void deinit()
+{
     clReleaseProgram(m_cl_program);
     clReleaseCommandQueue(m_queue);
     clReleaseContext(m_context);

@@ -48,7 +48,8 @@
 #define phree(mem)\
         ph::memory::typeless_free((void*)(mem)); (mem) = NULL
 
-namespace ph {
+namespace ph
+{
 
 void init();
 
@@ -65,7 +66,8 @@ typedef int32_t int32;
 //////////////////////////
 // Memory
 //////////////////////////
-namespace memory {
+namespace memory
+{
 // In debug mode, query dynamic memory allocated.
 int64 bytes_allocated();
 
@@ -115,13 +117,16 @@ void quit(int code);
 
 // === Slice
 template<typename T>
-struct Slice {
+struct Slice
+{
     T* ptr;
     size_t n_elems;
     size_t n_capacity;
-    T& operator[](const int64 i) {
+    T& operator[](const int64 i)
+    {
 #ifdef PH_DEBUG
-        if (i >= n_elems || i < 0) {
+        if ((size_t)i >= n_elems || i < 0)
+        {
             log("slice access fail");  // Serving as a place to place breakpoints.
         }
 #endif
@@ -133,7 +138,8 @@ struct Slice {
 
 // Create a Slice
 template<typename T>
-Slice<T> MakeSlice(size_t n_capacity) {
+Slice<T> MakeSlice(size_t n_capacity)
+{
     Slice<T> slice;
     slice.n_capacity = n_capacity;
     slice.n_elems = 0;
@@ -147,23 +153,28 @@ Slice<T> MakeSlice(size_t n_capacity) {
 
 template<typename T>
 #if defined(PH_SLICES_ARE_MANUAL)
-void release(Slice<T>* s) {
-    if (s->ptr) {
+void release(Slice<T>* s)
+{
+    if (s->ptr)
+    {
         phree(s->ptr);
     }
 #else
-void release(Slice<T>*) {
+void release(Slice<T>*)
+{
 #ifdef PH_DEBUG
     printf("WARNING: Releasing a memory managed array\n");
 #endif
 #endif
 }
 
-// Add an element to the end.
-// Returns the location of the element in the array
+    // Add an element to the end.
+    // Returns the location of the element in the array
 template<typename T>
-int64 append(Slice<T>* slice, T elem) {
-    if (slice->n_elems > 0 && slice->n_capacity == slice->n_elems) {
+int64 append(Slice<T>* slice, T elem)
+{
+    if (slice->n_elems > 0 && slice->n_capacity == slice->n_elems)
+    {
         slice->n_capacity *= 2;
 #if defined(PH_SLICES_ARE_MANUAL)
         T* new_mem = phalloc(T, slice->n_capacity);
@@ -184,22 +195,24 @@ int64 append(Slice<T>* slice, T elem) {
 /*
  * NOT IN USE
  * TODO: Remove?
-template<typename T>
-void append_array(Slice<T>* slice, T* elems, int64 n_elems) {
-    for(int64 i = 0; i < n_elems; ++i) {
-        append(slice, elems[i]);
-    }
-}
-*/
+ template<typename T>
+ void append_array(Slice<T>* slice, T* elems, int64 n_elems) {
+ for(int64 i = 0; i < n_elems; ++i) {
+ append(slice, elems[i]);
+ }
+ }
+ */
 
 template<typename T>
-Slice<T> slice(Slice<T> orig, int64 begin, int64 end) {
+Slice<T> slice(Slice<T> orig, int64 begin, int64 end)
+{
     ph_assert(begin < end);
     ph_assert(end <= (int64)orig.n_elems);
 
     Slice<T> out = MakeSlice<T>(orig.n_elems / 2);
 
-    for (auto i = begin; i < end; ++i) {
+    for (auto i = begin; i < end; ++i)
+    {
         append(&out, orig[i]);
     }
 
@@ -207,21 +220,26 @@ Slice<T> slice(Slice<T> orig, int64 begin, int64 end) {
 }
 
 template<typename T>
-T pop(Slice<T>* slice) {
+T pop(Slice<T>* slice)
+{
     return slice->ptr[--slice->n_elems];
 }
 
 template<typename T>
-int64 count(Slice<T> slice) {
+int64 count(Slice<T> slice)
+{
     return (int64)slice.n_elems;
 }
 
 template<typename T>
-int64 find(Slice<T> slice, T to_find, T* out = NULL) {
-    for (int64 i = 0; i < count(slice); ++i) {
+int64 find(Slice<T> slice, T to_find, T* out = NULL)
+{
+    for (int64 i = 0; i < count(slice); ++i)
+    {
         T* e = &slice.ptr[i];
         if (*e == to_find){
-            if (out) {
+            if (out)
+            {
                 *out = *e;
             }
             return i;
@@ -231,7 +249,8 @@ int64 find(Slice<T> slice, T to_find, T* out = NULL) {
 }
 
 template<typename T>
-void clear(Slice<T>* slice) {
+void clear(Slice<T>* slice)
+{
     slice->n_elems = 0;
 }
 
@@ -240,25 +259,27 @@ void clear(Slice<T>* slice) {
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename K, typename V>
-struct Record {
+struct Record
+{
     K* key;
-    char pad[4];
     V value;
 };
 
 template<typename K, typename V>
-struct Dict {
+struct Dict
+{
     int64 num_buckets;
     Slice<Record<K, V>>* buckets;
-    char pad[4];
 };
 
 template<typename K, typename V>
-Dict<K, V> MakeDict(int64 num_buckets) {
+Dict<K, V> MakeDict(int64 num_buckets)
+{
     Dict<K, V> dict;
     typedef Slice<Record<K, V>> record_slice_t;
     dict.buckets = phalloc(record_slice_t, (size_t) num_buckets);
-    for (int i = 0; i < num_buckets; ++i) {
+    for (int i = 0; i < num_buckets; ++i)
+    {
         dict.buckets[i] = MakeSlice<Record<K,V>>(4);
     }
     dict.num_buckets = num_buckets;
@@ -270,7 +291,8 @@ Dict<K, V> MakeDict(int64 num_buckets) {
 ///////////////////////////////
 
 template<typename K, typename V>
-void insert(Dict<K, V>* dict, K key, V value) {
+void insert(Dict<K, V>* dict, K key, V value)
+{
     uint64_t n = (hash(key)) % dict->num_buckets;
     Record<K, V> record;
     record.key = phalloc(K, 1);
@@ -280,12 +302,15 @@ void insert(Dict<K, V>* dict, K key, V value) {
 }
 
 template<typename K, typename V>
-V* find(Dict<K, V>* dict, K key) {
+V* find(Dict<K, V>* dict, K key)
+{
     uint64_t n = hash(key) % dict->num_buckets;
     Slice<Record<K, V>> bucket = dict->buckets[n];
-    for (int i = 0; i < count(bucket); ++i) {
+    for (int i = 0; i < count(bucket); ++i)
+    {
         Record<K, V>* record = &bucket[i];
-        if (*record->key == key) {
+        if (*record->key == key)
+        {
             return &record->value;
         }
     }
@@ -293,10 +318,13 @@ V* find(Dict<K, V>* dict, K key) {
 }
 
 template<typename K, typename V>
-void release(Dict<K, V>* dict) {
-    for (int64 i = 0; i < dict->num_buckets; ++i) {
+void release(Dict<K, V>* dict)
+{
+    for (int64 i = 0; i < dict->num_buckets; ++i)
+    {
         Slice<Record<K, V>> bucket = dict->buckets[i];
-        for (int64 j = 0; j < count(bucket); ++j) {
+        for (int64 j = 0; j < count(bucket); ++j)
+        {
             phree(bucket[j].key);
         }
         release(&dict->buckets[i]);

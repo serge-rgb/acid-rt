@@ -3,10 +3,13 @@
 #include <ph.h>
 
 
-namespace ph {
-namespace vr {
+namespace ph
+{
+namespace vr
+{
 
-enum {
+enum
+{
     EYE_Left,
     EYE_Right,
     EYE_Count,  // Works with most humanoid species
@@ -14,7 +17,8 @@ enum {
 
 // Use get_hmd_constants() after init to get this:
 // The minimum info needed to set up our renderer.
-struct HMDConsts {
+struct HMDConsts
+{
     float lens_centers[2][2];       // Left, Right
     float eye_to_screen;            // Will get you the optimal FOV when ray tracing.
     float viewport_size_m[2];       // The physical size of the rift display.
@@ -22,7 +26,8 @@ struct HMDConsts {
 };
 
 // State of eye queried at a point in time.
-struct Eye {
+struct Eye
+{
     float orientation[4];
     float position[3];
     float pad;  // OpenCL alignment rules (CL 1.1 spec p.163)

@@ -1,6 +1,8 @@
 #pragma once
-namespace ph {
-struct AABB {
+namespace ph
+{
+struct AABB
+{
     float xmin;
     float xmax;
     float ymin;

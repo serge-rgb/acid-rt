@@ -1,27 +1,33 @@
 #include "io.h"
 
-namespace ph {
-namespace io {
+namespace ph
+{
+namespace io
+{
 
 static float wasd_step = -1.0f;
 static float wasd_camera[3] = {0,0,0};
 
 int wasd_pressed = 0;  // Bitmask for GLFW callback
 
-void set_wasd_step(float step) {
+void set_wasd_step(float step)
+{
     wasd_step = step;
 }
 
-void set_wasd_camera(float x, float y, float z) {
+void set_wasd_camera(float x, float y, float z)
+{
     wasd_camera[0] = x;
     wasd_camera[1] = y;
     wasd_camera[2] = z;
 }
 
-const char* slurp(const char* path) {
+const char* slurp(const char* path)
+{
     FILE* fd = fopen(path, "r");
     ph_expect(fd);
-    if (!fd) {
+    if (!fd)
+{
         fprintf(stderr, "ERROR: couldn't slurp %s\n", path);
         ph::quit(EXIT_FAILURE);
     }
@@ -33,7 +39,8 @@ const char* slurp(const char* path) {
     return contents;
 }
 
-void get_wasd_camera(const float* quat, float* out_xyz) {
+void get_wasd_camera(const float* quat, float* out_xyz)
+{
     auto glm_q = glm::quat(quat[0], quat[1], quat[2], quat[3]);
     auto axis = glm::axis(glm_q);
     auto e = glm::vec3(0, 0, 1);
@@ -46,18 +53,22 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
     cam_step_z = wasd_step * rotated_e.z;
     cam_step_x = wasd_step * rotated_e.x;
 
-    if (io::wasd_pressed & io::Control_W) {
+    if (io::wasd_pressed & io::Control_W)
+{
         wasd_camera[2] -= cam_step_z;
         wasd_camera[0] -= cam_step_x;
     }
-    if (io::wasd_pressed & io::Control_S) {
+    if (io::wasd_pressed & io::Control_S)
+{
         wasd_camera[2] += cam_step_z;
         wasd_camera[0] += cam_step_x;
     }
-    if (io::wasd_pressed & io::Control_C) {
+    if (io::wasd_pressed & io::Control_C)
+{
         wasd_camera[1] -= wasd_step;
     }
-    if (io::wasd_pressed & io::Control_Space) {
+    if (io::wasd_pressed & io::Control_Space)
+{
         wasd_camera[1] += wasd_step;
     }
 
@@ -66,11 +77,13 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
     cam_step_z = wasd_step * rotated_e.z;
     cam_step_x = wasd_step * rotated_e.x;
 
-    if (io::wasd_pressed & io::Control_A) {
+    if (io::wasd_pressed & io::Control_A)
+{
         wasd_camera[2] += cam_step_z;
         wasd_camera[0] += cam_step_x;
     }
-    if (io::wasd_pressed & io::Control_D) {
+    if (io::wasd_pressed & io::Control_D)
+{
         wasd_camera[2] -= cam_step_z;
         wasd_camera[0] -= cam_step_x;
     }
@@ -79,49 +92,64 @@ void get_wasd_camera(const float* quat, float* out_xyz) {
     out_xyz[2] = wasd_camera[2];
 }
 
-void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+{
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
-    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+{
        wasd_pressed |= Control_W;
     }
-    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+{
        wasd_pressed |= Control_A;
     }
-    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+{
        wasd_pressed |= Control_S;
     }
-    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_D && action == GLFW_PRESS)
+{
        wasd_pressed |= Control_D;
     }
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+{
         wasd_pressed |= Control_Space;
     }
-    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_C && action == GLFW_PRESS)
+{
         wasd_pressed |= Control_C;
     }
-    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+{
        wasd_pressed &= ~Control_W;
     }
-    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+{
        wasd_pressed &= ~Control_A;
     }
-    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE)
+{
        wasd_pressed &= ~Control_S;
     }
-    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE)
+{
        wasd_pressed &= ~Control_D;
     }
-    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE)
+{
         wasd_pressed &= ~Control_Space;
     }
-    if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_C && action == GLFW_RELEASE)
+{
         wasd_pressed &= ~Control_C;
     }
 }
 
-long get_microseconds() {
+long get_microseconds()
+{
 #ifdef _WIN32
     LARGE_INTEGER ticks;
     LARGE_INTEGER ticks_per_sec;

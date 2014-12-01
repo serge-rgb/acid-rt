@@ -4,14 +4,17 @@
 
 struct GLFWwindow;
 
-namespace ph {
-namespace io {
+namespace ph
+{
+namespace io
+{
 
 // Returns the complete contents of file at path
 const char* slurp(const char* path);
 
 // ============ WASD control
-enum {
+enum
+{
     Control_W     = 1 << 0,
     Control_A     = 1 << 1,
     Control_S     = 1 << 2,

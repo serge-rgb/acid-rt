@@ -14,10 +14,13 @@
 // GPU program.
 //  (i.e. Acceleration structures)
 ////////////////////////////////////////
-namespace ph {
-namespace scene {
+namespace ph
+{
+namespace scene
+{
 
-enum SubmitFlags {
+enum SubmitFlags
+{
     SubmitFlags_None        = 1 << 0,
     SubmitFlags_FlipNormals = 1 << 1,
     SubmitFlags_Update      = 1 << 2,
@@ -25,7 +28,8 @@ enum SubmitFlags {
 
 glm::vec3 get_centroid(AABB b);
 
-struct Cube {
+struct Cube
+{
     glm::vec3 center;
     glm::vec3 sizes;
     int32 index = -1; //  Place in triangle pool where associated triangles begin.
@@ -34,7 +38,8 @@ struct Cube {
 Cube make_cube(float x, float y, float z, float size);
 Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z);
 
-struct Rect {
+struct Rect
+{
     float x;
     float y;
     float w;
@@ -49,7 +54,8 @@ bool collision_p(Rect a, Rect b);
  * Represents triangle data. Small enough to be considered a primitive.
  * Large enough so that it justifies a bounding box.
  */
-struct Chunk {
+struct Chunk
+{
     glm::vec3* verts;
     glm::vec3* norms;  // One for each vertex
     int64 num_verts;

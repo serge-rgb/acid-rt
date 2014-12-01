@@ -10,8 +10,10 @@
 static int g_warpsize[] = {10, 16};
 //static int g_warpsize[] = {1, 256};  // Nice trade-off between perf and artifacts.
 
-namespace ph {
-namespace vr {
+namespace ph
+{
+namespace vr
+{
 
 static bool                      m_has_initted = false;
 
@@ -40,15 +42,18 @@ ovrHmd                           m_hmd;
 
 vr::HMDConsts                    m_cached_consts;
 
-void init() {
+void init()
+{
     // Safety net.
-    if (m_has_initted) {
+    if (m_has_initted)
+    {
         phatal_error("vr::init called twice");
     }
     m_has_initted = true;
 
 
-    if (!ovr_Initialize()) {
+    if (!ovr_Initialize())
+    {
         ph::phatal_error("Could not initialize OVR\n");
     }
 
@@ -59,10 +64,11 @@ void init() {
     //ovrHmd_AttachToWindow(vr::m_hmd, glfwGetWin32Window(window::m_window), NULL, NULL);
 
     unsigned int sensor_caps =
-        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
+    ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
 
     ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, sensor_caps, sensor_caps);
-    if (!succ) {
+    if (!succ)
+    {
         phatal_error("Could not initialize OVR sensors!");
     }
 
@@ -99,57 +105,67 @@ void init() {
     m_cached_consts.eye_to_screen = m_default_eye_z;
 
     m_cached_consts.viewport_size_m[0] =
-        m_screen_size_m[0] / 2;
+    m_screen_size_m[0] / 2;
     m_cached_consts.viewport_size_m[1] =
-        m_screen_size_m[1];
+    m_screen_size_m[1];
     m_cached_consts.meters_per_tan_angle =
-        m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
+    m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
 }
 
-const HMDConsts get_hmd_constants() {
-    if (!m_has_initted) {
+const HMDConsts get_hmd_constants()
+{
+    if (!m_has_initted)
+    {
         phatal_error("Trying to get hmd info without initting module");
     }
     return m_cached_consts;
 }
 
-void fill_catmull_K (float* K, int num_coefficients)   {
+void fill_catmull_K (float* K, int num_coefficients)
+{
     // auto lens_config = GenerateLensConfigFromEyeRelief(0.008f, *m_renderinfo);
     ph_assert(num_coefficients == OVR::LensConfig::NumCoefficients);
 
-    for (int i = 0; i < num_coefficients; ++i) {
+    for (int i = 0; i < num_coefficients; ++i)
+    {
         K[i] = m_renderinfo->EyeLeft.Distortion.K[i];
     }
 }
 
-void toggle_postproc() {
+void toggle_postproc()
+{
     m_do_postprocessing = m_do_postprocessing? false : true;
 }
 
-void toggle_interlace_throttle() {
+void toggle_interlace_throttle()
+{
     m_do_interlace_throttling = m_do_interlace_throttling? false : true;
 }
 
-void enable_skybox() {
+void enable_skybox()
+{
     m_skybox_enabled = true;
     glUseProgram(m_program);
     glUniform1i(14, m_skybox_enabled);
 }
 
-void disable_skybox() {
+void disable_skybox()
+{
     m_skybox_enabled = false;
     glUseProgram(m_program);
     glUniform1i(14, m_skybox_enabled);
 }
 
-void begin_frame(Eye* left, Eye* right) {
+void begin_frame(Eye* left, Eye* right)
+{
     ph_assert(left != NULL);
     ph_assert(right != NULL);
     ovrHmd_BeginFrameTiming(m_hmd, m_frame_index);
 
     ovrPosef poses[2];
     {
-        ovrVector3f offsets[2] = {
+        ovrVector3f offsets[2] =
+        {
             m_render_desc_l.HmdToEyeViewOffset,
             m_render_desc_r.HmdToEyeViewOffset
         };
@@ -158,10 +174,12 @@ void begin_frame(Eye* left, Eye* right) {
 
     Eye* eyes[2] = { left, right };
 
-    for (int i = 0; i < EYE_Count; ++i) {
+    for (int i = 0; i < EYE_Count; ++i)
+    {
         ovrPosef pose = poses[i];
         auto q = pose.Orientation;
-        GLfloat quat[4] {
+        GLfloat quat[4]
+        {
             q.x, q.y, q.z, q.w,
         };
         auto p = pose.Position;
@@ -182,12 +200,14 @@ void begin_frame(Eye* left, Eye* right) {
     }
 }
 
-void end_frame() {
+void end_frame()
+{
     ovrHmd_EndFrameTiming(m_hmd);
     m_frame_index++;
 }
 
-void deinit() {
+void deinit()
+{
     ovrHmd_Destroy(m_hmd);
     ovr_Shutdown();
 }

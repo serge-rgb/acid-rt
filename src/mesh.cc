@@ -2,17 +2,21 @@
 
 #include "AABB.h"
 
-namespace ph {
-namespace mesh {
+namespace ph
+{
+namespace mesh
+{
 
 // Debugging
-static const char* str(const glm::vec3& v) {
+static const char* str(const glm::vec3& v)
+{
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
     return out;
 }
 
-scene::Chunk load_obj(const char* path, float scale) {
+scene::Chunk load_obj(const char* path, float scale)
+{
     char* model_str_raw = (char *)io::slurp(path);
 
     typedef char* charptr;
@@ -20,19 +24,22 @@ scene::Chunk load_obj(const char* path, float scale) {
 
     { // Read into lines
         const char* line = strtok(model_str_raw, "\n");
-        while (line) {
+        while (line)
+        {
             if (
                     0 == strncmp("v ", line, 2) ||
                     0 == strncmp("vn ", line, 3) ||
                     0 == strncmp("f ", line, 2)
-               ) {
+               )
+            {
                 append(&lines, (charptr)line);
             }
             line = strtok(NULL, "\n");
         }
     }
 
-    struct Face {
+    struct Face
+    {
         // Just indices into vertex/normal arrays.
         int64 vert_i[3];
         int64 norm_i[3];
@@ -44,25 +51,33 @@ scene::Chunk load_obj(const char* path, float scale) {
     auto faces = MakeSlice<Face>(1024);
 
     {  // Parse obj format
-        enum {
+        enum
+        {
             Type_vert,
             Type_norm,
             Type_face,
             Type_count,
         };
 
-        for (int64 i = 0; i < count(lines); ++i) {
+        for (int64 i = 0; i < count(lines); ++i)
+        {
             auto* line = lines[i];
             int type = Type_count;
-            if (0 == strncmp("vn", line, 2)) {
+            if (0 == strncmp("vn", line, 2))
+            {
                 type = Type_norm;
-            } else if (0 == strncmp("v", line, 1)) {
+            }
+            else if (0 == strncmp("v", line, 1))
+            {
                 type = Type_vert;
-            } else if (0 == strncmp("f", line, 1)) {
+            }
+            else if (0 == strncmp("f", line, 1))
+            {
                 type = Type_face;
             }
             float x,y,z;
-            switch(type) {
+            switch(type)
+            {
             case Type_vert:
                 {
                     sscanf(line, "v %f %f %f", &x, &y, &z);
@@ -82,7 +97,8 @@ scene::Chunk load_obj(const char* path, float scale) {
                 }
             case Type_face:
                 {
-                    enum {
+                    enum
+                    {
                         DEFAULT,
                         NO_TEXCOORDS,
                         QUAD,
@@ -93,10 +109,13 @@ scene::Chunk load_obj(const char* path, float scale) {
                         auto len = strlen(line);
                         int num_slashes = 0;
                         size_t prev = (size_t)-1;
-                        for (size_t i = 0; i < len; ++i) {
+                        for (size_t i = 0; i < len; ++i)
+                        {
                             char c = line[i];
-                            if (c == '/') {
-                                if (num_slashes == 1 && prev == (i - 1)) {
+                            if (c == '/')
+                            {
+                                if (num_slashes == 1 && prev == (i - 1))
+                                {
                                     facetype = NO_TEXCOORDS;
                                     break;
                                 }
@@ -104,7 +123,8 @@ scene::Chunk load_obj(const char* path, float scale) {
                                 num_slashes++;
                             }
                         }
-                        if (num_slashes == 8) {
+                        if (num_slashes == 8)
+                        {
                             facetype = QUAD;
                         }
                     }
@@ -113,22 +133,27 @@ scene::Chunk load_obj(const char* path, float scale) {
                         g,h,k,
                         l,m,n;
                     a = b = c = d = e = f = g = h = k = l = m = n = 0;
-                    if (facetype == DEFAULT) {
-                            sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                                    &a,&b,&c,
-                                    &d,&e,&f,
-                                    &g,&h,&k);
-                    } else if (facetype == NO_TEXCOORDS) {
+                    if (facetype == DEFAULT)
+                    {
+                        sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
+                                &a,&b,&c,
+                                &d,&e,&f,
+                                &g,&h,&k);
+                    }
+                    else if (facetype == NO_TEXCOORDS)
+                    {
                         sscanf(line, "f %d//%d %d//%d %d//%d",
                                 &a, &c,
                                 &d, &f,
                                 &g, &k);
-                    } else if (facetype == QUAD) {
+                    }
+                    else if (facetype == QUAD)
+                    {
                         sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d",
-                                    &a,&b,&c,
-                                    &d,&e,&f,
-                                    &g,&h,&k,
-                                    &l,&m,&n);
+                                &a,&b,&c,
+                                &d,&e,&f,
+                                &g,&h,&k,
+                                &l,&m,&n);
                     }
 
                     /* printf("%d/%d %d/%d %d/%d\n", a,c, d,f, g,k); */
@@ -142,7 +167,8 @@ scene::Chunk load_obj(const char* path, float scale) {
                     face.norm_i[2] = k;
                     append(&faces, face);
 
-                    if (facetype == QUAD) {
+                    if (facetype == QUAD)
+                    {
                         face.vert_i[0] = a;
                         face.vert_i[1] = g;
                         face.vert_i[2] = l;
@@ -169,9 +195,11 @@ scene::Chunk load_obj(const char* path, float scale) {
         // Uses way more memory, but no need for Face structure.
         auto in_verts = MakeSlice<glm::vec3>(3 * (size_t)count(verts));
         auto in_norms = MakeSlice<glm::vec3>(3 * (size_t)count(norms));
-        for (int64 i = 0; i < count(faces); ++i) {
+        for (int64 i = 0; i < count(faces); ++i)
+        {
             auto face = faces[i];
-            for (int j = 0; j < 3; ++j) {
+            for (int j = 0; j < 3; ++j)
+            {
                 if (face.vert_i[j] != 0)
                 {
                     auto vert = verts[face.vert_i[j] - 1];  // OBJ format indices are 1-based.
@@ -179,7 +207,8 @@ scene::Chunk load_obj(const char* path, float scale) {
                     append(&in_verts, vert);
                     append(&in_norms, norm);
                 }
-                else {
+                else
+                {
                     auto vert = verts[0];  // OBJ format indices are 1-based.
                     auto norm = norms[0];
                     append(&in_verts, vert);
@@ -199,26 +228,30 @@ scene::Chunk load_obj(const char* path, float scale) {
     return chunk;
 }
 
-struct Bound {
+struct Bound
+{
     int64 a;
     int64 b;
 };
 
-static Bound make_bound(int64 a, int64 b) {
+static Bound make_bound(int64 a, int64 b)
+{
     Bound bound;
     bound.a = a;
     bound.b = b;
     return bound;
 }
 
-Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
+Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit)
+{
     auto slice = MakeSlice<scene::Chunk>(1);  // The thing that we return
 
     auto size = big_chunk.num_verts;
 
     auto bounds = MakeSlice<Bound>(8); // Octree divisions, each iteration divides a bound into 8.
     append(&bounds, make_bound(0, size));
-    while(count(bounds)) {
+    while(count(bounds))
+    {
         auto bound = pop(&bounds);
         auto a = bound.a;
         auto b = bound.b;
@@ -226,7 +259,8 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
         // Find bbox and centroid.
         ph::AABB bbox;
         scene::bbox_fill(&bbox);
-        for (auto i = a; i < b; i+=3) {
+        for (auto i = a; i < b; i+=3)
+        {
             auto a = big_chunk.verts[i + 0];
             auto b = big_chunk.verts[i + 1];
             auto c = big_chunk.verts[i + 2];
@@ -245,7 +279,8 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
         Bound new_bounds[8];
         // Sort: for every vert, compare and move to the front
         int64 front = a;
-        enum {
+        enum
+        {
             TOP_LEFT_FRONT,
             TOP_LEFT_BACK,
             TOP_RIGHT_FRONT,
@@ -255,10 +290,12 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
             BOT_RIGHT_FRONT,
             BOT_RIGHT_BACK,
         };
-        for (int q = 0; q < 8; q++) {
+        for (int q = 0; q < 8; q++)
+        {
             new_bounds[q].a = front;
             // Top left front
-            for (auto i = a; i < b; i += 3) {
+            for (auto i = a; i < b; i += 3)
+            {
                 auto a = big_chunk.verts[i + 0];
                 auto b = big_chunk.verts[i + 1];
                 auto c = big_chunk.verts[i + 2];
@@ -308,11 +345,14 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
                          tri_centroid.y > centroid.y &&
                          tri_centroid.z <= centroid.z
                         )
-                        ) {
+                        )
+                        {
                             do_swap = true;
                         }
-                if (do_swap) {
-                    for (int j = 0; j < 3; ++j) {
+                if (do_swap)
+                {
+                    for (int j = 0; j < 3; ++j)
+                    {
                         auto tmp = big_chunk.verts[front + j];
                         big_chunk.verts[front + j] = big_chunk.verts[i + j];
                         big_chunk.verts[i + j] = tmp;
@@ -326,22 +366,29 @@ Slice<scene::Chunk> shatter(scene::Chunk big_chunk, int limit) {
             }
             new_bounds[q].b = front;
         }
-        for (int q = 0; q < 8; q++) {
+        for (int q = 0; q < 8; q++)
+        {
             long bsize = (long)new_bounds[q].b - (long)new_bounds[q].a;
-            if (bsize == 0) {
+            if (bsize == 0)
+            {
                 // do nothing
-            } else if (bsize <= 3 * limit) {  // limit is in triangles, not vertices.
+            }
+            else if (bsize <= 3 * limit)
+            {  // limit is in triangles, not vertices.
                 ph_assert (!(new_bounds[q].b == b && new_bounds[q].a == a));
                 scene::Chunk chunk;
                 chunk.verts = phalloc(glm::vec3, bsize);
                 chunk.norms = phalloc(glm::vec3, bsize);
-                for (long i = 0; i < bsize; ++i) {
+                for (long i = 0; i < bsize; ++i)
+                {
                     chunk.verts[i] = big_chunk.verts[new_bounds[q].a + i];
                     chunk.norms[i] = big_chunk.norms[new_bounds[q].a + i];
                 }
                 chunk.num_verts = bsize;
                 append(&slice, chunk);
-            } else {
+            }
+            else
+            {
                 append(&bounds, new_bounds[q]);
             }
         }

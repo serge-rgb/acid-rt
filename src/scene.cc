@@ -5,8 +5,10 @@
 #include <ph_gl.h>
 
 
-namespace ph {
-namespace scene {
+namespace ph
+{
+namespace scene
+{
 
 // For DFS buffers.
 static const int kTreeStackLimit = 64;
@@ -27,34 +29,40 @@ static GLuint               m_light_buffer;
 static GLuint               m_prim_buffer;
 
 
-struct GLlight {
+struct GLlight
+{
     CLvec3 position;
     CLvec3 color;
 };
 
-struct Light {
+struct Light
+{
     GLlight data;
     int64 index;
 };
 
-enum MaterialType {
+enum MaterialType
+{
     MaterialType_Lambert,
 };
 
 
-static const char* str(const glm::vec3& v) {
+static const char* str(const glm::vec3& v)
+{
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
     return out;
 }
 
-static const char* str(AABB b) {
+static const char* str(AABB b)
+{
     char* out = phanaged(char, 16);
     sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
     return out;
 }
 
-static ph::AABB get_bbox(const ph::Primitive* primitives, int count) {
+static ph::AABB get_bbox(const ph::Primitive* primitives, int count)
+{
     ph_assert(count > 0);
     AABB bbox;
     { // Fill bbox with not-nonsense
@@ -66,16 +74,20 @@ static ph::AABB get_bbox(const ph::Primitive* primitives, int count) {
         bbox.zmin = first.p0.z;
         bbox.zmax = first.p0.z;
     }
-    for (int pi = 0; pi < count; ++pi) {
+    for (int pi = 0; pi < count; ++pi)
+    {
         auto primitive = primitives[pi];
-        if (primitive.offset < 0) {
+        if (primitive.offset < 0)
+        {
             return bbox;
         }
 
-        for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i) {
+        for (int i = primitive.offset; i < primitive.offset + primitive.num_triangles; ++i)
+        {
             ph::CLtriangle tri = m_triangle_pool[i];
             CLvec3 points[3] = { tri.p0, tri.p1, tri.p2 };
-            for (int j = 0; j < 3; ++j) {
+            for (int j = 0; j < 3; ++j)
+            {
                 auto p = points[j];
                 if (p.x < bbox.xmin) bbox.xmin = p.x;
                 if (p.x > bbox.xmax) bbox.xmax = p.x;
@@ -90,7 +102,8 @@ static ph::AABB get_bbox(const ph::Primitive* primitives, int count) {
 }
 
 // Perf node: This is the bottleneck of build_bvh.
-static inline AABB bbox_union(AABB a, AABB b) {
+static inline AABB bbox_union(AABB a, AABB b)
+{
     AABB res;
     res.xmin = fmin(a.xmin, b.xmin);
     res.ymin = fmin(a.ymin, b.ymin);
@@ -101,7 +114,8 @@ static inline AABB bbox_union(AABB a, AABB b) {
     return res;
 }
 
-static float bbox_area(AABB bbox) {
+static float bbox_area(AABB bbox)
+{
     // Test for just-initialized bbox.
     if (bbox.xmin == INFINITY) return 0;
     glm::vec3 d;
@@ -116,7 +130,8 @@ static float bbox_area(AABB bbox) {
 ////////////////////////////////////////
 
 // Big fat struct for tree construction
-struct BVHTreeNode {
+struct BVHTreeNode
+{
     ph::BVHNode data;  // Fill this and write it to the array
     // Children
     BVHTreeNode* left;
@@ -125,7 +140,8 @@ struct BVHTreeNode {
     BVHTreeNode* sibling;
 };
 
-enum SplitPlane {
+enum SplitPlane
+{
     SplitPlane_X,
     SplitPlane_Y,
     SplitPlane_Z,
@@ -135,7 +151,8 @@ enum SplitPlane {
 // 'indices' keeps the original order of the slice.
 // bbox_cache avoids recomputation of bboxes for single primitives.
 static BVHTreeNode* build_bvh(
-        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, glm::vec3* centroids, int depth) {
+        Slice<ph::Primitive> primitives, const int32* indices, AABB* bbox_cache, glm::vec3* centroids, int depth)
+{
     BVHTreeNode* node = phalloc(BVHTreeNode, 1);
     ph::BVHNode data;
     data.primitive_offset = -1;
@@ -146,11 +163,16 @@ static BVHTreeNode* build_bvh(
     ph_assert(count(primitives) != 0);
     data.bbox = get_bbox(primitives.ptr, (int)count(primitives));
 
-    if (count(primitives) == 1) {           // ---- Leaf
+    // ---- Leaf
+    if (count(primitives) == 1)
+    {
         data.primitive_offset = *indices;
         node->left = NULL;
         node->right = NULL;
-    } else {                                // ---- Inner node
+    }
+    // ---- Inner node
+    else
+    {
         //auto centroids = MakeSlice<glm::vec3>((size_t)count(primitives));
         glm::vec3 midpoint;
         midpoint = get_centroid(data.bbox);
@@ -159,7 +181,8 @@ static BVHTreeNode* build_bvh(
         bbox_fill(&centroid_bounds);
         float centroid_span[3];
         {
-            for (int i = 0; i < count(primitives); ++i) {
+            for (int i = 0; i < count(primitives); ++i)
+            {
                 if (centroids[indices[i]].x < centroid_bounds.xmin) centroid_bounds.xmin = centroids[indices[i]].x;
                 if (centroids[indices[i]].x > centroid_bounds.xmax) centroid_bounds.xmax = centroids[indices[i]].x;
                 if (centroids[indices[i]].y < centroid_bounds.ymin) centroid_bounds.ymin = centroids[indices[i]].y;
@@ -174,8 +197,10 @@ static BVHTreeNode* build_bvh(
 
         int split = depth % 3;
         // Choose split
-        for (int i = 0; i < 3; ++i) {
-            if (centroid_span[i] > centroid_span[split]) {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (centroid_span[i] > centroid_span[split])
+            {
                 split = i;
             }
         }
@@ -197,8 +222,10 @@ static BVHTreeNode* build_bvh(
         // ============================================================
         // SAH
         // ============================================================
-        if (use_sah) {
-            struct Bucket {
+        if (use_sah)
+        {
+            struct Bucket
+            {
                 int num;
                 AABB bbox;
             };
@@ -220,7 +247,8 @@ static BVHTreeNode* build_bvh(
 
 
             // 1) Initialize info (bounds & count) for each bucket
-            for (int i = 0; i < kNumBuckets; ++i) {
+            for (int i = 0; i < kNumBuckets; ++i)
+            {
                 bbox_fill(&buckets[i].bbox);
                 buckets[i].num = 0;
             }
@@ -228,10 +256,20 @@ static BVHTreeNode* build_bvh(
             int* assign = phalloc(int, (size_t)count(primitives));
             // ^--- Store which primitive is assigned to which bucket.
 
-            for (int i = 0; i < count(primitives); ++i) {
-                int b = (int)(kNumBuckets *
+            for (int i = 0; i < count(primitives); ++i)
+            {
+                int b;
+                if (bbox_vmin == bbox_vmax)
+                {
+                    printf("error++++++ vmin = vmax\n");
+                    b = indices[i] % 12;  // Will rewrite bvh builder... just do this..
+                }
+                else
+                {
+                        b = (int)(kNumBuckets *
                         (centroids[indices[i]][split] - bbox_vmin[split]) /
                         (bbox_vmax[split] - bbox_vmin[split]));
+                }
                 if (b == kNumBuckets) { b--; }
                 buckets[b].bbox = bbox_union(buckets[b].bbox, bbox_cache[indices[i]]);
                 buckets[b].num++;
@@ -239,7 +277,8 @@ static BVHTreeNode* build_bvh(
             }
             // 2) compute cost for each permutation: Sum of (bucketBbox / primitivesBbox)
             float cost[kNumBuckets - 1];
-            for (int i = 0; i < kNumBuckets - 1; ++i) {
+            for (int i = 0; i < kNumBuckets - 1; ++i)
+            {
                 AABB b0, b1;
                 int count0 = 0;
                 int count1 = 0;
@@ -247,11 +286,13 @@ static BVHTreeNode* build_bvh(
                 bbox_fill(&b0);
                 bbox_fill(&b1);
 
-                for (int j = 0; j <= i; ++j) {
+                for (int j = 0; j <= i; ++j)
+                {
                     b0 = bbox_union(b0, buckets[j].bbox);
                     count0 += buckets[j].num;
                 }
-                for (int j = i + 1; j < kNumBuckets; ++j) {
+                for (int j = i + 1; j < kNumBuckets; ++j)
+                {
                     b1 = bbox_union(b1, buckets[j].bbox);
                     count1 += buckets[j].num;
                 }
@@ -265,8 +306,10 @@ static BVHTreeNode* build_bvh(
             // 3) find minimal cost split
             int min_split = 0;
             float min_cost = cost[0];
-            for (int i = 1; i < kNumBuckets -1; ++i) {
-                if (cost[i] < min_cost) {
+            for (int i = 1; i < kNumBuckets -1; ++i)
+            {
+                if (cost[i] < min_cost)
+                {
                     min_cost = cost[i];
                     min_split = i;
                 }
@@ -288,42 +331,53 @@ static BVHTreeNode* build_bvh(
             // Use the assign array to send them left or right
             int c_left = 0;
             int c_right = 0;
-            for (int i = 0; i < count(primitives); ++i) {
+            for (int i = 0; i < count(primitives); ++i)
+            {
                 //logf("primitive %d goes %d and minsplit is %d\n", i, assign[i], min_split);
-                if (assign[i] <= min_split) {
+                if (assign[i] <= min_split)
+                {
                     c_left++;
                 }
-                else {
+                else
+                {
                     c_right++;
                 }
             }
 
             static int noteven_count = 0;
-            for (int i = 0; i < count(primitives); ++i) {
-                if (assign[i] <= min_split) {
+            for (int i = 0; i < count(primitives); ++i)
+            {
+                if (assign[i] <= min_split)
+                {
                     /* log("left"); */
                     append(&slice_left, primitives[i]);
                     new_indices_l[offset_l++] = indices[i];
                 }
-                else {
+                else
+                {
                     /* log("right"); */
                     append(&slice_right, primitives[i]);
                     new_indices_r[offset_r++] = indices[i];
                 }
             }
             phree(assign);
-        // ============================================================
-        // Equal partition.
-        // ============================================================
-        } else {
+            // ============================================================
+            // Equal partition.
+            // ============================================================
+        }
+        else
+        {
             // Partition two slices based on which side of the midpoint.
-            for (int i = 0; i < count(primitives); ++i) {
+            for (int i = 0; i < count(primitives); ++i)
+            {
                 auto centroid = centroids[indices[i]];
-                if (centroid[split] < midpoint[split]) {
+                if (centroid[split] < midpoint[split])
+                {
                     append(&slice_left, primitives[i]);
                     new_indices_l[offset_l++] = indices[i];
                 }
-                else {  // Default: to the right
+                else
+                {  // Default: to the right
                     append(&slice_right, primitives[i]);
                     new_indices_r[offset_r++] = indices[i];
                 }
@@ -332,16 +386,22 @@ static BVHTreeNode* build_bvh(
         }
         // Either both are 0 or both are non zero.. Else, fix it
         // Can happen when a bunch of triangles have the same bbox...
-        if ((offset_r != 0 && offset_l == 0) || (offset_l != 0 && offset_r == 0)) {
-            if (offset_r != 0) {
+        if ((offset_r != 0 && offset_l == 0) || (offset_l != 0 && offset_r == 0))
+        {
+            if (offset_r != 0)
+            {
                 auto times = count(slice_right) / 2;
-                for (int i = 0; i < times; ++i) {
+                for (int i = 0; i < times; ++i)
+                {
                     append(&slice_left, pop(&slice_right));
                     new_indices_l[offset_l++] = new_indices_r[--offset_r];
                 }
-            } else {
+            }
+            else
+            {
                 auto times = count(slice_left) / 2;
-                for (int i = 0; i < times; ++i) {
+                for (int i = 0; i < times; ++i)
+                {
                     append(&slice_right, pop(&slice_left));
                     new_indices_r[offset_r++] = new_indices_l[--offset_l];
                 }
@@ -349,17 +409,21 @@ static BVHTreeNode* build_bvh(
         }
 
         node->left = node->right = NULL;
-        if (count(slice_left)) {
+        if (count(slice_left))
+        {
             node->left = build_bvh(slice_left, new_indices_l, bbox_cache, centroids, depth + 1);
         }
-        if (count(slice_right)) {
+        if (count(slice_right))
+        {
             node->right = build_bvh(slice_right, new_indices_r, bbox_cache, centroids, depth + 1);
         }
-        if(node->left) {
+        if(node->left)
+        {
             node->left->parent = node;
             node->left->sibling = node->right;
         }
-        if (node->right) {
+        if (node->right)
+        {
             node->right->parent = node;
             node->right->sibling = node->left;
         }
@@ -372,25 +436,32 @@ static BVHTreeNode* build_bvh(
     return node;
 }
 
-static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
+static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data)
+{
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
     bool* checks = phalloc(bool, count(data));  // Every element must be present once.
     stack[stack_offset++] = root;
     int height = 0;
 
-    for (int i = 0; i < count(data); ++i) {
+    for (int i = 0; i < count(data); ++i)
+    {
         checks[i] = false;
     }
 
-    while (stack_offset > 0) {
+    while (stack_offset > 0)
+    {
         BVHTreeNode* node = stack[--stack_offset];
-        if (node->left == NULL && node->right == NULL) {
+        if (node->left == NULL && node->right == NULL)
+        {
             int i = node->data.primitive_offset;
-            if (checks[i]) {
+            if (checks[i])
+            {
                 printf("Found double leaf %d\n", i);
                 return false;
-            } else {
+            }
+            else
+            {
                 checks[i] = true;
                 /* printf("Leaf bounding box: \n%s", str(node->data.bbox)); */
                 /* printf("Leaf prim: %d\n\n", node->data.primitive_offset); */
@@ -405,30 +476,38 @@ static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
                 bbox.ymax - bbox0.ymax < epsilon &&
                 bbox.zmin - bbox0.zmin < epsilon &&
                 bbox.zmax - bbox0.zmax < epsilon;
-            if (!check) {
+            if (!check)
+            {
                 printf("Incorrect bounding box for leaf %d\n", i);
                 return false;
             }
-        } else {
-            if (node->data.primitive_offset != -1) {
+        }
+        else
+        {
+            if (node->data.primitive_offset != -1)
+            {
                 printf("Non-leaf node has primitive!\n");
                 return false;
             }
-            if (node->left == NULL || node->right == NULL) {
+            if (node->left == NULL || node->right == NULL)
+            {
                 printf("Found null child on non-leaf node\n");
                 return false;
             }
             ph_assert(stack_offset + 2 < kTreeStackLimit);
             stack[stack_offset++] = node->right;
             stack[stack_offset++] = node->left;
-            if (stack_offset > height) {
+            if (stack_offset > height)
+            {
                 height = stack_offset;
             }
         }
     }
 
-    for (int i = 0; i < count(data); ++i) {
-        if (checks[i] == false) {
+    for (int i = 0; i < count(data); ++i)
+    {
+        if (checks[i] == false)
+        {
             printf("Leaf %d not found.\n", i);
             return false;
         }
@@ -439,14 +518,17 @@ static bool validate_bvh(BVHTreeNode* root, Slice<ph::Primitive> data) {
     return true;
 }
 
-void release(BVHTreeNode* root) {
+void release(BVHTreeNode* root)
+{
     BVHTreeNode* stack[kTreeStackLimit];
     int stack_offset = 0;
     stack[stack_offset++] = root;
-    while(stack_offset > 0) {
+    while(stack_offset > 0)
+    {
         BVHTreeNode* node = stack[--stack_offset];
         bool is_leaf = node->left == NULL && node->right == NULL;
-        if (!is_leaf) {
+        if (!is_leaf)
+        {
             stack[stack_offset++] = node->left;
             stack[stack_offset++] = node->right;
         }
@@ -454,9 +536,11 @@ void release(BVHTreeNode* root) {
     }
 }
 
-static uint64_t hash(BVHTreeNode* data) {
+static uint64_t hash(BVHTreeNode* data)
+{
     uint64_t hash = 5381;
-    uint64_t hash_data[] = {
+    uint64_t hash_data[] =
+    {
         (uint64_t)(data->data.primitive_offset),
         (uint64_t)(data->data.right_child_offset),
         (uint64_t)floorf(1000 * data->data.bbox.xmin),
@@ -467,7 +551,8 @@ static uint64_t hash(BVHTreeNode* data) {
         (uint64_t)floorf(1000 * data->data.bbox.zmax),
     };
     size_t limit = sizeof(hash_data) / sizeof(uint64_t);
-    for (size_t sz = 0; sz < limit; sz++) {
+    for (size_t sz = 0; sz < limit; sz++)
+    {
         uint64_t v = hash_data[sz];
         hash = (hash * 33) ^ v;
     }
@@ -475,7 +560,8 @@ static uint64_t hash(BVHTreeNode* data) {
 }
 
 // Returns a memory-managed array of BVHNode in depth first order. Ready for GPU consumption.
-static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
+static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len)
+{
     auto slice = MakeSlice<ph::BVHNode>(16);
     auto dict  = MakeDict < BVHTreeNode*, int64> (1000);
 
@@ -483,13 +569,15 @@ static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     int stack_offset = 0;
     stack[stack_offset++] = root;
 
-    while(stack_offset > 0) {
+    while(stack_offset > 0)
+    {
         auto fatnode = stack[--stack_offset];
         ph::BVHNode node = fatnode->data;
         int64 index = append(&slice, node);
         insert(&dict, fatnode, index);
         bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
-        if (!is_leaf) {
+        if (!is_leaf)
+        {
             stack[stack_offset++] = fatnode->right;
             stack[stack_offset++] = fatnode->left;
         }
@@ -501,10 +589,12 @@ static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     stack_offset = 0;
     stack[stack_offset++] = root;
     int i = 0;
-    while(stack_offset > 0) {
+    while(stack_offset > 0)
+    {
         auto fatnode = stack[--stack_offset];
         bool is_leaf = fatnode->left == NULL && fatnode->right == NULL;
-        if (!is_leaf) {
+        if (!is_leaf)
+        {
             stack[stack_offset++] = fatnode->right;
             stack[stack_offset++] = fatnode->left;
             int64 found_i = *find(&dict, fatnode->right);
@@ -521,20 +611,25 @@ static ph::BVHNode* flatten_bvh(BVHTreeNode* root, int64* out_len) {
     return slice.ptr;
 }
 
-static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
+static bool validate_flattened_bvh(ph::BVHNode* root, int64 len)
+{
     bool* check = phalloc(bool, len);
-    for (int64 i = 0; i < len; ++i) {
+    for (int64 i = 0; i < len; ++i)
+    {
         check[i] = false;
     }
 
     int64 num_leafs = 0;
     ph::BVHNode* node = root;
-    for (int64 i = 0; i < len; ++i) {
+    for (int64 i = 0; i < len; ++i)
+    {
         /* printf("Node %ld: At its right: %d\n", i, node->right_child_offset); */
-        if (node->primitive_offset != -1) {  // Not leaf
+        if (node->primitive_offset != -1)
+        {  // Not leaf
             num_leafs++;
             /* printf("  Leaf! %d\n", node->primitive_offset); */
-            if (check[node->primitive_offset]) {
+            if (check[node->primitive_offset])
+            {
                 printf("Double leaf %d\n", node->primitive_offset);
                 return false;
             }
@@ -543,8 +638,10 @@ static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
         node++;
     }
 
-    for (int64 i = 0; i < num_leafs; ++i) {
-        if (!check[i]) {
+    for (int64 i = 0; i < num_leafs; ++i)
+    {
+        if (!check[i])
+        {
             printf("Missing leaf %ld\n", i);
             return false;
         }
@@ -556,12 +653,14 @@ static bool validate_flattened_bvh(ph::BVHNode* root, int64 len) {
 
 // Return a vec3 with layout expected by the compute shader.
 // Reverse z while we're at it, so it is in view coords.
-static CLvec3 to_cl(glm::vec3 in) {
+static CLvec3 to_cl(glm::vec3 in)
+{
     CLvec3 out = {in.x, in.y, in.z, 0};
     return out;
 }
 
-void bbox_fill(AABB* bbox) {
+void bbox_fill(AABB* bbox)
+{
     bbox->xmax = -INFINITY;
     bbox->ymax = -INFINITY;
     bbox->zmax = -INFINITY;
@@ -570,18 +669,21 @@ void bbox_fill(AABB* bbox) {
     bbox->zmin = INFINITY;
 }
 
-glm::vec3 get_centroid(AABB b) {
+glm::vec3 get_centroid(AABB b)
+{
     return glm::vec3((b.xmax + b.xmin) / 2, (b.ymax + b.ymin) / 2, (b.zmax + b.zmin) / 2);
 }
 
-bool collision_p(Rect a, Rect b) {
+bool collision_p(Rect a, Rect b)
+{
     bool not_collides =
         ((b.x > a.x + a.w) || (b.x + b.w < a.x)) ||
         ((b.y > a.y + a.h) || (b.y + b.h < a.y));
     return !not_collides;
 }
 
-Rect cube_to_rect(scene::Cube cube) {
+Rect cube_to_rect(scene::Cube cube)
+{
     scene::Rect rect;
     rect.x = cube.center.x - cube.sizes.x;
     rect.y = cube.center.y - cube.sizes.y;
@@ -590,12 +692,14 @@ Rect cube_to_rect(scene::Cube cube) {
     return rect;
 }
 
-int64 submit_light(Light* light) {
+int64 submit_light(Light* light)
+{
     light->index = append(&m_light_pool, light->data);
     return light->index;
 }
 
-int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
+int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params)
+{
     // 6 points of cube
     //       d----c
     //      / |  /|
@@ -619,9 +723,12 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 
     // Return index to the first appended triangle.
     int64 index = -1;
-    if (flags & SubmitFlags_Update) {
+    if (flags & SubmitFlags_Update)
+    {
         index = cube->index;
-    } else {  // Append 12 new triangles
+    }
+    else
+    {  // Append 12 new triangles
         tri.p0.x = 0;  // Initialize garbage, just to get an index. Will be filled below.
         index = append(&m_triangle_pool, tri);
 #ifdef PH_DEBUG
@@ -630,7 +737,8 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
 #else
         append(&m_normal_pool, tri);
 #endif
-        for (int i = 0; i < 11; ++i) {
+        for (int i = 0; i < 11; ++i)
+        {
             append(&m_triangle_pool, tri);
             append(&m_normal_pool, tri);
         }
@@ -664,9 +772,11 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     nt = to_cl(glm::normalize(glm::cross(_c - _b, _a - _b)));
     nm = to_cl(glm::normalize(glm::cross(_e - _f, _g - _f)));
 
-    if (flags & SubmitFlags_FlipNormals) {
+    if (flags & SubmitFlags_FlipNormals)
+    {
         CLvec3* normals[] = {&nf, &nr, &nb, &nl, &nt, &nm};
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 6; ++i)
+        {
             normals[i]->x *= -1;
             normals[i]->y *= -1;
             normals[i]->z *= -1;
@@ -789,27 +899,33 @@ int64 submit_primitive(Cube* cube, SubmitFlags flags, int64 flag_params) {
     prim.offset = cube->index;
     prim.num_triangles = 12;
     prim.material = MaterialType_Lambert;
-    if (flags & SubmitFlags_Update) {
+    if (flags & SubmitFlags_Update)
+    {
         ph_assert(flag_params >= 0 && flag_params < count(m_primitives));
         m_primitives[flag_params] = prim;
         return flag_params;
-    } else {
+    }
+    else
+    {
         return append(&m_primitives, prim);
     }
 }
 
-static int64 submit_primitive(AABB* bbox) {
+static int64 submit_primitive(AABB* bbox)
+{
     glm::vec3 center = {(bbox->xmax + bbox->xmin) / 2,
         (bbox->ymax + bbox->ymin) / 2, (bbox->zmax + bbox->zmin) / 2};
     Cube cube = make_cube(center.x, center.y, center.z, bbox->xmax - center.x, bbox->ymax - center.y, bbox->zmax - center.y);
     return submit_primitive(&cube);
 }
 
-int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
+int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64)
+{
     // Non-exhaustive check to rule out non-triangle meshes:
     ph_assert(chunk->num_verts % 3 == 0);
 
-    for (int64 i = 0; i < chunk->num_verts; i += 3) {
+    for (int64 i = 0; i < chunk->num_verts; i += 3)
+    {
         glm::vec3 a, b, c;  // points
         glm::vec3 d, e, f;  // normals
 
@@ -852,7 +968,8 @@ int64 submit_primitive(Chunk* chunk, SubmitFlags flags, int64) {
     return index;
 }
 
-Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z) {
+Cube make_cube(float x, float y, float z, float size_x, float size_y, float size_z)
+{
     Cube c;
     c.center.x = x;
     c.center.y = y;
@@ -865,23 +982,28 @@ Cube make_cube(float x, float y, float z, float size_x, float size_y, float size
     return c;
 }
 
-Cube make_cube(float x, float y, float z, float size) {
+Cube make_cube(float x, float y, float z, float size)
+{
     return make_cube(x,y,z,size,size,size);
 }
 
 static void no_op() {}
 
-void init() {
+void init()
+{
     GLCHK(no_op());  // Window library may have left surprises...
     static bool is_init = false;
-    if (is_init) {
+    if (is_init)
+    {
         clear(&m_triangle_pool);
         clear(&m_normal_pool);
         clear(&m_light_pool);
         clear(&m_primitives);
         update_structure();
         upload_everything();
-    } else {
+    }
+    else
+    {
 
         // Init the OpenCL backend
         ocl::init();
@@ -905,17 +1027,20 @@ void init() {
     submit_light(&light);
 }
 
-void update_structure() {
+void update_structure()
+{
     ph_assert(count(m_primitives) < PH_MAX_int32);
 
-    if (count(m_primitives) == 0) {
+    if (count(m_primitives) == 0)
+    {
         return;
     }
 
     int32* indices = phalloc(int32, count(m_primitives));
     AABB* bbox_cache = phalloc(AABB, count(m_primitives));
     glm::vec3* centroids = phalloc(glm::vec3, count(m_primitives));
-    for (int i = 0; i < count(m_primitives); ++i) {
+    for (int i = 0; i < count(m_primitives); ++i)
+    {
         indices[i] = i;
         bbox_cache[i] = get_bbox(&m_primitives[i], 1);
         centroids[i] = get_centroid(bbox_cache[i]);
@@ -941,7 +1066,8 @@ void update_structure() {
 }
 
 // =========================  Upload to GPU
-void upload_everything() {
+void upload_everything()
+{
     // Upload tree
     // Upload triangles and normals
     ph_assert(m_triangle_pool.n_elems == m_normal_pool.n_elems);

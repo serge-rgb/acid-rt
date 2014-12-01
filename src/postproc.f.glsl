@@ -11,46 +11,54 @@ in vec2 coord;
 out vec4 color;
 
 vec4 FxaaPixelShader(
-    vec2 pos,
-    vec2 pos_r,
-    vec2 pos_b,
-    vec4 fxaaConsolePosPos,
-    sampler2D tex,
-    sampler2D fxaaConsole360TexExpBiasNegOne,
-    sampler2D fxaaConsole360TexExpBiasNegTwo,
-    vec2 fxaaQualityRcpFrame,
-    vec4 fxaaConsoleRcpFrameOpt,
-    vec4 fxaaConsoleRcpFrameOpt2,
-    vec4 fxaaConsole360RcpFrameOpt2,
-    float fxaaQualitySubpix,
-    float fxaaQualityEdgeThreshold,
-    float fxaaQualityEdgeThresholdMin,
-    float fxaaConsoleEdgeSharpness,
-    float fxaaConsoleEdgeThreshold,
-    float fxaaConsoleEdgeThresholdMin,
-    vec4 fxaaConsole360ConstDir
-    );
+        vec2 pos,
+        vec2 pos_r,
+        vec2 pos_b,
+        vec4 fxaaConsolePosPos,
+        sampler2D tex,
+        sampler2D fxaaConsole360TexExpBiasNegOne,
+        sampler2D fxaaConsole360TexExpBiasNegTwo,
+        vec2 fxaaQualityRcpFrame,
+        vec4 fxaaConsoleRcpFrameOpt,
+        vec4 fxaaConsoleRcpFrameOpt2,
+        vec4 fxaaConsole360RcpFrameOpt2,
+        float fxaaQualitySubpix,
+        float fxaaQualityEdgeThreshold,
+        float fxaaQualityEdgeThresholdMin,
+        float fxaaConsoleEdgeSharpness,
+        float fxaaConsoleEdgeThreshold,
+        float fxaaConsoleEdgeThresholdMin,
+        vec4 fxaaConsole360ConstDir
+        );
 
-vec3 chroma(float rsq) {
+vec3 chroma(float rsq)
+{
     return vec3(rsq - 0.006, rsq, rsq + 0.014);
 }
 
-void main() {
+void main()
+{
 
     vec2 point = coord;  // in [0,1]^2 * screen_size
     int eye = 0;
-    if (point.x < 0.5) {
+    if (point.x < 0.5)
+    {
         eye = -1;
-    } else {
+    }
+    else
+    {
         point.x -= 0.5;
         eye = 1;
     }
     /* point.x /= 2;  // One viewport per eye */
     point.xy *= screen_size;
 
-    if (eye == -1) {
+    if (eye == -1)
+    {
         point -= lens_center_l;
-    } else {
+    }
+    else
+    {
         point -= lens_center_r;
     }
 
@@ -89,7 +97,8 @@ void main() {
     point_b.xy += vec2(0.5); // Back to 0,0
     point_b.x /= 2; // [0, 1] -> [0, 0.5]
 
-    if (eye == 1) {
+    if (eye == 1)
+    {
         point.x += 0.5;
         point_r.x += 0.5;
         point_b.x += 0.5;
@@ -100,26 +109,26 @@ void main() {
     vec2 coord_g = coord;
     vec2 coord_b = point_b;
 
-// NOTE: Using 0.063 ("overkill") as edge threshold because we may be downsampling..
+    // NOTE: Using 0.063 ("overkill") as edge threshold because we may be downsampling..
     vec4 aa_color = FxaaPixelShader(
-        coord_g,
-        coord_r,
-        coord_b,
-        vec4(0), //fxaaConsolePosPos
-        fbo_texture, //tex
-        fbo_texture, //fxaaConsole360TexExpBiasNegOne
-        fbo_texture, //fxaaConsole360TexExpBiasNegTwo
-        rcp_frame,  //fxaaQualityRcpFrame  (1 / window_size)
-        vec4(0), //fxaaConsoleRcpFrameOpt
-        vec4(0), //fxaaConsoleRcpFrameOpt2
-        vec4(0), //fxaaConsole360RcpFrameOpt2
-        1.000, //fxaaQualitySubpix (default: 0.75)
-        0.063, //fxaaQualityEdgeThreshold
-        0.0312, //fxaaQualityEdgeThresholdMin
-        -1, //fxaaConsoleEdgeSharpness
-        -1, //fxaaConsoleEdgeThreshold
-        -1, //fxaaConsoleEdgeThresholdMin
-        vec4(0)); //fxaaConsole360ConstDir
+            coord_g,
+            coord_r,
+            coord_b,
+            vec4(0), //fxaaConsolePosPos
+            fbo_texture, //tex
+            fbo_texture, //fxaaConsole360TexExpBiasNegOne
+            fbo_texture, //fxaaConsole360TexExpBiasNegTwo
+            rcp_frame,  //fxaaQualityRcpFrame  (1 / window_size)
+            vec4(0), //fxaaConsoleRcpFrameOpt
+            vec4(0), //fxaaConsoleRcpFrameOpt2
+            vec4(0), //fxaaConsole360RcpFrameOpt2
+            1.000, //fxaaQualitySubpix (default: 0.75)
+            0.063, //fxaaQualityEdgeThreshold
+            0.0312, //fxaaQualityEdgeThresholdMin
+            -1, //fxaaConsoleEdgeSharpness
+            -1, //fxaaConsoleEdgeThreshold
+            -1, //fxaaConsoleEdgeThresholdMin
+            vec4(0)); //fxaaConsole360ConstDir
 
     //color.a = texture(fbo_texture, coord).a;
     color.rgb = aa_color.rgb;

@@ -13,18 +13,21 @@
 
 using namespace ph;
 
-static void bunny_idle() {
+static void bunny_idle()
+{
     ocl::draw();
 }
 
-void bunny_sample() {
+void bunny_sample()
+{
     scene::init();
 
     auto big_chunk = mesh::load_obj(
             "third_party/ASSETS/bunny.obj", /*scale=*/10);
 
     auto chunks = mesh::shatter(big_chunk, 3);
-    for (int i = 0; i < count(chunks); ++i) {
+    for (int i = 0; i < count(chunks); ++i)
+    {
         // Bunny model appears to have the normals flipped.
         scene::submit_primitive(&chunks[i], scene::SubmitFlags_None);
     }
@@ -50,13 +53,14 @@ void bunny_sample() {
     io::set_wasd_camera(-0.4f, 1, 2);
 
     { // Release big chunk
-       phree(big_chunk.verts);
-       phree(big_chunk.norms);
+        phree(big_chunk.verts);
+        phree(big_chunk.norms);
     }
     // Chunks are in heaven now.
-    for (int i = 0; i < count(chunks); ++i) {
-           phree(chunks[i].verts);
-           phree(chunks[i].norms);
+    for (int i = 0; i < count(chunks); ++i)
+    {
+        phree(chunks[i].verts);
+        phree(chunks[i].norms);
     }
     release(&chunks);
 

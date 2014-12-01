@@ -13,13 +13,16 @@
 //
 //  auto big_chunk = load_obj("my_model.obj", 1.0);
 //  auto small_chunks = shatter(big_chunk, 100);
-//  for (int64 i = 0; i < count(small_chunks); ++i) {
+//  for (int64 i = 0; i < count(small_chunks); ++i)
+//  {
 //      scene::submit_primitive(&small_chunks[i], scene::SubmitFlags_None);
 //  }
 ////////////////////////////////////////
 
-namespace ph {
-namespace mesh {
+namespace ph
+{
+namespace mesh
+{
 
 /**
  * flags specifies the way faces are described. i.e.
@@ -31,7 +34,8 @@ namespace mesh {
  * "f %d/%d/%d %d/%d/%d %d/%d/%d"
  */
 
-enum LoadFlags {
+enum LoadFlags
+{
     LoadFlags_Default = 1 << 0,
     LoadFlags_NoTexcoords = 1 << 1,
     LoadFlags_Quads = 1 << 2,

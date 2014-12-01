@@ -15,8 +15,10 @@
 #define GLCHK(stmt) stmt
 #endif
 
-namespace ph {
-namespace gl {
+namespace ph
+{
+namespace gl
+{
 
 // ==== Shaders ====
 

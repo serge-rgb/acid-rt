@@ -1,32 +1,38 @@
-typedef struct {
+typedef struct
+{
     float3 point;
 } Light;
 
-typedef struct {
+typedef struct
+{
     float3 o;
     float3 d;
 } Ray;
 
-typedef struct {
+typedef struct
+{
     float4 orientation;  // Orientation quaternion.
     float3 position;
 } Eye;
 
-typedef struct {
+typedef struct
+{
     float t;
     float3 point;
     float3 norm;
     int depth;  // For debug heat map
 } Intersection;
 
-typedef struct {
+typedef struct
+{
     float3 p0;
     float3 p1;
     float3 p2;
     float3 _padding;
 } Triangle;
 
-typedef struct {
+typedef struct
+{
     float xmin;
     float xmax;
     float ymin;
@@ -35,19 +41,22 @@ typedef struct {
     float zmax;
 } AABB;
 
-typedef struct {
+typedef struct
+{
     int primitive_offset;       // >0 when leaf. -1 when not.
     int right_child_offset;     // Left child is adjacent to node. (-1 if leaf!)
     AABB bbox;
 } BVHNode;
 
-typedef struct {
+typedef struct
+{
     int offset;             // Num of elements into the triangle pool where this primitive begins.
     int num_triangles;
     int material;           // Enum (copy in shader).
 } Primitive ;
 
-inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
+inline float3 rotate_vector_quat(const float3 vec, const float4 quat)
+{
     float3 i = -quat.xyz;
     float m = quat.w;
     //return vec + 2.0 * cross( cross( vec, i ) + m * vec, i );
@@ -55,7 +64,8 @@ inline float3 rotate_vector_quat(const float3 vec, const float4 quat) {
 }
 
 #define BBOX_USE_MAD
-inline float bbox_collision(const AABB box, const Ray ray, const float3 inv_dir, float* far_t) {
+inline float bbox_collision(const AABB box, const Ray ray, const float3 inv_dir, float* far_t)
+{
     float t0;
 
     float rmin, rmax;
@@ -101,7 +111,8 @@ inline float bbox_collision(const AABB box, const Ray ray, const float3 inv_dir,
     return t0;
 }
 
-inline float3 barycentric(const Triangle tri, const Ray ray) {
+inline float3 barycentric(const Triangle tri, const Ray ray)
+{
     float3 e1 = tri.p1 - tri.p0;
     float3 e2 = tri.p2 - tri.p0;
     float3 s  = ray.o - tri.p0;
@@ -112,14 +123,16 @@ inline float3 barycentric(const Triangle tri, const Ray ray) {
     return (1 / det) * (float3)(dot(n, s), dot(m, e2), dot(-m, e1));
 }
 
-Intersection ray_sphere(const Ray* ray, const float3 c, const float r) {
+Intersection ray_sphere(const Ray* ray, const float3 c, const float r)
+{
     Intersection intersection;
     intersection.t = -1;
     const float b = dot(ray->d, ray->o - c);
     const float d = dot(ray->o - c, ray->o - c) - r * r;
     const float det = b*b - d;
 
-    if (det >= 0) {
+    if (det >= 0)
+    {
         intersection.t = -b + sqrt(det);
         intersection.point = ray->o + intersection.t * ray->d;
         intersection.norm = normalize(intersection.point - c);
@@ -135,7 +148,8 @@ Intersection trace(
         __constant Primitive* prims,
         __constant Triangle* tris,
         __constant Triangle* norms,
-        Ray ray) {
+        Ray ray)
+{
     Intersection its;
     its.depth = 0;
     float3 inv_dir = 1 / ray.d;
@@ -150,8 +164,10 @@ Intersection trace(
     //  traverse.
     // while node has primitives
     //  intesect
-    while (true) {
-        while (node.primitive_offset < 0) {  // Inner nodes.
+    while (true)
+    {
+        while (node.primitive_offset < 0)
+        {  // Inner nodes.
             const AABB bbox_l = nodes[node_i + 1].bbox;
             const AABB bbox_r = nodes[node.right_child_offset].bbox;
             float nr, nl, fr, fl;
@@ -169,32 +185,42 @@ Intersection trace(
             node_i = node_i + 1;
             int other_i = node.right_child_offset;
             // If it hits just one
-            if (hit_l != hit_r) {
+            if (hit_l != hit_r)
+            {
                 its.depth += 1;
 #ifdef USE_SELECT_FUNC
                 node_i = select(node_i, other_i, hit_r);
 #else
-                if (hit_r) {
+                if (hit_r)
+                {
                     node_i = other_i;
                 }
 #endif
             }
             // Either both or none
-            else {
-                if (!hit_l) {  // No hit.
-                    if (stack_offset == 0) {
+            else
+            {
+                if (!hit_l)
+                {  // No hit.
+                    if (stack_offset == 0)
+                    {
                         return its;
-                    } else {
+                    }
+                    else
+                    {
                         node_i = stack[--stack_offset];
                     }
-                } else {  // Both hit
+                }
+                else
+                {  // Both hit
                     its.depth += 2;
                     int tmp = node_i;
 #ifdef USE_SELECT_FUNC
                     node_i = select(node_i, other_i, (int)(nr < nl) * 0xffffffff);
                     other_i = select(other_i, tmp, (int)(nr < nl) * 0xffffffff);
 #else
-                    if (nr < nl) {
+                    if (nr < nl)
+                    {
                         node_i = other_i;
                         other_i = tmp;
                     }
@@ -208,9 +234,10 @@ Intersection trace(
         }
         //============== LEAF =================
         Primitive prim = prims[node.primitive_offset];
-// Perf note(GTX770): 2x gives speed boost. 4x does not.
+        // Perf note(GTX770): 2x gives speed boost. 4x does not.
 #pragma unroll 2
-        for (int j = 0; j < prim.num_triangles; ++j) {
+        for (int j = 0; j < prim.num_triangles; ++j)
+        {
             int offset = prim.offset + j;
             Triangle tri = tris[offset];
 
@@ -228,7 +255,8 @@ Intersection trace(
                 its.t = bar.x;
             }
         }
-        if (stack_offset == 0) {
+        if (stack_offset == 0)
+        {
             return its;
         }
         node_i = stack[--stack_offset];
@@ -237,14 +265,16 @@ Intersection trace(
     return its;
 }
 
-float lambert(Light l, float3 point, float3 norm) {
+float lambert(Light l, float3 point, float3 norm)
+{
     float3 dir = normalize(l.point - point);
     const float c = max(dot(norm, dir), (float)0);
     return c;
 }
 
 
-float catmull(float rsq, __constant float* K) {
+float catmull(float rsq, __constant float* K)
+{
     int num_segments = 11;
 
     /* float scaled_val = 10 * rsq / (max_r_sq); */
@@ -283,7 +313,7 @@ float catmull(float rsq, __constant float* K) {
     float t = scaled_val - scaled_val_floor;
     float omt = 1 - t;
     float res  = ( p0 * ( 1.0f + 2.0f * t ) + m0 *   t ) * omt * omt +
-        ( p1 * ( 1.0f + 2.0f * omt ) - m1 * omt ) *   t *   t;
+    ( p1 * ( 1.0f + 2.0f * omt ) - m1 * omt ) *   t *   t;
     return res;
 
 }
@@ -302,7 +332,8 @@ __kernel void main(
         __constant Primitive* prims, // 10
         __constant BVHNode* nodes    // 11
         //
-        ) {
+        )
+{
 
     /* float4 color = 1; */
     float4 color = 0;
@@ -343,7 +374,8 @@ __kernel void main(
     l.point = (float3)(-3,10,5);
 
     float min_t = 1 << 16;
-    if (rsq < 0.22) {
+    if (rsq < 0.22)
+    {
         color = 0.0;
 
         Intersection its = trace(
@@ -352,7 +384,8 @@ __kernel void main(
                 tris,
                 norms,
                 ray);
-        if (its.t > 0) {
+        if (its.t > 0)
+        {
             color = 1 * lambert(l, its.point, its.norm);
             //color.x += (float)(its.depth) / 100.0f;
         }

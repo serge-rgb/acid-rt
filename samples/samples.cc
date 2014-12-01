@@ -16,21 +16,26 @@ int g_resolution[] = {1920, 1080};  // DK2 res
 static int        g_curr_sample = 1;
 static SampleFunc g_sample_func;
 
-static void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+static void sample_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
     ph::io::wasd_callback(window, key, scancode, action, mods);
-    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS)
+    {
         vr::toggle_postproc();
     }
-    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_E && action == GLFW_PRESS)
+    {
         vr::toggle_interlace_throttle();
     }
-    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+    {
         g_curr_sample--;
         if (g_curr_sample < 0) g_curr_sample++;
         g_sample_func = g_samples[g_curr_sample];
         g_sample_func();
     }
-    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+    {
         g_curr_sample++;
         while ((size_t)g_curr_sample >= g_num_samples) g_curr_sample--;
         g_sample_func = g_samples[g_curr_sample];
@@ -38,7 +43,8 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
     }
 }
 
-int main() {
+int main()
+{
     ph_assert(g_num_samples >= 1);
     ph::init();
     // ====
@@ -46,7 +52,8 @@ int main() {
     // to keep order of func calls clear.
     // ====
 #if 0
-    if (!ovr_Initialize()) {
+    if (!ovr_Initialize())
+    {
         ph::phatal_error("Could not initialize OVR\n");
     }
 
@@ -54,24 +61,25 @@ int main() {
 
 
     window::init("Samples", g_resolution[0], g_resolution[1],
-                 window::InitFlag(
-                 window::InitFlag_IgnoreRift |
-                 window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
+            window::InitFlag(
+                window::InitFlag_IgnoreRift |
+                window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
 
     ovrHmd_AttachToWindow(vr::m_hmd, window::m_window, NULL, NULL);
 
     unsigned int sensor_caps =
-        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
+    ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
 
     ovrBool succ = ovrHmd_ConfigureTracking(vr::m_hmd, sensor_caps, sensor_caps);
-    if (!succ) {
+    if (!succ)
+    {
         phatal_error("Could not initialize OVR sensors!");
     }
 #endif
     window::init("Samples", g_resolution[0], g_resolution[1],
-                 window::InitFlag(
-                 /* window::InitFlag_IgnoreRift | */
-                 window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
+            window::InitFlag(
+                /* window::InitFlag_IgnoreRift | */
+                window::InitFlag_NoDecoration | window::InitFlag_OverrideKeyCallback));
 
 
     io::set_wasd_step(0.06f);

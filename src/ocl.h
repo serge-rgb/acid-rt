@@ -1,12 +1,13 @@
 #pragma once
 
-namespace ph {
+namespace ph
+{
 struct CLtriangle;
 struct Primitive;
 struct BVHNode;
 
-namespace ocl {
-
+namespace ocl
+{
 
 void init();
 // Set triangle soup to be buffer.

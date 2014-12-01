@@ -31,7 +31,8 @@ vec4 FxaaPixelShader(
     vec4 fxaaConsole360ConstDir
     );
 
-void main() {
+void main()
+{
     //color = texture(tex, coord);
     vec2 coord_g = coord;
     vec2 coord_r = coord;
