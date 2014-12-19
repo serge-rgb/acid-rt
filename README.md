@@ -6,9 +6,7 @@ Real time ray tracing renderer
 
 ![screenshot](http://i.imgur.com/kyQswNi.png)
 
-This is a real time ray tracing renderer, designed to be a drop-in substitute for the Oculus Rift's SDK renderer.
-
-Work in progress. Not for general consumption, but the aim is to be able to make games using it.
+This is a real time ray tracing renderer; a proof of concept designed to be work with the Oculus Rift.
 
 Features:
 ---------
@@ -41,7 +39,7 @@ You will need:
 * CMake
 * Visual Studio 2013
 
-Place the latest (0.4.3) OculusSDK folder inside the project's root directory.
+Place the latest (0.4.4) OculusSDK folder inside the project's root directory.
 
 Open git shell, go to the project dir and run:
 
@@ -80,10 +78,5 @@ To-Do (in no particular order)
 
 * Mesh loader (find third party lib)
 * Lighting model
-* Physically based materials
-* On-screen text
-* Desktop mode
-* Direct3D backend
 * Time Warp
-* Texture mapping
-* Implicit surfaces?
+* Texture mapping (?)
