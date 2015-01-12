@@ -202,7 +202,7 @@ void draw()
 
     vr::Eye left;
     vr::Eye right;
-    vr::begin_frame(&left, &right);
+    vr::RenderEyePose eye_pose = vr::begin_frame(&left, &right);
 
     auto t_start = io::get_microseconds();
 
@@ -314,8 +314,16 @@ void draw()
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    ovrMatrix4f twmatrices[2];
+    vr::end_frame(&eye_pose, &twmatrices);
+
     // Draw texture to screen
     {
+        // ++++
+        // TODO: pass matrix to quad program & rotate...
+        // ++++
+
         glActiveTexture (GL_TEXTURE1);
         //glBindTexture(GL_TEXTURE_2D, m_gl_texture);
         glBindTexture(GL_TEXTURE_2D, g_rendertarget.color);
@@ -323,8 +331,6 @@ void draw()
         glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
-
-    GLCHK ( glFinish() );
 
     auto t_end = io::get_microseconds();
 
@@ -340,8 +346,6 @@ void draw()
     window::swap_buffers();
 
     GLCHK ( glFinish() );
-
-    vr::end_frame();
 }
 
 void init()

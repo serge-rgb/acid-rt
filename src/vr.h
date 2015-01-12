@@ -33,6 +33,11 @@ struct Eye
     float pad;  // OpenCL alignment rules (CL 1.1 spec p.163)
 };
 
+struct RenderEyePose
+{
+    ovrPosef poses[2];
+};
+
 extern ovrHmd  m_hmd;  // 'extern' because abstraction may leak when we try to use direct mode.
 
 void init();
@@ -48,8 +53,8 @@ void fill_catmull_K(float* K, int num_coefficients);
  * `frame_index`, the time it takes us to draw a frame, and VSync time. So this needs to be followed
  * by a vr::end_frame() after we have done our thang.
  */
-void begin_frame(Eye* left, Eye* right);
-void end_frame();
+RenderEyePose begin_frame(Eye* left, Eye* right);
+void end_frame(RenderEyePose* eye_pose, ovrMatrix4f* twmatrices[]);
 
 
 void enable_skybox();

@@ -19,6 +19,8 @@ void main()
 {
 
     vec2 point = coord;  // in [0,1]^2 * screen_size
+
+    // perf: this forces "dynamic" branches that would be static if we just used `coord`
     int eye = 0;
     if (point.x < 0.5)
     {
@@ -63,9 +65,6 @@ void main()
     vec2 point_r = r * sqrt(r_factor) * vec2(cos(theta), sin(theta));
     //vec2 point_r = r * sqrt(1.0) * vec2(cos(theta), sin(theta));
     vec2 point_b = r * sqrt(b_factor) * vec2(cos(theta), sin(theta));
-
-    // point *= vec2(rsq);
-    /* point -= vec2(0.25); */
 
     point.xy += vec2(0.5); // Back to 0,0
     point.x /= 2; // [0, 1] -> [0, 0.5]

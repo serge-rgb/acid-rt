@@ -156,27 +156,27 @@ void disable_skybox()
     glUniform1i(14, m_skybox_enabled);
 }
 
-void begin_frame(Eye* left, Eye* right)
+RenderEyePose begin_frame(Eye* left, Eye* right)
 {
     ph_assert(left != NULL);
     ph_assert(right != NULL);
     ovrHmd_BeginFrameTiming(m_hmd, m_frame_index);
 
-    ovrPosef poses[2];
+    RenderEyePose eye_pose;
     {
         ovrVector3f offsets[2] =
         {
             m_render_desc_l.HmdToEyeViewOffset,
             m_render_desc_r.HmdToEyeViewOffset
         };
-        ovrHmd_GetEyePoses(m_hmd, 0, offsets, poses, /*ovrTrackingState*/NULL);
+        ovrHmd_GetEyePoses(m_hmd, 0, offsets, eye_pose.poses, /*ovrTrackingState*/NULL);
     }
 
     Eye* eyes[2] = { left, right };
 
     for (int i = 0; i < EYE_Count; ++i)
     {
-        ovrPosef pose = poses[i];
+        ovrPosef pose = eye_pose.poses[i];
         auto q = pose.Orientation;
         GLfloat quat[4]
         {
@@ -198,10 +198,23 @@ void begin_frame(Eye* left, Eye* right)
         eyes[i]->orientation[2] = quat[2];
         eyes[i]->orientation[3] = quat[3];
     }
+    return eye_pose;
 }
 
-void end_frame()
+void end_frame(RenderEyePose* eye_pose, ovrMatrix4f* twmatrices[])
 {
+    GLCHK ( glFinish() );
+
+    // CAPI.h says use this but it doesn't seem necessary.
+    // ovr_WaitTillTime();
+
+    // Get timewarp info
+    {
+        ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Left, eye_pose->poses[ovrEye_Left],
+                &twmatrices[ovrEye_Left]);
+        ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Right, eye_pose->poses[ovrEye_Right],
+                &twmatrices[ovrEye_Right]);
+    }
     ovrHmd_EndFrameTiming(m_hmd);
     m_frame_index++;
 }
