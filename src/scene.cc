@@ -15,18 +15,18 @@ static const int kTreeStackLimit = 64;
 
 struct GLlight;
 
-static Slice<ph::CLtriangle>    m_triangle_pool;
-static Slice<ph::CLtriangle>    m_normal_pool;
-static Slice<GLlight>       m_light_pool;
-static Slice<ph::Primitive>     m_primitives;
-static ph::BVHNode*             m_flat_tree = NULL;
-static int64                m_flat_tree_len = 0;
-static int                  m_debug_bvh_height = -1;
-static GLuint               m_bvh_buffer;
-static GLuint               m_triangle_buffer;
-static GLuint               m_normal_buffer;
-static GLuint               m_light_buffer;
-static GLuint               m_prim_buffer;
+static Slice<ph::CLtriangle> m_triangle_pool;
+static Slice<ph::CLtriangle> m_normal_pool;
+static Slice<GLlight>        m_light_pool;
+static Slice<ph::Primitive>  m_primitives;
+static ph::BVHNode*          m_flat_tree = NULL;
+static int64                 m_flat_tree_len = 0;
+static int                   m_debug_bvh_height = -1;
+static GLuint                m_bvh_buffer;
+static GLuint                m_triangle_buffer;
+static GLuint                m_normal_buffer;
+static GLuint                m_light_buffer;
+static GLuint                m_prim_buffer;
 
 
 struct GLlight

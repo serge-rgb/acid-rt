@@ -29,6 +29,7 @@ Requirements:
 * Only Supports DK2 on Windows.
 * OpenCL 1.1
 * OpenGL 4.1
+* A 64-bit processor
 
 How to build
 ------------
@@ -38,6 +39,7 @@ You will need:
 * Git for Windows (with Git Shell)
 * CMake
 * Visual Studio 2013
+* OpenCL runtime. On NVIDIA, this means installing the latest CUDA Toolkit.
 
 Place the latest (0.4.4) OculusSDK folder inside the project's root directory.
 
@@ -47,7 +49,12 @@ Open git shell, go to the project dir and run:
 
 ... wait until it's done.
 
-Make a directory called "build" (can't be another name)
+Open a Windows Command Prompt and run Visual Studio's `vcvarsall.bat` script.
+With Visual Studio 2013, this is usually:
+
+    "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
+
+Make a directory called "build"
 
     $> mkdir build
 
