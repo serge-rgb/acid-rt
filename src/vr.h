@@ -54,7 +54,7 @@ void fill_catmull_K(float* K, int num_coefficients);
  * by a vr::end_frame() after we have done our thang.
  */
 RenderEyePose begin_frame(Eye* left, Eye* right);
-void end_frame(RenderEyePose* eye_pose, ovrMatrix4f* twmatrices[]);
+void end_frame(RenderEyePose* eye_pose, ovrMatrix4f twmatrices_l[2], ovrMatrix4f twmatrices_r[2]);
 
 
 void enable_skybox();

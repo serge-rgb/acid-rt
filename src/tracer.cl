@@ -152,6 +152,7 @@ Intersection trace(
 {
     Intersection its;
     its.depth = 0;
+    its.t = 0;
     float3 inv_dir = 1 / ray.d;
 
     int stack[32];
@@ -376,7 +377,7 @@ __kernel void main(
     float min_t = 1 << 16;
     if (rsq < 0.22)
     {
-        color = 0.0;
+        color = 1.0;
 
         Intersection its = trace(
                 nodes,

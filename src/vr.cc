@@ -64,7 +64,7 @@ void init()
     //ovrHmd_AttachToWindow(vr::m_hmd, glfwGetWin32Window(window::m_window), NULL, NULL);
 
     unsigned int sensor_caps =
-    ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
+        ovrTrackingCap_Position | ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection;
 
     ovrBool succ = ovrHmd_ConfigureTracking(m_hmd, sensor_caps, sensor_caps);
     if (!succ)
@@ -104,10 +104,8 @@ void init()
 
     m_cached_consts.eye_to_screen = m_default_eye_z;
 
-    m_cached_consts.viewport_size_m[0] =
-    m_screen_size_m[0] / 2;
-    m_cached_consts.viewport_size_m[1] =
-    m_screen_size_m[1];
+    m_cached_consts.viewport_size_m[0] = m_screen_size_m[0] / 2;
+    m_cached_consts.viewport_size_m[1] = m_screen_size_m[1];
     m_cached_consts.meters_per_tan_angle =
     m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
 }
@@ -201,7 +199,7 @@ RenderEyePose begin_frame(Eye* left, Eye* right)
     return eye_pose;
 }
 
-void end_frame(RenderEyePose* eye_pose, ovrMatrix4f* twmatrices[])
+void end_frame(RenderEyePose* eye_pose, ovrMatrix4f twmatrices_l[2], ovrMatrix4f twmatrices_r[2])
 {
     GLCHK ( glFinish() );
 
@@ -211,9 +209,9 @@ void end_frame(RenderEyePose* eye_pose, ovrMatrix4f* twmatrices[])
     // Get timewarp info
     {
         ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Left, eye_pose->poses[ovrEye_Left],
-                &twmatrices[ovrEye_Left]);
+                twmatrices_l);
         ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Right, eye_pose->poses[ovrEye_Right],
-                &twmatrices[ovrEye_Right]);
+                twmatrices_r);
     }
     ovrHmd_EndFrameTiming(m_hmd);
     m_frame_index++;

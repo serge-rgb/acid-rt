@@ -72,6 +72,8 @@ namespace ocl
 
 static GLuint           m_gl_texture;
 static GLuint           m_quad_vao;
+static GLuint           m_quad_r_vao;
+static GLuint           m_quad_l_vao;
 static GLuint           m_quad_program;
 static GLuint           m_postproc_program;
 static cl_context       m_context;
@@ -299,24 +301,52 @@ void draw()
 
     auto t_draw = io::get_microseconds();
 
-    // Bind rendertarget
+    ovrMatrix4f twmatrices_l[2];
+    ovrMatrix4f twmatrices_r[2];
+    vr::end_frame(&eye_pose, &twmatrices_l[0], &twmatrices_r[0]);
+
+    // 0.5 lerp.
+    // TODO: don't draw a single quad. Draw a grid and use different "timewarp factors".
+    ovrMatrix4f timewarp_l;
+    ovrMatrix4f timewarp_r;
+    for (int i = 0; i < 4; ++i)
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, g_rendertarget.fbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
+        for (int j = 0; j < 4; ++j)
+        {
+            timewarp_l.M[i][j] = 0.5f * (twmatrices_l[0].M[i][j] + twmatrices_l[1].M[i][j]);
+            timewarp_r.M[i][j] = 0.5f * (twmatrices_r[0].M[i][j] + twmatrices_r[1].M[i][j]);
+        }
     }
+
+    // Bind rendertarget
+    glBindFramebuffer(GL_FRAMEBUFFER, g_rendertarget.fbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, g_rendertarget.depth);
     // Draw texture to rendertarget
+    GLuint eye_vaos[2] =
     {
-        glActiveTexture (GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_gl_texture);
-        glUseProgram(m_quad_program);
-        glBindVertexArray(m_quad_vao);
+        m_quad_l_vao,
+        m_quad_r_vao
+    };
+    ovrMatrix4f* tw_matrices[2] =
+    {
+        &timewarp_l,
+        &timewarp_r
+    };
+    glActiveTexture (GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+    glUseProgram(m_quad_program);
+    for (int i = 0; i < 2; ++i)
+    {
+        GLuint quad_vao = eye_vaos[i];
+        glUniform1i(7, i);
+        auto* timewarp = tw_matrices[i];
+        // TODO: do the transpose ourselves
+        GLCHK (glUniformMatrix4fv(10, 1, true, &timewarp->M[0][0]));
+        glBindVertexArray(quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    ovrMatrix4f twmatrices[2];
-    vr::end_frame(&eye_pose, &twmatrices);
+    GLCHK (glBindRenderbuffer(GL_RENDERBUFFER, 0));
 
     // Draw texture to screen
     {
@@ -328,6 +358,7 @@ void draw()
         //glBindTexture(GL_TEXTURE_2D, m_gl_texture);
         glBindTexture(GL_TEXTURE_2D, g_rendertarget.color);
         glUseProgram(m_postproc_program);
+
         glBindVertexArray(m_quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
@@ -546,8 +577,11 @@ void init()
     {
         // Create the quad
         {
+            GLuint vbo;
             glPointSize(3);
             const GLfloat u = 1.0f;
+
+            // full
             GLfloat vert_data[] =
             {
                 -u, u,
@@ -558,12 +592,43 @@ void init()
             glGenVertexArrays(1, &m_quad_vao);
             glBindVertexArray(m_quad_vao);
 
-            GLuint vbo;
+            glGenBuffers(1, &vbo);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+            GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof(vert_data), vert_data, GL_STATIC_DRAW));
+            GLCHK (glEnableVertexAttribArray (0) );
+            GLCHK (glVertexAttribPointer     (/*attrib location*/0,
+                        /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
+
+            glGenVertexArrays(1, &m_quad_l_vao);
+            glBindVertexArray(m_quad_l_vao);
+
+            // left
+            vert_data[0] = -u;
+            vert_data[2] = -u;
+            vert_data[4] = 0;
+            vert_data[6] = 0;
+            glGenBuffers(1, &vbo);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+            GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof(vert_data), vert_data, GL_STATIC_DRAW));
+            GLCHK (glEnableVertexAttribArray (0) );
+            GLCHK (glVertexAttribPointer     (/*attrib location*/0,
+                        /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
+#if 1
+            // right
+            vert_data[0] = 0;
+            vert_data[2] = 0;
+            vert_data[4] = u;
+            vert_data[6] = u;
+            glGenVertexArrays(1, &m_quad_r_vao);
+            glBindVertexArray(m_quad_r_vao);
             glGenBuffers(1, &vbo);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
             GLCHK (glBufferData (GL_ARRAY_BUFFER, sizeof(vert_data), vert_data, GL_STATIC_DRAW));
 
+#endif
             GLCHK (glEnableVertexAttribArray (0) );
             GLCHK (glVertexAttribPointer     (/*attrib location*/0,
                         /*size*/2, GL_FLOAT, /*normalize*/GL_FALSE, /*stride*/0, /*ptr*/0));
@@ -577,7 +642,7 @@ void init()
         };
         GLuint shaders[shader_count];
         const char* paths[shader_count];
-        paths[vert] = "src/quad.v.glsl";
+        paths[vert] = "src/quad_timewarp.v.glsl";
         paths[frag] = "src/quad.f.glsl";
         paths[fxaa] = "third_party/src/Fxaa3_11.glsl";
 
