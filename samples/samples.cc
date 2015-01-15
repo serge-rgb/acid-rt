@@ -2,6 +2,7 @@
 #include "sample_list.h"
 
 #include "io.h"
+#include "ocl.h"
 #include "ph.h"
 #include "vr.h"
 #include "window.h"
@@ -40,6 +41,34 @@ static void sample_callback(GLFWwindow* window, int key, int scancode, int actio
         while ((size_t)g_curr_sample >= g_num_samples) g_curr_sample--;
         g_sample_func = g_samples[g_curr_sample];
         g_sample_func();
+    }
+    if( key == GLFW_KEY_P && action == GLFW_PRESS )
+    {
+        ocl::toggle_timewarp();
+    }
+    if( key == GLFW_KEY_J && action == GLFW_PRESS )
+    {
+        if (ocl::m_timewarp_factor >= 0.1f)
+        {
+            ocl::m_timewarp_factor -= 0.1f;
+            if (ocl::m_timewarp_factor < 0)
+            {
+                ocl::m_timewarp_factor = 0;
+            }
+        }
+        printf("%f\n", ocl::m_timewarp_factor);
+    }
+    if( key == GLFW_KEY_K && action == GLFW_PRESS )
+    {
+        if (ocl::m_timewarp_factor < 1.0f)
+        {
+            ocl::m_timewarp_factor += 0.1f;
+            if (ocl::m_timewarp_factor > 1.0f)
+            {
+                ocl::m_timewarp_factor = 0;
+            }
+        }
+        printf("%f\n", ocl::m_timewarp_factor);
     }
 }
 

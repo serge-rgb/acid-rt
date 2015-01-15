@@ -336,7 +336,6 @@ __kernel void main(
         )
 {
 
-    /* float4 color = 1; */
     float4 color = 0;
 
     float3 eye_pos = (float3)(0);
@@ -375,9 +374,9 @@ __kernel void main(
     l.point = (float3)(-3,10,5);
 
     float min_t = 1 << 16;
-    if (rsq < 0.22)
+    if (rsq < 0.25)
     {
-        color = 1.0;
+        color = 0.5;
 
         Intersection its = trace(
                 nodes,

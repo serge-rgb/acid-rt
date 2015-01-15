@@ -34,10 +34,12 @@ vec4 FxaaPixelShader(
 
 void main()
 {
-    if (
-            (eye == 0) ||
-            (eye == 1 && coord.x > 0.5)
-       )
+    if (coord.x > 0 && coord.x < 1 &&
+        coord.y > 0 && coord.y < 1 &&
+        (
+         (eye == 0) && coord.x < 0.5 ||
+         (eye == 1 && coord.x > 0.5)
+        ))
     {
         //color = texture(tex, coord);
         vec2 coord_g = coord;
@@ -63,6 +65,10 @@ void main()
                 -1, //fxaaConsoleEdgeThresholdMin
                 vec4(0)); //fxaaConsole360ConstDir
         color.rgb = aa_color.rgb;
+    }
+    else
+    {
+        color.rgb = vec3(0);
     }
 }
 

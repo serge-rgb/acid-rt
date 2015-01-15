@@ -51,7 +51,6 @@ void init()
     }
     m_has_initted = true;
 
-
     if (!ovr_Initialize())
     {
         ph::phatal_error("Could not initialize OVR\n");
@@ -204,14 +203,14 @@ void end_frame(RenderEyePose* eye_pose, ovrMatrix4f twmatrices_l[2], ovrMatrix4f
     GLCHK ( glFinish() );
 
     // CAPI.h says use this but it doesn't seem necessary.
-    // ovr_WaitTillTime();
+    //ovr_WaitTillTime();
 
     // Get timewarp info
     {
-        ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Left, eye_pose->poses[ovrEye_Left],
-                twmatrices_l);
-        ovrHmd_GetEyeTimewarpMatrices(m_hmd, ovrEye_Right, eye_pose->poses[ovrEye_Right],
-                twmatrices_r);
+        ovrHmd_GetEyeTimewarpMatricesDebug(m_hmd, ovrEye_Left, eye_pose->poses[ovrEye_Left],
+                twmatrices_l, 0.0f);
+        ovrHmd_GetEyeTimewarpMatricesDebug(m_hmd, ovrEye_Right, eye_pose->poses[ovrEye_Right],
+                twmatrices_r, 0.0f);
     }
     ovrHmd_EndFrameTiming(m_hmd);
     m_frame_index++;

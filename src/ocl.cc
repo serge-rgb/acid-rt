@@ -86,6 +86,7 @@ static cl_mem           m_cl_bvh;
 static cl_program       m_cl_program;
 static cl_kernel        m_cl_kernel;
 static vr::HMDConsts    m_hmd_consts;
+static bool             m_tw_enabled;
 
 static int64 m_num_frames = 1;
 static float m_avg_render = 0.0f;
@@ -198,15 +199,16 @@ void set_triangle_soup(ph::CLtriangle* tris, ph::CLtriangle* norms, size_t num_t
     if (err != CL_SUCCESS) { phatal_error("Can't set kernel arg (normal soup)"); }
 }
 
+void toggle_timewarp()
+{
+    m_tw_enabled = !m_tw_enabled;
+}
+
 void draw()
 {
     glFinish();
 
-    vr::Eye left;
-    vr::Eye right;
-    vr::RenderEyePose eye_pose = vr::begin_frame(&left, &right);
-
-    auto t_start = io::get_microseconds();
+    //auto t_start = io::get_microseconds();
 
     cl_int err;
 
@@ -232,6 +234,10 @@ void draw()
         16,
         4,
     };
+
+    vr::Eye left;
+    vr::Eye right;
+    vr::RenderEyePose eye_pose = vr::begin_frame(&left, &right);
 
     // Kernel arguments that change every frame.
     cl_int off = 0;
@@ -303,6 +309,7 @@ void draw()
 
     ovrMatrix4f twmatrices_l[2];
     ovrMatrix4f twmatrices_r[2];
+    glFinish();
     vr::end_frame(&eye_pose, &twmatrices_l[0], &twmatrices_r[0]);
 
     // 0.5 lerp.
@@ -313,8 +320,9 @@ void draw()
     {
         for (int j = 0; j < 4; ++j)
         {
-            timewarp_l.M[i][j] = 0.5f * (twmatrices_l[0].M[i][j] + twmatrices_l[1].M[i][j]);
-            timewarp_r.M[i][j] = 0.5f * (twmatrices_r[0].M[i][j] + twmatrices_r[1].M[i][j]);
+            float f = m_timewarp_factor;
+            timewarp_l.M[i][j] = ((1 - f) * twmatrices_l[0].M[i][j]) + (f * twmatrices_l[1].M[i][j]);
+            timewarp_r.M[i][j] = ((1 - f) * twmatrices_r[0].M[i][j]) + (f * twmatrices_r[1].M[i][j]);
         }
     }
 
@@ -335,13 +343,21 @@ void draw()
     glActiveTexture (GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_gl_texture);
     glUseProgram(m_quad_program);
+    GLfloat transposed [4][4];
     for (int i = 0; i < 2; ++i)
     {
         GLuint quad_vao = eye_vaos[i];
         glUniform1i(7, i);
         auto* timewarp = tw_matrices[i];
         // TODO: do the transpose ourselves
-        GLCHK (glUniformMatrix4fv(10, 1, true, &timewarp->M[0][0]));
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j)
+            {
+                transposed[i][j] = timewarp->M[j][i];
+            }
+
+        GLCHK (glUniformMatrix4fv(10, 1, false, (GLfloat*)transposed));
+        glUniform1i(11, m_tw_enabled);
         glBindVertexArray(quad_vao);
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
@@ -363,13 +379,15 @@ void draw()
         GLCHK (glDrawArrays (GL_TRIANGLE_FAN, 0, 4) );
     }
 
-    auto t_end = io::get_microseconds();
+    //auto t_end = io::get_microseconds();
 
+#if 0
     logf("Total frame time: %f\nOpenCL time: %f\nDraw time: %f\n=====================\n",
             float(t_end - t_start) / 1000.0f,
             float(t_draw - t_send) / 1000.0f,
             float(t_end - t_draw) / 1000.0f
         );
+#endif
 
     m_avg_render += float(t_draw - t_send) / 1000.0f;
     m_num_frames++;
@@ -491,6 +509,10 @@ void init()
     props = local_props;
 #endif
 #endif
+
+    m_tw_enabled = true;
+    m_timewarp_factor = 0.5;
+
     m_context = clCreateContext(
             props,
             1, &devices[0],
@@ -531,8 +553,8 @@ void init()
         // Note for the future: These are needed.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
         // Pass a null pointer, texture will be filled by opencl ray tracer
         GLCHK ( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
