@@ -4,9 +4,7 @@ echo "========================================================================="
 
 
 # Get deps
-sudo apt-get install autogen libtool libatomic-ops-dev unzip
-# LUA
-sudo apt-get install libreadline-dev
+# sudo apt-get install autogen libtool libatomic-ops-dev unzip
 
 # Update third party libraries.
 if [ ! -d third_party ]; then
@@ -39,23 +37,10 @@ if [ ! -d glfw ]; then
 fi
 
 echo "========================================================================="
-echo "==== Lua"
-echo "========================================================================="
-if [ ! -d lua ]; then
-    git clone https://github.com/LuaDist/lua.git
-fi
-echo "========================================================================="
 echo "==== GLM"
 echo "========================================================================="
 if [ ! -d glm ]; then
     unzip ../glm-0.9.5.4.zip
-fi
-
-echo "========================================================================="
-echo "==== YAJL"
-echo "========================================================================="
-if [ ! -d yajl ]; then
-    git clone https://github.com/lloyd/yajl.git
 fi
 
 echo "========================================================================="

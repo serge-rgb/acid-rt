@@ -22,11 +22,12 @@ VR Features:
 * Only works in extended mode, for now.
 * Lens distortion correction
 * Chromatic aberration correction
+* Timewarp
 
 Requirements:
 -------------
 
-* Only Supports DK2 on Windows.
+* Oculus DK2 on Windows.
 * OpenCL 1.1
 * OpenGL 4.1
 * A 64-bit processor
@@ -58,7 +59,7 @@ Make a directory called "build"
 
     $> mkdir build
 
-Use cmake to create a visual studio solution.
+Use cmake to create a 64 bit visual studio solution.
 
     $> cd build && cmake -G "Visual Studio 12 2013 Win64" ..
 
@@ -85,5 +86,4 @@ To-Do (in no particular order)
 
 * Mesh loader (find third party lib)
 * Lighting model
-* Time Warp
 * Texture mapping (?)

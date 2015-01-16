@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
-add_subdirectory(third_party/lua)
 add_subdirectory(third_party/glfw)
 add_subdirectory(third_party/bdwgc)
-add_subdirectory(third_party/yajl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -59,11 +57,8 @@ include_directories(
     "src/"
 
     "./third_party/"
-    "./third_party/lua/"
-    "./third_party/lua/src/"
     "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
-    "./third_party/yajl/src/api"
     "./third_party/glm/"
     "./third_party/stb/"
 
@@ -72,8 +67,6 @@ include_directories(
 if (WIN32)
     include_directories(
         "./Windows/"
-        "./build/third_party/lua/"
-        "./build/third_party/yajl/yajl-2.1.1/include"
         )
 endif()
 
@@ -96,11 +89,11 @@ endif()
 add_library(ph STATIC
     src/ph.cc
     )
-target_link_libraries(ph gcmt-dll liblua glfw ${GLFW_LIBRARIES})
+target_link_libraries(ph gcmt-dll glfw ${GLFW_LIBRARIES})
 if (WIN32)
     target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
-set(acid_runtime liblua gcmt-dll glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY} yajl)
+set(acid_runtime gcmt-dll glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY})
 
 set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc

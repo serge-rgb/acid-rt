@@ -9,6 +9,7 @@ chicken
 # Dev tools
 tags
 *.taghl
+.agignore
 
 ###SublimeText###
 

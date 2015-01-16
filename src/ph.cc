@@ -13,12 +13,6 @@ void init() {
 #endif
 }
 
-lua_State* new_lua() {
-    lua_State* L = luaL_newstate();
-    luaL_openlibs(L);
-    return L;
-}
-
 #if defined(PH_DEBUG)
 void log(const char* s) {
     printf("%s\n", s);
@@ -41,21 +35,6 @@ void phatal_error(const char* message) {
     printf("%s\n", message);
     exit(-1);
 }
-
-lua_State* run_script(const char* path) {
-    lua_State* L = new_lua();
-    int err = luaL_dofile(L, path);
-    if (err) {
-        if (L) {
-            fprintf(stderr, "Could not load&run file %s\n", lua_tostring(L, -1));
-            lua_close(L);  // not needed. Leaving it here for documentation: There is a close func
-            phatal_error("Lua fatal error.");
-        }
-        return NULL;
-    }
-    return L;
-}
-
 
 ///////////////////////////////
 // Hash functions

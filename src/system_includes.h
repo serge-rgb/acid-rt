@@ -14,9 +14,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-// ==== Yajl
-#include <yajl/yajl_tree.h>
-
 // ==== stb
 #include <stb_image.h>
 
@@ -33,9 +30,6 @@ extern "C"
     // LOCAL
 #include <gc.h>
 #define GL_GLEXT_PROTOTYPES
-#include <lauxlib.h>
-#include <lualib.h>
-#include <lua.h>
 #include <opencl.h>
     // Cross platform
 #ifdef _WIN32
