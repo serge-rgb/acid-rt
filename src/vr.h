@@ -53,8 +53,19 @@ void fill_catmull_K(float* K, int num_coefficients);
  * `frame_index`, the time it takes us to draw a frame, and VSync time. So this needs to be followed
  * by a vr::end_frame() after we have done our thang.
  */
-RenderEyePose begin_frame(Eye* left, Eye* right);
-void end_frame(RenderEyePose* eye_pose, ovrMatrix4f twmatrices_l[2], ovrMatrix4f twmatrices_r[2]);
+
+struct FrameInfo
+{
+    Eye left;
+    Eye right;
+    ovrMatrix4f twmatrices_l[2];
+    ovrMatrix4f twmatrices_r[2];
+    double frame_time;
+    double avg_draw_time;
+};
+RenderEyePose begin_frame(FrameInfo* frameinfo);
+
+void end_frame(RenderEyePose* eye_pose, FrameInfo* frameinfo);
 
 
 void enable_skybox();

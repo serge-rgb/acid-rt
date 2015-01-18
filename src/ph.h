@@ -57,8 +57,9 @@ void init();
 // Int Types
 //////////////////////////
 
-typedef int64_t int64;
-typedef int32_t int32;
+typedef int64_t  int64;
+typedef uint64_t uint64;
+typedef int32_t  int32;
 
 #define PH_MAX_int32 2147483648
 #define PH_MAX_int64 9223372036854775808

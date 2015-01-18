@@ -33,7 +33,7 @@ void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, in
 void get_wasd_camera(const float* orientation, float* out_xyz);
 // ====================================
 
-long get_microseconds();
+uint64_t get_microseconds();
 
 }
 }

@@ -206,8 +206,6 @@ void toggle_timewarp()
 
 void draw()
 {
-    glFinish();
-
     //auto t_start = io::get_microseconds();
 
     cl_int err;
@@ -235,9 +233,11 @@ void draw()
         4,
     };
 
-    vr::Eye left;
-    vr::Eye right;
-    vr::RenderEyePose eye_pose = vr::begin_frame(&left, &right);
+    vr::FrameInfo frameinfo = {};
+    vr::RenderEyePose eye_pose = vr::begin_frame(&frameinfo);
+
+    vr::Eye left = frameinfo.left;
+    vr::Eye right = frameinfo.right;
 
     // Kernel arguments that change every frame.
     cl_int off = 0;
@@ -307,10 +307,7 @@ void draw()
 
     auto t_draw = io::get_microseconds();
 
-    ovrMatrix4f twmatrices_l[2];
-    ovrMatrix4f twmatrices_r[2];
-    glFinish();
-    vr::end_frame(&eye_pose, &twmatrices_l[0], &twmatrices_r[0]);
+    vr::end_frame(&eye_pose, &frameinfo);
 
     // 0.5 lerp.
     // TODO: don't draw a single quad. Draw a grid and use different "timewarp factors".
@@ -321,8 +318,10 @@ void draw()
         for (int j = 0; j < 4; ++j)
         {
             float f = m_timewarp_factor;
-            timewarp_l.M[i][j] = ((1 - f) * twmatrices_l[0].M[i][j]) + (f * twmatrices_l[1].M[i][j]);
-            timewarp_r.M[i][j] = ((1 - f) * twmatrices_r[0].M[i][j]) + (f * twmatrices_r[1].M[i][j]);
+            timewarp_l.M[i][j] =
+                ((1 - f) * frameinfo.twmatrices_l[0].M[i][j]) + (f * frameinfo.twmatrices_l[1].M[i][j]);
+            timewarp_r.M[i][j] =
+                ((1 - f) * frameinfo.twmatrices_r[0].M[i][j]) + (f * frameinfo.twmatrices_r[1].M[i][j]);
         }
     }
 
@@ -393,8 +392,6 @@ void draw()
     m_num_frames++;
 
     window::swap_buffers();
-
-    GLCHK ( glFinish() );
 }
 
 void init()

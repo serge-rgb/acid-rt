@@ -37,6 +37,7 @@ static bool                      m_skybox_enabled = true;
 static ovrEyeRenderDesc          m_render_desc_l;
 static ovrEyeRenderDesc          m_render_desc_r;
 static unsigned int              m_frame_index = 1;
+static double                    m_target_frame_time = (1 / 75.0);
 
 ovrHmd                           m_hmd;
 
@@ -153,10 +154,10 @@ void disable_skybox()
     glUniform1i(14, m_skybox_enabled);
 }
 
-RenderEyePose begin_frame(Eye* left, Eye* right)
+RenderEyePose begin_frame(FrameInfo* frameinfo)
 {
-    ph_assert(left != NULL);
-    ph_assert(right != NULL);
+    Eye* left = &frameinfo->left;
+    Eye* right = &frameinfo->right;
     ovrHmd_BeginFrameTiming(m_hmd, m_frame_index);
 
     RenderEyePose eye_pose;
@@ -195,22 +196,28 @@ RenderEyePose begin_frame(Eye* left, Eye* right)
         eyes[i]->orientation[2] = quat[2];
         eyes[i]->orientation[3] = quat[3];
     }
+    frameinfo->frame_time = ovr_GetTimeInSeconds();
+
     return eye_pose;
 }
 
-void end_frame(RenderEyePose* eye_pose, ovrMatrix4f twmatrices_l[2], ovrMatrix4f twmatrices_r[2])
+void end_frame(RenderEyePose* eye_pose, FrameInfo* frameinfo)
 {
     GLCHK ( glFinish() );
 
     // CAPI.h says use this but it doesn't seem necessary.
-    //ovr_WaitTillTime();
+    double time_elapsed = ovr_GetTimeInSeconds() - frameinfo->frame_time;
+    double time_to_wait =
+        m_target_frame_time - time_elapsed - frameinfo->avg_draw_time;
+    double target_time = ovr_GetTimeInSeconds() + time_to_wait;
+    ovr_WaitTillTime(target_time);
 
     // Get timewarp info
     {
         ovrHmd_GetEyeTimewarpMatricesDebug(m_hmd, ovrEye_Left, eye_pose->poses[ovrEye_Left],
-                twmatrices_l, 0.0f);
+                frameinfo->twmatrices_l, 0.0f);
         ovrHmd_GetEyeTimewarpMatricesDebug(m_hmd, ovrEye_Right, eye_pose->poses[ovrEye_Right],
-                twmatrices_r, 0.0f);
+                frameinfo->twmatrices_r, 0.0f);
     }
     ovrHmd_EndFrameTiming(m_hmd);
     m_frame_index++;

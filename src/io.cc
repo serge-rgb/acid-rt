@@ -148,7 +148,7 @@ void wasd_callback(GLFWwindow* window, int key, int /*scancode*/, int action, in
     }
 }
 
-long get_microseconds()
+uint64 get_microseconds()
 {
 #ifdef _WIN32
     LARGE_INTEGER ticks;
@@ -157,12 +157,12 @@ long get_microseconds()
     QueryPerformanceCounter(&ticks);
 
     ticks.QuadPart *= 1000000;  // Avoid precision loss;
-    return (long)(ticks.QuadPart / ticks_per_sec.QuadPart);
+    return (uint64)(ticks.QuadPart / ticks_per_sec.QuadPart);
 #else
     struct timespec tp;
     clock_gettime(CLOCK_REALTIME, &tp);
     long ns = tp.tv_nsec;
-    return ns * 1000;
+    return (uint64)(ns * 1000);
 #endif
 }
 
