@@ -49,14 +49,14 @@ enum MaterialType
 
 static const char* str(const glm::vec3& v)
 {
-    char* out = phanaged(char, 16);
+    char* out = ph_string_alloc(16);
     sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
     return out;
 }
 
 static const char* str(AABB b)
 {
-    char* out = phanaged(char, 16);
+    char* out = ph_string_alloc(16);
     sprintf(out, "%f, %f\n%f, %f\n%f, %f\n", b.xmin, b.xmax, b.ymin, b.ymax, b.zmin, b.zmax);
     return out;
 }
@@ -1004,7 +1004,6 @@ void init()
     }
     else
     {
-
         // Init the OpenCL backend
         ocl::init();
 

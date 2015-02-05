@@ -28,7 +28,6 @@
 extern "C"
 {
     // LOCAL
-#include <gc.h>
 #define GL_GLEXT_PROTOTYPES
 #include <opencl.h>
     // Cross platform

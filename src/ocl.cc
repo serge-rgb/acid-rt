@@ -775,7 +775,7 @@ void init()
                     CL_PROGRAM_BUILD_LOG,
                     0, NULL, &sz);
 
-            char* log = phanaged(char, sz);
+            char* log = ph_string_alloc(sz);
 
             clGetProgramBuildInfo(
                     m_cl_program,

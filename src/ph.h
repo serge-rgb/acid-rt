@@ -36,17 +36,17 @@
 #define ph_assert(expr)
 #endif
 
-#define phanaged(type, num) \
-        (type*)ph::memory::typeless_managed(sizeof(type) * num)
 
-#define phanaged_realloc(type, old, num) \
-    (type*)ph::memory::typeless_managed_realloc(old, sizeof(type) * num)
+#define phanaged(expr, lala) ph_assert(!"nope")
 
 #define phalloc(type, num) \
     (type*)ph::memory::typeless_alloc(size_t(num) * sizeof(type))
 
 #define phree(mem)\
         ph::memory::typeless_free((void*)(mem)); (mem) = NULL
+
+// TODO: use a fixed arena for this.
+#define ph_string_alloc(len) (char*) phalloc(char, len)
 
 namespace ph
 {
@@ -71,10 +71,6 @@ namespace memory
 {
 // In debug mode, query dynamic memory allocated.
 int64 bytes_allocated();
-
-void* typeless_managed(size_t n_bytes);
-//////////// Note: Boehm has had bugs with this for years.
-/* void* typeless_managed_realloc(void* old, size_t n_bytes); */
 
 // malloc equivalent. Use phalloc macro
 void* typeless_alloc(size_t n_bytes);

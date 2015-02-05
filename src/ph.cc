@@ -6,11 +6,9 @@
 namespace ph {
 
 
-void init() {
-#ifndef PH_SLICES_ARE_MANUAL
-    GC_init();
-    GC_enable_incremental();
-#endif
+void init()
+{
+
 }
 
 #if defined(PH_DEBUG)
@@ -59,14 +57,6 @@ uint64_t hash(const char* s) {
 
 namespace memory {
 
-void* typeless_managed(size_t n_bytes) {
-    return GC_malloc(n_bytes);
-}
-
-/* void* typeless_managed_realloc(void* old, size_t n_bytes) { */
-/*     return GC_realloc(old, n_bytes); */
-/* } */
-
 void* typeless_alloc(size_t n_bytes) {
     void* ptr = malloc(n_bytes);
     if (!ptr) {
@@ -83,8 +73,7 @@ void typeless_free(void* mem) {
 
 void quit(int code) {
 #ifdef PH_DEBUG
-    // TODO: boehm bug? uncomment later
-    // GC_gcollect();
+    // debug uninit work..
 #endif
     exit(code);
 }

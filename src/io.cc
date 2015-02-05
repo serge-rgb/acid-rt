@@ -34,7 +34,7 @@ const char* slurp(const char* path)
     fseek(fd, 0, SEEK_END);
     size_t len = (size_t)ftell(fd);
     fseek(fd, 0, SEEK_SET);
-    const char* contents = phanaged(char, len);
+    const char* contents = ph_string_alloc(len);
     fread((void*)contents, len, 1, fd);
     return contents;
 }

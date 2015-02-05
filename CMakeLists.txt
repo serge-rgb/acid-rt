@@ -22,10 +22,10 @@ if (UNIX)
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 endif()
 if (WIN32)
-    set(CMAKE_CXX_FLAGS "/MP /Wall /WX /wd4514 /wd4505 /wd4996 /wd4756 /wd4056 /wd4738 /wd4686 /wd4820 /D_CRT_SECURE_NO_WARNINGS")
-    set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od /Zi")
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /wd4711")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELEASE} " /Zi")
+    set(CMAKE_CXX_FLAGS "/MP /Wall /WX /wd4514 /wd4711 /wd4505 /wd4996 /wd4756 /wd4056 /wd4738 /wd4686 /wd4820 /D_CRT_SECURE_NO_WARNINGS ")
+    set(CMAKE_CXX_FLAGS_DEBUG "/DPH_DEBUG /Od /Zi ")
+    set(CMAKE_CXX_FLAGS_RELEASE " /O2 ")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO " /Zi ")
 
     set(CMAKE_EXE_LINKER_FLAGS "/SAFESEH:NO")
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "/DEBUG")
@@ -57,7 +57,6 @@ include_directories(
     "src/"
 
     "./third_party/"
-    "./third_party/bdwgc/include/"
     "./third_party/glfw/include/"
     "./third_party/glm/"
     "./third_party/stb/"
@@ -86,14 +85,12 @@ if (WIN32)
 endif()
 
 
-add_library(ph STATIC
-    src/ph.cc
-    )
-target_link_libraries(ph gcmt-dll glfw ${GLFW_LIBRARIES})
+add_library(ph STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/ph.cc)
+target_link_libraries(ph  glfw ${GLFW_LIBRARIES})
 if (WIN32)
     target_link_libraries(ph ${GLEW_LIB} wsock32 ws2_32)
 endif()
-set(acid_runtime gcmt-dll glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY})
+set(acid_runtime glfw ph ${OPENGL_LIBRARIES} ${OPENCL_LIBRARY})
 
 set (renderer_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cc

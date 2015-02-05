@@ -10,7 +10,7 @@ namespace mesh
 // Debugging
 static const char* str(const glm::vec3& v)
 {
-    char* out = phanaged(char, 16);
+    char* out = ph_string_alloc(16);
     sprintf(out, "%f, %f, %f", v.x, v.y, v.z);
     return out;
 }

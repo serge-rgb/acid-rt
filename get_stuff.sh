@@ -14,32 +14,20 @@ fi
 cd third_party
 
 echo "========================================================================="
-echo "==== Boehm GC"
-echo "========================================================================="
-if [ ! -d bdwgc ]; then
-    git clone https://github.com/ivmai/bdwgc
-    cd bdwgc
-    git pull
-    ./autogen.sh
-    ./configure --prefix=`pwd`/..
-    cd ..
-fi
-cd bdwgc
-make -j
-make install
-cd ..
-
-echo "========================================================================="
 echo "==== GLFW3"
 echo "========================================================================="
 if [ ! -d glfw ]; then
     git clone https://github.com/glfw/glfw.git glfw
+else
+    cd glfw
+    git pull
+    cd ..
 fi
 
+if [ ! -d glm ]; then
 echo "========================================================================="
 echo "==== GLM"
 echo "========================================================================="
-if [ ! -d glm ]; then
     unzip ../glm-0.9.5.4.zip
 fi
 
@@ -48,8 +36,11 @@ echo "==== stb"
 echo "========================================================================="
 if [ ! -d stb ]; then
     git clone https://github.com/nothings/stb.git
+else
+    cd stb
+    git pull
+    cd ..
 fi
-
 cd ..  # root
 
 if [ -d OculusSDK ]; then

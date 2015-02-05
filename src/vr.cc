@@ -85,7 +85,6 @@ void init()
     m_renderinfo                          = &m_hmdstate->RenderState.RenderInfo;
     m_hmdinfo                             = &m_hmdstate->RenderState.OurHMDInfo;
 
-
     m_lens_center_l[0] = (vr::m_screen_size_m[0] / 2) - (vr::m_renderinfo->LensSeparationInMeters / 2);
     m_lens_center_l[1] = vr::m_hmdinfo->CenterFromTopInMeters;
 
@@ -107,7 +106,7 @@ void init()
     m_cached_consts.viewport_size_m[0] = m_screen_size_m[0] / 2;
     m_cached_consts.viewport_size_m[1] = m_screen_size_m[1];
     m_cached_consts.meters_per_tan_angle =
-    m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
+        m_renderinfo->EyeLeft.Distortion.MetersPerTanAngleAtCenter;
 }
 
 const HMDConsts get_hmd_constants()
