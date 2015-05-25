@@ -8,6 +8,9 @@ Real time ray tracing renderer
 
 This is a real time ray tracing renderer; a proof of concept designed to be work with the Oculus Rift.
 
+As of SDK 0.6.0, this project is no longer maintained.
+------------------------------------------------------
+
 Features:
 ---------
 
